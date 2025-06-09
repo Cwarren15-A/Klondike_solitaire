@@ -1,53 +1,55 @@
+// vite.config.ts - Future Build Configuration Template
+// This is a template for when you decide to modernize to a React/Vite setup
+// Your current HTML file approach is working perfectly and doesn't need this!
+
+// Note: This file will only be used if you migrate to a modern build system
+
+/*
+// Uncomment and modify when you're ready to use Vite:
+
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
-      },
-      manifest: {
-        name: 'Klondike Solitaire Advanced',
-        short_name: 'Solitaire AI',
-        description: 'Advanced Klondike Solitaire with AI/ML capabilities',
-        theme_color: '#1e5128',
-        background_color: '#1e5128',
-        display: 'standalone',
-        icons: [
-          {
-            src: 'icon-192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'icon-512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
-      }
-    })
-  ],
-  build: {
-    target: 'es2015',
-    outDir: 'dist',
-    sourcemap: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          tensorflow: ['@tensorflow/tfjs'],
-          animations: ['framer-motion', 'lottie-web']
-        }
-      }
-    }
-  },
+  // Basic configuration for static HTML serving
+  root: '.',
   server: {
     port: 3000,
     open: true
-  }
-}) 
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    // Optimize for your single HTML file
+    rollupOptions: {
+      input: {
+        main: 'index.html'
+      }
+    }
+  },
+  // PWA configuration (when you add Vite PWA plugin)
+  // plugins: [
+  //   VitePWA({
+  //     registerType: 'autoUpdate',
+  //     workbox: {
+  //       globPatterns: ['**\/*.{js,css,html,ico,png,svg}']
+  //     }
+  //   })
+  // ]
+})
+*/
+
+// For now, this is just configuration info
+export const VITE_TEMPLATE_INFO = {
+  purpose: "Future Vite build system template",
+  currentApproach: "Single HTML file (working perfectly)",
+  whenToUse: "Only if you want modern build tooling",
+  dependencies: [
+    "vite",
+    "@vitejs/plugin-react (if using React)",
+    "vite-plugin-pwa (for enhanced PWA features)",
+    "typescript (if using TypeScript)"
+  ],
+  currentRecommendation: "Your HTML approach is working great - no need to change!"
+};
+
+export default VITE_TEMPLATE_INFO; 

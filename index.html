@@ -58,12 +58,22 @@
         }
         
         .dark-theme {
-            background: linear-gradient(135deg, #0f1419, #1a1a2e);
+            --bg-primary: #0f1419;
+            --bg-secondary: #1a1a2e;
+            --card-color: #ffffff;
         }
         
         .light-theme {
-            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-            color: #333;
+            --bg-primary: #e3f2fd;
+            --bg-secondary: #bbdefb;
+            --card-color: #333333;
+            color: #333333;
+        }
+        
+        .blue-theme {
+            --bg-primary: #1e3a8a;
+            --bg-secondary: #1e40af;
+            --card-color: #ffffff;
         }
         
         .game-header {
@@ -190,7 +200,7 @@
         .btn-yellow { background: linear-gradient(135deg, #d97706, #b45309); color: white; }
         .btn-purple { background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; }
         .btn-green { background: linear-gradient(135deg, #059669, #047857); color: white; }
-        .btn-orange { background: linear-gradient(135deg, #ea580c, #c2410c); color: white; }
+        .btn-orange { background: linear-gradient(145deg, #f97316, #ea580c); color: white; }
         .btn-red { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; }
         
         button:disabled {
@@ -391,6 +401,11 @@
                 padding: 6px 8px;
             }
         }
+        
+        .btn-orange:hover:not(:disabled) {
+            background: linear-gradient(145deg, #ea580c, #dc2626);
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
@@ -435,10 +450,15 @@
                     <div class="stat-label">Score</div>
                     <div class="stat-value" id="score">0</div>
                 </div>
+                <div class="stat-item" id="winProbDisplay" style="display: none;">
+                    <div class="stat-label">Win %</div>
+                    <div class="stat-value" id="winProb">0%</div>
+                </div>
             </div>
             <div class="controls">
                 <button class="btn-blue" onclick="safeGameCall('newGame')" title="Start new game (N)" aria-label="Start new game">🎲 New Game</button>
                 <button class="btn-yellow" id="undoBtn" onclick="safeGameCall('undo')" title="Undo last move (U)" aria-label="Undo last move">↶ Undo</button>
+                <button class="btn-orange" id="redoBtn" onclick="safeGameCall('redo')" title="Redo last undone move (R)" aria-label="Redo last undone move">↷ Redo</button>
                 <button class="btn-purple" onclick="safeGameCall('ai.showHint')" title="Show AI hint (H)" aria-label="Show AI move hint">🧠 AI Hint</button>
                 <button class="btn-orange" onclick="safeGameCall('ui.showMLAnalysis')" title="Show ML analysis" aria-label="Show machine learning analysis">📊 AI Analysis</button>
                 <button class="btn-green" onclick="safeGameCall('storage.quickSave')" title="Quick save (S)" aria-label="Quick save game">💾 Save</button>
@@ -618,11 +638,55 @@
             }
             
             undo() {
-                try {
-                    this.state.undo();
-                } catch (error) {
-                    console.error('Error undoing move:', error);
-                }
+                const prevState = this.gameHistory.pop();
+                if (!prevState) return;
+                
+                // Save current state to redo history before undoing
+                this.redoHistory.push({
+                    stock: this.stock.map(card => ({ ...card })),
+                    waste: this.waste.map(card => ({ ...card })),
+                    tableau: this.tableau.map(pile => pile.map(card => ({ ...card }))),
+                    foundations: Object.fromEntries(
+                        Object.entries(this.foundations).map(([suit, pile]) => 
+                            [suit, pile.map(card => ({ ...card }))]
+                        )
+                    ),
+                    gameStats: { ...this.gameStats }
+                });
+                
+                // Restore previous state
+                this.stock = prevState.stock;
+                this.waste = prevState.waste;
+                this.tableau = prevState.tableau;
+                this.foundations = prevState.foundations;
+                this.gameStats = { ...prevState.gameStats };
+                this.hintCardId = null;
+                this.hoveredCard = null;
+                this.game.input.resetDragState();
+                
+                this.game.ui.updateUI();
+                this.game.renderer.render();
+            }
+            
+            redo() {
+                const nextState = this.redoHistory.pop();
+                if (!nextState) return;
+                
+                // Save current state to undo history before redoing
+                this.saveGameState();
+                
+                // Restore next state
+                this.stock = nextState.stock;
+                this.waste = nextState.waste;
+                this.tableau = nextState.tableau;
+                this.foundations = nextState.foundations;
+                this.gameStats = { ...nextState.gameStats };
+                this.hintCardId = null;
+                this.hoveredCard = null;
+                this.game.input.resetDragState();
+                
+                this.game.ui.updateUI();
+                this.game.renderer.render();
             }
             
             cleanup() {
@@ -1191,7 +1255,7 @@
             }
             
             toggleTheme() {
-                const themes = ['green', 'dark', 'light'];
+                const themes = ['green', 'blue', 'dark', 'light'];
                 const currentIndex = themes.indexOf(this.currentTheme);
                 this.currentTheme = themes[(currentIndex + 1) % themes.length];
                 this.game.settings.data.theme = this.currentTheme;
@@ -1201,7 +1265,10 @@
             }
             
             applyTheme() {
+                this.currentTheme = this.game.settings.data.theme;
                 const body = document.body;
+                
+                // Remove all theme classes
                 body.className = '';
                 
                 switch(this.currentTheme) {
@@ -1240,6 +1307,47 @@
                 }
             }
             
+            updateWinProbability() {
+                const winProbElement = document.getElementById('winProb');
+                const winProbDisplay = document.getElementById('winProbDisplay');
+                
+                if (!winProbElement || !winProbDisplay) return;
+                
+                if (this.game.ml && this.game.ml.isInitialized) {
+                    // Use ML analysis for win probability
+                    this.game.ml.getGameAnalysis(this.game.state).then(analysis => {
+                        if (analysis.winProbability) {
+                            const prob = Math.round(analysis.winProbability * 100);
+                            winProbElement.textContent = `${prob}%`;
+                            winProbDisplay.style.display = 'block';
+                        }
+                    }).catch(err => {
+                        console.warn('Error getting ML analysis for win probability:', err);
+                    });
+                } else {
+                    // Basic heuristic calculation
+                    const foundationCards = Object.values(this.game.state.foundations)
+                        .reduce((sum, pile) => sum + pile.length, 0);
+                    const foundationProgress = foundationCards / 52;
+                    const faceUpCards = this.game.state.tableau.reduce((sum, pile) => 
+                        sum + pile.filter(c => c.faceUp).length, 0);
+                    const faceUpRatio = faceUpCards / 28;
+                    const moves = this.game.ai.findAllPossibleMoves().length;
+                    const movesFactor = Math.min(moves / 10, 1);
+                    
+                    const winProb = Math.min(
+                        (foundationProgress * 0.5) + 
+                        (faceUpRatio * 0.3) + 
+                        (movesFactor * 0.2), 
+                        0.95
+                    );
+                    const prob = Math.round(winProb * 100);
+                    
+                    winProbElement.textContent = `${prob}%`;
+                    winProbDisplay.style.display = 'block';
+                }
+            }
+            
             updateUI() {
                 try {
                     document.getElementById('moves').textContent = this.game.state.gameStats.moves;
@@ -1249,8 +1357,10 @@
                         `${minutes}:${seconds.toString().padStart(2, '0')}`;
                     document.getElementById('score').textContent = this.game.state.gameStats.score;
                     document.getElementById('undoBtn').disabled = this.game.state.gameHistory.length === 0;
+                    document.getElementById('redoBtn').disabled = this.game.state.redoHistory.length === 0;
                     
                     this.updateProgressBar();
+                    this.updateWinProbability();
                     
                     const scoreDisplay = document.getElementById('scoreDisplay');
                     if (this.game.state.gameStats.score !== 0 || 
@@ -1747,6 +1857,7 @@
                 this.foundations = { '♠': [], '♥': [], '♦': [], '♣': [] };
                 this.gameStats = { moves: 0, time: 0, score: 0 };
                 this.gameHistory = [];
+                this.redoHistory = []; // Add redo history
                 this.hintCardId = null;
                 this.hoveredCard = null;
             }
@@ -1815,6 +1926,9 @@
                     this.gameHistory.shift();
                 }
                 
+                // Clear redo history when making a new move
+                this.redoHistory = [];
+                
                 this.gameHistory.push({
                     stock: this.stock.map(card => ({ ...card })),
                     waste: this.waste.map(card => ({ ...card })),
@@ -1829,20 +1943,19 @@
             }
             
             undo() {
-                const prevState = this.gameHistory.pop();
-                if (!prevState) return;
-                
-                this.stock = prevState.stock;
-                this.waste = prevState.waste;
-                this.tableau = prevState.tableau;
-                this.foundations = prevState.foundations;
-                this.gameStats = { ...prevState.gameStats };
-                this.hintCardId = null;
-                this.hoveredCard = null;
-                this.game.input.resetDragState();
-                
-                this.game.ui.updateUI();
-                this.game.renderer.render();
+                try {
+                    this.state.undo();
+                } catch (error) {
+                    console.error('Error undoing move:', error);
+                }
+            }
+            
+            redo() {
+                try {
+                    this.state.redo();
+                } catch (error) {
+                    console.error('Error redoing move:', error);
+                }
             }
             
             updateScore(action) {
@@ -2772,6 +2885,10 @@
                                 e.preventDefault();
                                 this.game.undo();
                             }
+                            break;
+                        case 'r':
+                            e.preventDefault();
+                            this.game.redo();
                             break;
                         case 'h':
                         case '?':

@@ -33,10 +33,10 @@
   <meta name="apple-mobile-web-app-title" content="Solitaire AI" />
   
   <!-- Icons -->
-  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  <link rel="apple-touch-icon" href="/icon.svg" />
-  <link rel="mask-icon" href="/icon.svg" color="#1e5128" />
+  <link rel="icon" type="image/svg+xml" href="/klondike-solitaire-ai/icon.svg" />
+  <link rel="icon" type="image/x-icon" href="/klondike-solitaire-ai/favicon.ico" />
+  <link rel="apple-touch-icon" href="/klondike-solitaire-ai/icon.svg" />
+  <link rel="mask-icon" href="/klondike-solitaire-ai/icon.svg" color="#1e5128" />
   
   <!-- Preconnect for performance -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
@@ -76,13 +76,15 @@
       to { transform: rotate(360deg); }
     }
   </style>
-  <script type="module" crossorigin src="/assets/index-4e5b7573.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/react-3d3f855c.js">
-  <link rel="modulepreload" crossorigin href="/assets/state-fae50fb7.js">
-  <link rel="modulepreload" crossorigin href="/assets/tensorflow-92d825d5.js">
-  <link rel="modulepreload" crossorigin href="/assets/animations-b0fd7e86.js">
-  <link rel="stylesheet" href="/assets/index-ecacaa5f.css">
-<link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
+  
+  <link rel="modulepreload" crossorigin href="/klondike-solitaire-ai/assets/react-3d3f855c-21100968.js">
+  <link rel="modulepreload" crossorigin href="data:application/javascript;base64,aW1wb3J0e3IgYXMgdCxnIGFzIGUsUiBhcyBufWZyb20iLi9yZWFjdC0zZDNmODU1Yy5qcyI7Y29uc3Qgcj10PT57bGV0IGU7Y29uc3Qgbj1uZXcgU2V0LHI9KHQscik9Pntjb25zdCB1PSJmdW5jdGlvbiI9PXR5cGVvZiB0P3QoZSk6dDtpZighT2JqZWN0LmlzKHUsZSkpe2NvbnN0IHQ9ZTtlPShudWxsIT1yP3I6Im9iamVjdCIhPXR5cGVvZiB1fHxudWxsPT09dSk/dTpPYmplY3QuYXNzaWduKHt9LGUsdSksbi5mb3JFYWNoKChuPT5uKGUsdCkpKX19LHU9KCk9PmUsbz17c2V0U3RhdGU6cixnZXRTdGF0ZTp1LGdldEluaXRpYWxTdGF0ZTooKT0+cyxzdWJzY3JpYmU6dD0+KG4uYWRkKHQpLCgpPT5uLmRlbGV0ZSh0KSksZGVzdHJveTooKT0+e24uY2xlYXIoKX19LHM9ZT10KHIsdSxvKTtyZXR1cm4gb307dmFyIHU9e2V4cG9ydHM6e319LG89e30scz17ZXhwb3J0czp7fX0sYz17fSxhPXQ7dmFyIGk9ImZ1bmN0aW9uIj09dHlwZW9mIE9iamVjdC5pcz9PYmplY3QuaXM6ZnVuY3Rpb24odCxlKXtyZXR1cm4gdD09PWUmJigwIT09dHx8MS90PT0xL2UpfHx0IT10JiZlIT1lfSxmPWEudXNlU3RhdGUsbD1hLnVzZUVmZmVjdCx2PWEudXNlTGF5b3V0RWZmZWN0LFM9YS51c2VEZWJ1Z1ZhbHVlO2Z1bmN0aW9uIGQodCl7dmFyIGU9dC5nZXRTbmFwc2hvdDt0PXQudmFsdWU7dHJ5e3ZhciBuPWUoKTtyZXR1cm4haSh0LG4pfWNhdGNoKHIpe3JldHVybiEwfX12YXIgcD0idW5kZWZpbmVkIj09dHlwZW9mIHdpbmRvd3x8dm9pZCAwPT09d2luZG93LmRvY3VtZW50fHx2b2lkIDA9PT13aW5kb3cuZG9jdW1lbnQuY3JlYXRlRWxlbWVudD9mdW5jdGlvbih0LGUpe3JldHVybiBlKCl9OmZ1bmN0aW9uKHQsZSl7dmFyIG49ZSgpLHI9Zih7aW5zdDp7dmFsdWU6bixnZXRTbmFwc2hvdDplfX0pLHU9clswXS5pbnN0LG89clsxXTtyZXR1cm4gdigoZnVuY3Rpb24oKXt1LnZhbHVlPW4sdS5nZXRTbmFwc2hvdD1lLGQodSkmJm8oe2luc3Q6dX0pfSksW3QsbixlXSksbCgoZnVuY3Rpb24oKXtyZXR1cm4gZCh1KSYmbyh7aW5zdDp1fSksdCgoZnVuY3Rpb24oKXtkKHUpJiZvKHtpbnN0OnV9KX0pKX0pLFt0XSksUyhuKSxufTtjLnVzZVN5bmNFeHRlcm5hbFN0b3JlPXZvaWQgMCE9PWEudXNlU3luY0V4dGVybmFsU3RvcmU/YS51c2VTeW5jRXh0ZXJuYWxTdG9yZTpwLHMuZXhwb3J0cz1jO3ZhciBiPXQseT1zLmV4cG9ydHM7Ci8qKgogKiBAbGljZW5zZSBSZWFjdAogKiB1c2Utc3luYy1leHRlcm5hbC1zdG9yZS1zaGltL3dpdGgtc2VsZWN0b3IucHJvZHVjdGlvbi5qcwogKgogKiBDb3B5cmlnaHQgKGMpIE1ldGEgUGxhdGZvcm1zLCBJbmMuIGFuZCBhZmZpbGlhdGVzLgogKgogKiBUaGlzIHNvdXJjZSBjb2RlIGlzIGxpY2Vuc2VkIHVuZGVyIHRoZSBNSVQgbGljZW5zZSBmb3VuZCBpbiB0aGUKICogTElDRU5TRSBmaWxlIGluIHRoZSByb290IGRpcmVjdG9yeSBvZiB0aGlzIHNvdXJjZSB0cmVlLgogKi92YXIgZz0iZnVuY3Rpb24iPT10eXBlb2YgT2JqZWN0LmlzP09iamVjdC5pczpmdW5jdGlvbih0LGUpe3JldHVybiB0PT09ZSYmKDAhPT10fHwxL3Q9PTEvZSl8fHQhPXQmJmUhPWV9LHg9eS51c2VTeW5jRXh0ZXJuYWxTdG9yZSxFPWIudXNlUmVmLGg9Yi51c2VFZmZlY3Qsaj1iLnVzZU1lbW8sdz1iLnVzZURlYnVnVmFsdWU7by51c2VTeW5jRXh0ZXJuYWxTdG9yZVdpdGhTZWxlY3Rvcj1mdW5jdGlvbih0LGUsbixyLHUpe3ZhciBvPUUobnVsbCk7aWYobnVsbD09PW8uY3VycmVudCl7dmFyIHM9e2hhc1ZhbHVlOiExLHZhbHVlOm51bGx9O28uY3VycmVudD1zfWVsc2Ugcz1vLmN1cnJlbnQ7bz1qKChmdW5jdGlvbigpe2Z1bmN0aW9uIHQodCl7aWYoIWEpe2lmKGE9ITAsbz10LHQ9cih0KSx2b2lkIDAhPT11JiZzLmhhc1ZhbHVlKXt2YXIgZT1zLnZhbHVlO2lmKHUoZSx0KSlyZXR1cm4gYz1lfXJldHVybiBjPXR9aWYoZT1jLGcobyx0KSlyZXR1cm4gZTt2YXIgbj1yKHQpO3JldHVybiB2b2lkIDAhPT11JiZ1KGUsbik/KG89dCxlKToobz10LGM9bil9dmFyIG8sYyxhPSExLGk9dm9pZCAwPT09bj9udWxsOm47cmV0dXJuW2Z1bmN0aW9uKCl7cmV0dXJuIHQoZSgpKX0sbnVsbD09PWk/dm9pZCAwOmZ1bmN0aW9uKCl7cmV0dXJuIHQoaSgpKX1dfSksW2UsbixyLHVdKTt2YXIgYz14KHQsb1swXSxvWzFdKTtyZXR1cm4gaCgoZnVuY3Rpb24oKXtzLmhhc1ZhbHVlPSEwLHMudmFsdWU9Y30pLFtjXSksdyhjKSxjfSx1LmV4cG9ydHM9bztjb25zdCBPPWUodS5leHBvcnRzKSx7dXNlRGVidWdWYWx1ZTptfT1uLHt1c2VTeW5jRXh0ZXJuYWxTdG9yZVdpdGhTZWxlY3RvcjpWfT1PO2NvbnN0IEQ9dD0+dDtjb25zdCBJPXQ9Pntjb25zdCBlPSJmdW5jdGlvbiI9PXR5cGVvZiB0Pyh0PT50P3IodCk6cikodCk6dCxuPSh0LG4pPT5mdW5jdGlvbih0LGU9RCxuKXtjb25zdCByPVYodC5zdWJzY3JpYmUsdC5nZXRTdGF0ZSx0LmdldFNlcnZlclN0YXRlfHx0LmdldEluaXRpYWxTdGF0ZSxlLG4pO3JldHVybiBtKHIpLHJ9KGUsdCxuKTtyZXR1cm4gT2JqZWN0LmFzc2lnbihuLGUpLG59LFI9dD0+dD9JKHQpOkk7ZXhwb3J0e1IgYXMgY307Ci8vIyBzb3VyY2VNYXBwaW5nVVJMPXN0YXRlLWZhZTUwZmI3LmpzLm1hcAo=">
+  <link rel="modulepreload" crossorigin href="/klondike-solitaire-ai/assets/tensorflow-92d825d5-516ea0d8.js">
+  <link rel="modulepreload" crossorigin href="/klondike-solitaire-ai/assets/animations-b0fd7e86-855f0069.js">
+  
+<link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiS2xvbmRpa2UgU29saXRhaXJlIEFkdmFuY2VkIiwic2hvcnRfbmFtZSI6IlNvbGl0YWlyZSBBSSIsInN0YXJ0X3VybCI6Ii8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjMWU1MTI4IiwibGFuZyI6ImVuIiwic2NvcGUiOiIvIiwiZGVzY3JpcHRpb24iOiJBZHZhbmNlZCBLbG9uZGlrZSBTb2xpdGFpcmUgd2l0aCBSZWFjdCwgVHlwZVNjcmlwdCwgYW5kIFJlYWwgVGVuc29yRmxvdy5qcyBNTCIsInRoZW1lX2NvbG9yIjoiIzFlNTEyOCIsIm9yaWVudGF0aW9uIjoiYW55IiwiY2F0ZWdvcmllcyI6WyJnYW1lcyIsImVudGVydGFpbm1lbnQiXSwiaWNvbnMiOlt7InNyYyI6Imljb24tMTkyLnBuZyIsInNpemVzIjoiMTkyeDE5MiIsInR5cGUiOiJpbWFnZS9wbmciLCJwdXJwb3NlIjoiYW55IG1hc2thYmxlIn0seyJzcmMiOiJpY29uLTUxMi5wbmciLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2UvcG5nIiwicHVycG9zZSI6ImFueSBtYXNrYWJsZSJ9XSwic2hvcnRjdXRzIjpbeyJuYW1lIjoiTmV3IEdhbWUiLCJzaG9ydF9uYW1lIjoiTmV3IEdhbWUiLCJkZXNjcmlwdGlvbiI6IlN0YXJ0IGEgbmV3IEtsb25kaWtlIFNvbGl0YWlyZSBnYW1lIiwidXJsIjoiLz9hY3Rpb249bmV3IiwiaWNvbnMiOlt7InNyYyI6Imljb24tMTkyLnBuZyIsInNpemVzIjoiMTkyeDE5MiJ9XX0seyJuYW1lIjoiRGFpbHkgQ2hhbGxlbmdlIiwic2hvcnRfbmFtZSI6IkRhaWx5IiwiZGVzY3JpcHRpb24iOiJQbGF5IHRvZGF5J3MgZGFpbHkgY2hhbGxlbmdlIiwidXJsIjoiLz9hY3Rpb249ZGFpbHkiLCJpY29ucyI6W3sic3JjIjoiaWNvbi0xOTIucG5nIiwic2l6ZXMiOiIxOTJ4MTkyIn1dfV19Cg=="><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script>  <script type="module" crossorigin src="/klondike-solitaire-ai/assets/index-784a8019.js"></script>
+  <link rel="stylesheet" href="/klondike-solitaire-ai/assets/index-ecacaa5f.css">
+<link rel="manifest" href="/klondike-solitaire-ai/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/klondike-solitaire-ai/registerSW.js"></script></head>
 <body>
   <div id="root">
     <div class="loading-screen">

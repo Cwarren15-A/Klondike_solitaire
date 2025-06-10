@@ -17,12 +17,10 @@ export const createInitialGameState = (): GameState => {
     waste: [],
     tableau: dealtCards.tableau,
     foundations: { '♠': [], '♥': [], '♦': [], '♣': [] },
-    drawMode: 1,
-    gameHistory: [],
-    gameStats: { moves: 0, time: 0, score: 0 },
-    redoHistory: [],
-    hintCardId: null,
-    hoveredCard: null
+    moves: [],
+    score: 0,
+    time: 0,
+    difficulty: 'medium',
   };
 };
 
@@ -44,7 +42,9 @@ export const createDeck = (): Card[] => {
                rank === 'Q' ? 12 :
                rank === 'K' ? 13 :
                parseInt(rank),
-        faceUp: false
+        faceUp: false,
+        location: 'stock',
+        position: id - 1
       });
       id++;
     }
@@ -89,15 +89,52 @@ export const dealCards = (deck: Card[]) => {
 };
 
 export class GameEngine {
-  createNewGame(drawMode: number = 1): Partial<GameState> {
-    return createInitialGameState();
+  createNewGame(): Partial<GameState> {
+    const deck = this.createDeck();
+    const tableau: Card[][] = Array(7).fill(null).map(() => []);
+    const foundations: { [key: string]: Card[] } = {
+      '♠': [],
+      '♥': [],
+      '♦': [],
+      '♣': []
+    };
+
+    // Deal cards to tableau
+    for (let i = 0; i < 7; i++) {
+      for (let j = i; j < 7; j++) {
+        const card = deck.pop();
+        if (card) {
+          card.faceUp = i === j;
+          card.location = 'tableau';
+          card.position = j;
+          tableau[j].push(card);
+        }
+      }
+    }
+
+    // Remaining cards go to stock
+    const stock = deck.map(card => {
+      card.location = 'stock';
+      card.position = deck.indexOf(card);
+      return card;
+    });
+
+    return {
+      stock,
+      waste: [],
+      tableau,
+      foundations,
+      moves: [],
+      score: 0,
+      time: 0,
+      difficulty: 'medium',
+    };
   }
 
   makeMove(gameState: GameState, move: Move): { success: boolean; newState: GameState } {
     // Simplified move validation and execution
     const newState = { ...gameState };
-    newState.gameHistory.push(move as any);
-    newState.gameStats.moves++;
+    newState.moves.push(move as any);
     
     return { success: true, newState };
   }
@@ -124,41 +161,39 @@ export class GameEngine {
     return [];
   }
 
-  // Create a shuffled deck of 52 cards
   private createDeck(): Card[] {
-    const suits = ['♠', '♥', '♦', '♣'] as const;
-    const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
     const deck: Card[] = [];
+    const suits: ('♠' | '♥' | '♦' | '♣')[] = ['♠', '♥', '♦', '♣'];
+    const ranks: ('A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K')[] = 
+      ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
-    let cardId = 1;
     for (const suit of suits) {
-      for (let i = 0; i < ranks.length; i++) {
-        const rank = ranks[i];
-        const value = rank === 'A' ? 1 : 
-                     rank === 'J' ? 11 : 
-                     rank === 'Q' ? 12 : 
-                     rank === 'K' ? 13 : parseInt(rank);
-
+      for (const rank of ranks) {
+        const value = rank === 'A' ? 1 :
+                     rank === 'J' ? 11 :
+                     rank === 'Q' ? 12 :
+                     rank === 'K' ? 13 :
+                     parseInt(rank);
+        
         deck.push({
-          id: `card-${cardId++}`,
+          id: `${suit}-${rank}`,
           suit,
           rank,
           value,
           faceUp: false,
+          location: 'stock',
+          position: deck.length
         });
       }
     }
 
-    return this.shuffleDeck(deck);
-  }
-
-  private shuffleDeck(deck: Card[]): Card[] {
-    const shuffled = [...deck];
-    for (let i = shuffled.length - 1; i > 0; i--) {
+    // Shuffle deck
+    for (let i = deck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      [deck[i], deck[j]] = [deck[j], deck[i]];
     }
-    return shuffled;
+
+    return deck;
   }
 
   private moveToFoundation(gameState: GameState, move: Move): MoveResult {
@@ -185,8 +220,8 @@ export class GameEngine {
     foundation.push(card);
     
     // Update stats
-    gameState.gameStats.moves++;
-    gameState.gameStats.score += 10;
+    gameState.moves++;
+    gameState.score += 10;
     
     // Reveal hidden cards if necessary
     this.revealHiddenCards(gameState);
@@ -217,8 +252,8 @@ export class GameEngine {
     targetPile.push(...cardsToMove);
     
     // Update stats
-    gameState.gameStats.moves++;
-    gameState.gameStats.score += cardsToMove.length;
+    gameState.moves++;
+    gameState.score += cardsToMove.length;
     
     // Reveal hidden cards
     this.revealHiddenCards(gameState);
@@ -245,8 +280,8 @@ export class GameEngine {
     targetPile.push(card);
     
     // Update stats
-    gameState.gameStats.moves++;
-    gameState.gameStats.score += 5;
+    gameState.moves++;
+    gameState.score += 5;
 
     return { success: true, newState: gameState };
   }
@@ -271,8 +306,8 @@ export class GameEngine {
     targetPile.push(card);
     
     // Update stats (penalty for moving from foundation)
-    gameState.gameStats.moves++;
-    gameState.gameStats.score -= 15;
+    gameState.moves++;
+    gameState.score -= 15;
 
     return { success: true, newState: gameState };
   }
@@ -295,7 +330,7 @@ export class GameEngine {
       }
     }
 
-    gameState.gameStats.moves++;
+    gameState.moves++;
     return { success: true, newState: gameState };
   }
 
@@ -378,7 +413,7 @@ export class GameEngine {
         const topCard = pile[pile.length - 1];
         if (!topCard.faceUp) {
           topCard.faceUp = true;
-          gameState.gameStats.score += 5; // Bonus for revealing card
+          gameState.score += 5; // Bonus for revealing card
         }
       }
     }
@@ -399,9 +434,7 @@ export class GameEngine {
               type: 'foundation',
               cardId: topCard.id,
               sourceType: 'tableau',
-              targetType: 'foundation',
               sourceIndex: index,
-              description: `Move ${topCard.rank}${topCard.suit} to foundation`,
             });
           }
         }
@@ -419,10 +452,8 @@ export class GameEngine {
                 type: 'tableau',
                 cardId: topCard.id,
                 sourceType: 'tableau',
-                targetType: 'tableau',
                 sourceIndex,
                 targetIndex,
-                description: `Move ${topCard.rank}${topCard.suit} to tableau`,
               });
             }
           });
@@ -439,9 +470,7 @@ export class GameEngine {
             type: 'waste-to-tableau',
             cardId: wasteCard.id,
             sourceType: 'waste',
-            targetType: 'tableau',
             targetIndex: index,
-            description: `Move ${wasteCard.rank}${wasteCard.suit} from waste`,
           });
         }
       });
@@ -461,12 +490,10 @@ export class GameEngine {
         '♦': [...gameState.foundations['♦']],
         '♣': [...gameState.foundations['♣']],
       },
-      drawMode: gameState.drawMode,
-      gameStats: { ...gameState.gameStats },
-      gameHistory: [...gameState.gameHistory],
-      redoHistory: [...gameState.redoHistory],
-      hintCardId: gameState.hintCardId,
-      hoveredCard: gameState.hoveredCard,
+      moves: [...gameState.moves],
+      score: gameState.score,
+      time: gameState.time,
+      difficulty: gameState.difficulty,
     };
   }
 } 

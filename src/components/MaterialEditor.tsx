@@ -13,6 +13,7 @@ interface MaterialProperties {
 interface MaterialEditorProps {
   onMaterialChange?: (material: MaterialProperties) => void;
   initialMaterial?: MaterialProperties;
+  onSave?: (settings: any) => void;
 }
 
 export const MaterialEditor: React.FC<MaterialEditorProps> = ({
@@ -128,7 +129,7 @@ export const MaterialEditor: React.FC<MaterialEditorProps> = ({
         const adapter = await navigator.gpu.requestAdapter();
         if (!adapter) return;
         
-        const device = await adapter.requestDevice();
+        const device: any = await adapter.requestDevice();
         const context = canvasRef.current.getContext('webgpu') as GPUCanvasContext;
         const format = navigator.gpu.getPreferredCanvasFormat();
         

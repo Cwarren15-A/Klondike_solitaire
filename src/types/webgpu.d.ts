@@ -41,7 +41,79 @@ export interface WebGPURenderer {
   }) => void;
 }
 
+interface GPUDevice {
+  createCommandEncoder(): GPUCommandEncoder;
+  queue: GPUQueue;
+}
+
+interface GPUQueue {
+  submit(commands: GPUCommandBuffer[]): void;
+}
+
+interface GPUCommandEncoder {
+  beginRenderPass(descriptor: GPURenderPassDescriptor): GPURenderPassEncoder;
+  finish(): GPUCommandBuffer;
+}
+
+interface GPURenderPassEncoder {
+  end(): void;
+}
+
+interface GPURenderPassDescriptor {
+  colorAttachments: GPURenderPassColorAttachment[];
+}
+
+interface GPURenderPassColorAttachment {
+  view: GPUTextureView;
+  clearValue: GPUColor;
+  loadOp: GPULoadOp;
+  storeOp: GPUStoreOp;
+}
+
+interface GPUTextureView {}
+
+type GPUColor = {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+};
+
+type GPULoadOp = 'clear' | 'load';
+type GPUStoreOp = 'store' | 'discard';
+
+interface GPUCommandBuffer {}
+
+interface GPUCanvasContext {
+  configure(config: GPUCanvasConfiguration): void;
+  getCurrentTexture(): GPUTexture;
+}
+
+interface GPUTexture {
+  createView(): GPUTextureView;
+}
+
+interface GPUCanvasConfiguration {
+  device: GPUDevice;
+  format: GPUTextureFormat;
+  alphaMode: GPUCanvasAlphaMode;
+}
+
+type GPUTextureFormat = 'rgba8unorm' | 'bgra8unorm';
+type GPUCanvasAlphaMode = 'opaque' | 'premultiplied';
+
 declare global {
+  interface Navigator {
+    gpu: {
+      requestAdapter(): Promise<GPUAdapter | null>;
+      getPreferredCanvasFormat(): GPUTextureFormat;
+    };
+  }
+
+  interface GPUAdapter {
+    requestDevice(): Promise<GPUDevice>;
+  }
+
   interface Window {
     WebGPURenderer?: WebGPURenderer;
   }

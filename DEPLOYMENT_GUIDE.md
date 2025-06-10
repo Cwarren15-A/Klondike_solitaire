@@ -13,7 +13,7 @@
 ### Step 2: Connect Your Local Files
 ```bash
 # Add your GitHub repository URL (replace with your username)
-git remote add origin https://github.com/YOUR_USERNAME/klondike-solitaire-ai.git
+git remote add origin https://github.com/Cwarren15/klondike-solitaire-ai.git
 
 # Push your code
 git branch -M main

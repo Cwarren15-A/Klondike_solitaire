@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Card as CardType } from '../types/game';
-import { useGameStore } from '../stores/gameStore';
 
 interface CardProps {
   card: CardType;
@@ -26,7 +25,6 @@ export const Card: React.FC<CardProps> = ({
   className = '',
   realistic3D = false
 }) => {
-  const { settings } = useGameStore();
   const isRed = card.suit === '♥' || card.suit === '♦';
   
   const getCardValue = () => {

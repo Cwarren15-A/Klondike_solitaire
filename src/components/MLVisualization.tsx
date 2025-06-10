@@ -39,38 +39,6 @@ export const MLVisualization: React.FC = () => {
           </span>
         </div>
       </div>
-
-      <div className="analysis-card">
-        <h3>💡 Best Move</h3>
-        <div className="best-move">
-          {mlAnalysis.bestMove ? (
-            <div className="move-details">
-              <span className="move-type">{mlAnalysis.bestMove.type}</span>
-              <span className="move-card">{mlAnalysis.bestMove.cardId}</span>
-            </div>
-          ) : (
-            <span className="no-move">No moves available</span>
-          )}
-        </div>
-      </div>
-
-      <div className="analysis-card">
-        <h3>🧠 AI Insights</h3>
-        <div className="insights-list">
-          {mlAnalysis.strategicInsights?.map((insight, index) => (
-            <div key={index} className="insight-item">
-              {insight}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="analysis-card">
-        <h3>🎮 Recommendation</h3>
-        <div className="recommendation">
-          {mlAnalysis.recommendation}
-        </div>
-      </div>
     </div>
   );
 
@@ -90,20 +58,6 @@ export const MLVisualization: React.FC = () => {
           <div className="metric">
             <span className="metric-label">Bottlenecks:</span>
             <span className="metric-value">{mlAnalysis.graphMetrics?.bottlenecks || 0}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="analysis-card">
-        <h3>🎯 Move Relationships</h3>
-        <div className="relationships">
-          <div className="relationship-type">
-            <span className="type-label">Sequential Moves:</span>
-            <span className="type-count">{mlAnalysis.moveRelationships?.sequential || 0}</span>
-          </div>
-          <div className="relationship-type">
-            <span className="type-label">Strategic Links:</span>
-            <span className="type-count">{mlAnalysis.moveRelationships?.strategic || 0}</span>
           </div>
         </div>
       </div>

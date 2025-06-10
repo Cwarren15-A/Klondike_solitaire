@@ -3,36 +3,31 @@
 export interface Card {
   id: string;
   suit: '♠' | '♥' | '♦' | '♣';
-  rank: string;
+  rank: 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K';
   value: number;
   faceUp: boolean;
-  location: 'stock' | 'waste' | 'tableau' | 'foundation';
+  location: 'stock' | 'waste' | 'foundation' | 'tableau';
   position: number;
 }
 
 export interface GameState {
   stock: Card[];
   waste: Card[];
-  tableau: Card[][];
   foundations: {
     [key: string]: Card[];
   };
-  gameStats: {
-    moves: number;
-    time: number;
-    score: number;
-  };
-  drawMode: 1 | 3;
-  gameHistory: GameStateSnapshot[];
-  redoHistory: GameStateSnapshot[];
-  hintCardId: string | null;
-  hoveredCard: Card | null;
+  tableau: Card[][];
+  moves: Move[];
+  score: number;
+  time: number;
+  difficulty: 'easy' | 'medium' | 'hard';
 }
 
 export interface GameStats {
-  moves: number;
-  time: number;
-  score: number;
+  gamesPlayed: number;
+  winRate: number;
+  bestTime: number;
+  bestScore: number;
 }
 
 export interface GameStateSnapshot {
@@ -44,12 +39,11 @@ export interface GameStateSnapshot {
 }
 
 export interface Move {
-  type: 'stock' | 'waste' | 'tableau' | 'foundation';
+  type: 'stock' | 'waste' | 'foundation' | 'tableau' | 'waste-to-tableau';
   cardId: string;
-  fromLocation: string;
-  toLocation: string;
-  fromPosition: number;
-  toPosition: number;
+  sourceType?: 'stock' | 'waste' | 'foundation' | 'tableau';
+  sourceIndex?: number;
+  targetIndex?: number;
 }
 
 export interface DragState {
@@ -103,36 +97,9 @@ export interface Achievement {
 
 export interface AIAnalysis {
   winProbability: number;
+  recommendedMoves: Move[];
+  difficulty: string;
   confidence: number;
-  bestMove: Move | null;
-  strategicInsights: string[];
-  recommendation: string;
-  graphMetrics?: {
-    connectivity: number;
-    criticalPaths: number;
-    bottlenecks: number;
-  };
-  moveRelationships?: {
-    sequential: number;
-    strategic: number;
-  };
-  polynomialFeatures?: {
-    degrees: Array<{
-      name: string;
-      value: number;
-    }>;
-    complexityScore: number;
-    nonLinearPatterns: number;
-  };
-  modelMetrics?: {
-    type: string;
-    parameters: string;
-    layers: string;
-  };
-  performanceMetrics?: {
-    inferenceTime: string;
-    memoryUsage: string;
-  };
 }
 
 export interface GraphAnalysis {

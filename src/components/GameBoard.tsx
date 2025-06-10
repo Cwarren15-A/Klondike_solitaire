@@ -75,14 +75,11 @@ export default GameBoard;
 // Your current HTML implementation is working perfectly!
 
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useRef, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
-import { Card, Move } from '../types/game';
-import { WebGPUCanvas } from './WebGPUCanvas';
-import { MLVisualization } from './MLVisualization';
+import { Card } from '../types/game';
+import WebGPUCanvas from './WebGPUCanvas';
 import { MaterialEditor } from './MaterialEditor';
-import { CardComponent3D } from './CardComponent3D';
-import { CardComponent2D } from './CardComponent2D';
 import './GameBoard.css';
 import '../styles/WebGPU.css';
 
@@ -93,313 +90,75 @@ interface GameBoardProps {
 const GameBoard: React.FC<GameBoardProps> = ({ className = '' }) => {
   const {
     gameState,
-    initializeGame,
-    makeMove,
-    undoMove,
-    getHint,
-    newGame,
-    canUndo,
-    canHint,
-    isGameWon,
-    statistics,
     selectedCard,
+    makeMove,
     selectCard,
-    mlAnalysis,
-    currentView,
-    setCurrentView,
-    settings,
-    getMLAnalysis
+    undoMove,
+    newGame,
   } = useGameStore();
 
-  const [showStats, setShowStats] = React.useState(false);
-  const [showMLVisualization, setShowMLVisualization] = React.useState(false);
-  const [showMaterialEditor, setShowMaterialEditor] = React.useState(false);
-  const [realisticMode, setRealisticMode] = React.useState(settings.enableWebGPU);
-  const [webgpuSupported, setWebgpuSupported] = React.useState<boolean | null>(null);
-  const [hintedCards, setHintedCards] = React.useState<Set<string>>(new Set());
-  const webgpuRef = React.useRef<typeof WebGPUCanvas>(null);
-
-  React.useEffect(() => {
-    initializeGame();
-    
-    // Check WebGPU support
-    const checkWebGPU = async () => {
-      try {
-        if (!('gpu' in navigator)) {
-          setWebgpuSupported(false);
-          return;
-        }
-        
-        const adapter = await (navigator as any).gpu.requestAdapter();
-        setWebgpuSupported(!!adapter);
-      } catch {
-        setWebgpuSupported(false);
-      }
-    };
-    
-    checkWebGPU();
-  }, [initializeGame]);
-
-  React.useEffect(() => {
-    if (settings.enableMLAnalysis) {
-      getMLAnalysis();
-    }
-  }, [settings.enableMLAnalysis, getMLAnalysis]);
-
-  const handleCardClick = (card: Card) => {
-    if (selectedCard?.id === card.id) {
-      selectCard(null);
-      return;
-    }
-
-    if (selectedCard) {
-      // Try to make a move
-      const move: Move = {
-        type: card.location,
-        cardId: selectedCard.id,
-        fromLocation: selectedCard.location,
-        toLocation: card.location,
-        fromPosition: selectedCard.position,
-        toPosition: card.position
-      };
-      makeMove(move);
-      selectCard(null);
-    } else if (card.faceUp) {
-      selectCard(card);
-    }
-  };
-
-  const handleCardDoubleClick = (card: Card) => {
-    // Auto-move to foundation
-    const move: Move = {
-      type: 'foundation',
-      cardId: card.id,
-      fromLocation: card.location,
-      toLocation: 'foundation',
-      fromPosition: card.position,
-      toPosition: Object.keys(gameState.foundations).indexOf(card.suit)
-    };
-    makeMove(move);
-    selectCard(null);
-  };
+  const webgpuRef = useRef<any>(null);
+  const [showMaterialEditor, setShowMaterialEditor] = useState(false);
 
   const handleStockClick = () => {
-    const move: Move = {
+    makeMove({
       type: 'stock',
-      cardId: gameState.stock[0]?.id || '',
-      fromLocation: 'stock',
-      toLocation: 'waste',
-      fromPosition: 0,
-      toPosition: gameState.waste.length
-    };
-    makeMove(move);
-  };
-
-  const handleFoundationClick = (suit: string) => {
-    if (selectedCard) {
-      const move: Move = {
-        type: 'foundation',
-        cardId: selectedCard.id,
-        fromLocation: selectedCard.location,
-        toLocation: 'foundation',
-        fromPosition: selectedCard.position,
-        toPosition: Object.keys(gameState.foundations).indexOf(suit)
-      };
-      makeMove(move);
-      selectCard(null);
-    }
-  };
-
-  const handleHint = async () => {
-    try {
-      const hintMove = await getHint();
-      if (hintMove) {
-        setHintedCards(new Set([hintMove.cardId]));
-        setTimeout(() => setHintedCards(new Set()), 3000);
-      }
-    } catch (error) {
-      console.log('Hint not available');
-    }
-  };
-
-  const handleNewGame = () => {
-    newGame();
-    setShowMLVisualization(false);
-    selectCard(null);
-    setHintedCards(new Set());
-  };
-
-  const handleViewChange = (view: 'game' | 'stats' | 'ml') => {
-    setCurrentView(view);
-    if (view === 'ml') {
-      setShowMLVisualization(true);
-    } else {
-      setShowMLVisualization(false);
-    }
-  };
-
-  const toggleRealisticMode = () => {
-    setRealisticMode(!realisticMode);
-    if (webgpuRef.current) {
-      webgpuRef.current.toggleRealisticMode();
-    }
-  };
-
-  const renderCard = (card: Card, isHinted: boolean = false) => {
-    if (realisticMode && webgpuSupported) {
-      return (
-        <CardComponent3D
-          key={card.id}
-          card={card}
-          onCardClick={() => handleCardClick(card)}
-          onCardDoubleClick={() => handleCardDoubleClick(card)}
-          realistic3D={true}
-          isHinted={isHinted}
-          isSelected={selectedCard?.id === card.id}
-        />
-      );
-    }
-    
-    return (
-      <CardComponent2D
-        key={card.id}
-        card={card}
-        onClick={() => handleCardClick(card)}
-        onDoubleClick={() => handleCardDoubleClick(card)}
-        isSelected={selectedCard?.id === card.id}
-        isHinted={isHinted}
-      />
-    );
+      cardId: 'stock'
+    });
   };
 
   return (
     <div className={`game-board-container ${className}`}>
-      <div className="game-header">
-        <div className="game-controls">
-          <button onClick={handleNewGame} className="control-button">
-            New Game
-          </button>
-          <button onClick={undoMove} disabled={!canUndo} className="control-button">
-            Undo
-          </button>
-          <button onClick={handleHint} disabled={!canHint} className="control-button">
-            Hint
-          </button>
-          {webgpuSupported && (
-            <button onClick={toggleRealisticMode} className="control-button">
-              {realisticMode ? '2D Mode' : '3D Mode'}
-            </button>
-          )}
-        </div>
-        <div className="view-controls">
-          <button 
-            onClick={() => handleViewChange('game')} 
-            className={`view-button ${currentView === 'game' ? 'active' : ''}`}
-          >
-            Game
-          </button>
-          <button 
-            onClick={() => handleViewChange('stats')} 
-            className={`view-button ${currentView === 'stats' ? 'active' : ''}`}
-          >
-            Stats
-          </button>
-          {settings.enableMLAnalysis && (
-            <button 
-              onClick={() => handleViewChange('ml')} 
-              className={`view-button ${currentView === 'ml' ? 'active' : ''}`}
-            >
-              AI Analysis
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="game-content">
-        {currentView === 'game' && (
-          <div className="game-board">
-            {realisticMode && webgpuSupported ? (
-              <WebGPUCanvas
-                gameState={gameState}
-                selectedCard={selectedCard}
-                hintedCards={hintedCards}
-                onCardClick={handleCardClick}
-                onCardDoubleClick={handleCardDoubleClick}
-              />
-            ) : (
-              <>
-                <div className="stock-waste">
-                  <div className="stock" onClick={handleStockClick}>
-                    {gameState.stock.map((card: Card) => renderCard(card))}
-                  </div>
-                  <div className="waste">
-                    {gameState.waste.map((card: Card) => renderCard(card))}
-                  </div>
-                </div>
-
-                <div className="foundations">
-                  {(Object.entries(gameState.foundations) as [string, Card[]][]).map(([suit, cards], idx) => (
-                    <div 
-                      key={suit} 
-                      className="foundation"
-                      onClick={() => handleFoundationClick(suit)}
-                    >
-                      {cards.map((card: Card) => renderCard(card))}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="tableau">
-                  {gameState.tableau.map((column: Card[], index: number) => (
-                    <div key={index} className="tableau-column">
-                      {column.map((card: Card) => renderCard(card, hintedCards.has(card.id)))}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {currentView === 'stats' && (
-          <div className="stats-view">
-            <h2>Game Statistics</h2>
-            <div className="stats-grid">
-              <div className="stat-item">
-                <span className="stat-label">Games Played:</span>
-                <span className="stat-value">{statistics.gamesPlayed}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Win Rate:</span>
-                <span className="stat-value">{(statistics.winRate * 100).toFixed(1)}%</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Best Time:</span>
-                <span className="stat-value">{statistics.bestTime}s</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Best Score:</span>
-                <span className="stat-value">{statistics.bestScore}</span>
-              </div>
+      <div className="game-area">
+        <WebGPUCanvas ref={webgpuRef} gameState={gameState} />
+        <div className="game-board">
+          {/* Stock and Waste */}
+          <div className="stock-waste-area">
+            <div className="stock" onClick={handleStockClick}>
+              {gameState.stock.map((card: Card) => (
+                <div key={card.id} />
+              ))}
+            </div>
+            <div className="waste">
+              {gameState.waste.map((card: Card) => (
+                <div key={card.id} />
+              ))}
             </div>
           </div>
-        )}
 
-        {currentView === 'ml' && settings.enableMLAnalysis && (
-          <div className="ml-view">
-            <MLVisualization />
+          {/* Foundations */}
+          <div className="foundations">
+            {Object.entries(gameState.foundations).map(([suit, cards]) => (
+              <div key={suit} className="foundation">
+                {(cards as Card[]).map((card) => (
+                  <div key={card.id} />
+                ))}
+              </div>
+            ))}
           </div>
-        )}
+
+          {/* Tableau */}
+          <div className="tableau">
+            {gameState.tableau.map((pile: Card[], index: number) => (
+              <div key={index} className="tableau-pile">
+                {pile.map((card) => (
+                  <div key={card.id} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
+      {/* Controls */}
+      <div className="game-controls">
+        <button onClick={newGame}>New Game</button>
+        <button onClick={undoMove}>Undo</button>
+      </div>
+
+      {/* Material Editor */}
       {showMaterialEditor && (
-        <MaterialEditor
-          onClose={() => setShowMaterialEditor(false)}
-          onSave={(settings: any) => {
-            // Handle material settings save
-            setShowMaterialEditor(false);
-          }}
-        />
+        <MaterialEditor onSave={() => setShowMaterialEditor(false)} />
       )}
     </div>
   );

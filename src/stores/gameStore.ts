@@ -18,6 +18,7 @@ const defaultSettings: GameSettings = {
   theme: 'green',
   soundEnabled: true,
   showWinProbability: true,
+  enableWebGPU: false,
 };
 
 const defaultStatistics: GameStatistics = {

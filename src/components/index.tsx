@@ -128,4 +128,4 @@ export const LoadingScreen: React.FC<{ isLoading: boolean; message?: string }> =
 );
 
 // WebGPU Graphics Components
-export { WebGPUCanvas } from './WebGPUCanvas'; 
+export { default as WebGPUCanvas } from './WebGPUCanvas'; 

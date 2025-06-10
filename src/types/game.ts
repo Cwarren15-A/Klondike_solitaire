@@ -14,10 +14,11 @@ export interface GameState {
   tableau: Card[][];
   foundations: Record<string, Card[]>;
   gameStats: GameStats;
+  drawMode: 1 | 3;
   gameHistory: GameStateSnapshot[];
+  redoHistory: GameStateSnapshot[];
   hintCardId: string | null;
   hoveredCard: Card | null;
-  drawMode: 1 | 3;
 }
 
 export interface GameStats {
@@ -35,77 +36,28 @@ export interface GameStateSnapshot {
 }
 
 export interface Move {
-  type: 'foundation' | 'tableau' | 'waste-to-tableau' | 'foundation-to-tableau';
+  type: 'foundation' | 'tableau' | 'waste-to-tableau' | 'foundation-to-tableau' | 'stock-flip';
   cardId: string;
-  card: Card;
-  priority: number;
-  description: string;
-  aiScore?: number;
-  confidence?: number;
+  sourceType: string;
+  targetType: string;
+  sourceIndex?: number;
+  targetIndex?: number;
+  priority?: number;
+  description?: string;
   strategicReasoning?: string[];
-  futureValue?: number;
-  riskAssessment?: RiskAssessment;
 }
 
-export interface RiskAssessment {
-  risk: number;
-  reason: string;
+export interface DragState {
+  isDragging: boolean;
+  draggedCards: Card[];
+  draggedFrom: {
+    type: string;
+    index?: number;
+  } | null;
+  dragOffset: { x: number; y: number };
 }
 
-export interface AIAnalysis {
-  winProbability: number;
-  difficulty: 'easy' | 'medium' | 'hard' | 'expert';
-  recommendation: string;
-  stockRecommendation: StockRecommendation;
-  strategicInsights: string[];
-  hiddenCardInsights: HiddenCardAnalysis;
-  learningInsights: LearningInsights;
-  webAIInsights?: WebAIInsights;
-  neuralWeights: NeuralWeights;
-}
-
-export interface StockRecommendation {
-  shouldDraw: boolean;
-  reason: string;
-  drawValue?: number;
-  immediateUseCards?: number;
-  valuableCards?: number;
-  upcomingCards?: string[];
-  recommendation?: string;
-}
-
-export interface HiddenCardAnalysis {
-  insights: string[];
-  totalValue: number;
-  count: number;
-}
-
-export interface LearningInsights {
-  insights: string[];
-  confidenceBoost: number;
-  similarWinningGames: number;
-  historicallySuccessfulMoves: number;
-  totalLearningData: number;
-}
-
-export interface WebAIInsights {
-  confidence: number;
-  recommendation: string;
-  strategicInsights: string[];
-  riskAssessment: string;
-}
-
-export interface NeuralWeights {
-  foundationValue: number;
-  sequenceValue: number;
-  revealValue: number;
-  emptySpaceValue: number;
-  kingPlacementValue: number;
-  stockEfficiency: number;
-  riskMitigation: number;
-}
-
-export interface Settings {
+export interface GameSettings {
   difficulty: 'easy' | 'medium' | 'hard';
   autoMoveToFoundation: boolean;
   showMoveHints: boolean;
@@ -113,81 +65,203 @@ export interface Settings {
   adaptiveDifficulty: boolean;
   drawMode: 1 | 3;
   scoringMode: 'standard' | 'vegas';
-  theme: 'green' | 'dark' | 'light';
+  theme: 'green' | 'blue' | 'dark' | 'light';
   soundEnabled: boolean;
+  showWinProbability: boolean;
 }
 
-export interface Statistics {
+export interface GameStatistics {
   gamesPlayed: number;
   gamesWon: number;
-  totalTime: number;
-  totalMoves: number;
-  bestTime: number | null;
+  winRate: number;
+  bestTime: number;
   bestScore: number;
+  totalTime: number;
+  averageTime: number;
   currentStreak: number;
-  longestStreak: number;
-  dailyChallenges: Record<string, DailyChallengeResult>;
-}
-
-export interface DailyChallengeResult {
-  completed: boolean;
-  score: number;
-  time: number;
-  moves: number;
+  bestStreak: number;
+  perfectGames: number;
+  achievements: string[];
 }
 
 export interface Achievement {
+  id: string;
   name: string;
   description: string;
-  unlocked: boolean;
   icon: string;
+  category: string;
+  unlocked: boolean;
+  unlockedAt?: number;
+  progress?: number;
+  maxProgress?: number;
 }
 
-export interface Tournament {
+export interface AIAnalysis {
+  winProbability: number;
+  confidence: number;
+  bestMove: Move | null;
+  difficulty: string;
+  recommendation: string;
+  strategicInsights: string[];
+  moveQuality: number;
+  graphAnalysis?: GraphAnalysis;
+  polynomialFeatures?: PolynomialFeatures;
+}
+
+export interface GraphAnalysis {
+  nodeCount: number;
+  edgeCount: number;
+  connectivity: number;
+  criticalPaths: string[];
+  bottleneckCards: string[];
+  opportunityNodes: string[];
+  centralityScores: Record<string, number>;
+}
+
+export interface PolynomialFeatures {
+  degree: number;
+  featureInteractions: Record<string, number>;
+  higherOrderPatterns: string[];
+  complexityScore: number;
+  nonlinearRelationships: Record<string, number>;
+}
+
+export interface GraphNode {
   id: string;
+  cardId: string;
+  position: [number, number];
+  features: number[];
+  connections: string[];
+  importance: number;
+  accessibility: number;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  weight: number;
+  edgeType: 'valid_move' | 'sequence' | 'suit_match' | 'color_alternate' | 'strategic';
+  strength: number;
+}
+
+export interface TransformerAttention {
+  queryCard: string;
+  keyCard: string;
+  attentionWeight: number;
+  relationship: string;
+}
+
+export interface AdvancedMLMetrics {
+  modelVersion: string;
+  architecture: string;
+  trainingEpochs: number;
+  lastTrainingAccuracy: number;
+  predictionConfidence: number;
+  graphComplexity: number;
+  polynomialDegree: number;
+  computationTime: number;
+}
+
+export interface MLModelState {
+  isInitialized: boolean;
+  isTraining: boolean;
+  modelAccuracy: number;
+  trainingProgress: number;
+  lastTrainingDate: Date | null;
+}
+
+export interface ThemeConfig {
   name: string;
-  players: Player[];
-  rounds: TournamentRound[];
-  currentRound: number;
-  gameMode: string;
-  startTime: number;
-  endTime?: number;
-  winner?: Player;
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    background: string;
+    surface: string;
+    text: string;
+    cardBack: string;
+    cardFace: string;
+  };
 }
 
-export interface Player {
+export interface NotificationData {
   id: string;
-  name: string;
-  avatar?: string;
-  rating: number;
-  gamesPlayed: number;
-  gamesWon: number;
+  type: 'info' | 'success' | 'warning' | 'error' | 'achievement';
+  title?: string;
+  message: string;
+  duration?: number;
+  dismissible?: boolean;
 }
 
-export interface TournamentRound {
-  id: string;
-  matches: Match[];
-  completed: boolean;
-}
-
-export interface Match {
-  id: string;
-  player1: Player;
-  player2: Player;
-  winner?: Player;
-  score1: number;
-  score2: number;
-  completed: boolean;
-}
-
-// Event Types
 export type GameEvent = 
-  | { type: 'CARD_MOVED'; payload: { move: Move } }
-  | { type: 'GAME_WON'; payload: { stats: GameStats } }
-  | { type: 'HINT_REQUESTED'; payload: { move: Move } }
+  | { type: 'CARD_MOVED'; payload: Move }
+  | { type: 'GAME_WON'; payload: GameStats }
+  | { type: 'HINT_REQUESTED'; payload: Move | null }
+  | { type: 'THEME_CHANGED'; payload: string }
+  | { type: 'ACHIEVEMENT_UNLOCKED'; payload: Achievement }
+  | { type: 'STATE_RESTORED'; payload: GameState };
+
+export interface GameBoardProps {
+  onMove?: (move: Move) => void;
+  showHints?: boolean;
+  showWinProbability?: boolean;
+  theme?: string;
+}
+
+export interface CardProps {
+  card: Card;
+  onClick?: () => void;
+  onDoubleClick?: () => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  isHinted?: boolean;
+  isSelected?: boolean;
+  isDragging?: boolean;
+  className?: string;
+  style?: any;
+}
+
+export interface PileProps {
+  cards: Card[];
+  canDrop?: boolean;
+  onDrop?: (card: Card) => void;
+  onCardClick?: (card: Card) => void;
+  className?: string;
+}
+
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+
+export type GameMode = 'normal' | 'daily' | 'challenge' | 'tutorial';
+
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
+
+export type SortOrder = 'asc' | 'desc';
+
+export const SUITS = ['♠', '♥', '♦', '♣'] as const;
+export const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'] as const;
+export const RED_SUITS = new Set(['♥', '♦']);
+export const BLACK_SUITS = new Set(['♠', '♣']);
+
+export const CARD_DIMENSIONS = {
+  WIDTH: 80,
+  HEIGHT: 120,
+  FACE_DOWN_OFFSET: 8,
+  FACE_UP_OFFSET: 20,
+  WASTE_CARD_OFFSET: 25,
+} as const;
+
+export const ANIMATION_DURATIONS = {
+  CARD_FLIP: 150,
+  CARD_MOVE: 200,
+  VICTORY: 1000,
+} as const;
+
+// Additional Event Types for compatibility
+export type ExtendedGameEvent = GameEvent 
   | { type: 'UNDO_PERFORMED'; payload: { previousState: GameStateSnapshot } }
-  | { type: 'SETTINGS_CHANGED'; payload: { settings: Partial<Settings> } }
-  | { type: 'ACHIEVEMENT_UNLOCKED'; payload: { achievementId: string } };
+  | { type: 'SETTINGS_CHANGED'; payload: { settings: Partial<GameSettings> } };
 
 // Hook Types
 export interface UseGameState {
@@ -203,13 +277,13 @@ export interface UseGameState {
 }
 
 export interface UseSettings {
-  settings: Settings;
-  updateSettings: (newSettings: Partial<Settings>) => void;
+  settings: GameSettings;
+  updateSettings: (newSettings: Partial<GameSettings>) => void;
   resetSettings: () => void;
 }
 
 export interface UseStatistics {
-  statistics: Statistics;
+  statistics: GameStatistics;
   achievements: Record<string, Achievement>;
   updateGameStats: (won: boolean, stats: GameStats) => void;
   resetStats: () => void;

@@ -74,18 +74,164 @@ export default GameBoard;
 // For now, this is just a placeholder template.
 // Your current HTML implementation is working perfectly!
 
-export const TEMPLATE_INFO = {
-  purpose: "Future React migration template",
-  currentStatus: "HTML implementation is working perfectly",
-  nextSteps: [
-    "Install React dependencies if/when you want to modernize",
-    "Set up proper TypeScript configuration", 
-    "Connect to existing game logic",
-    "Add drag-and-drop functionality",
-    "Integrate AI system"
-  ],
-  recommendation: "Keep using your current HTML file - it's working great!"
+import React, { useEffect, useState } from 'react';
+import { useGameStore } from '../stores/gameStore';
+import { StockPile, WastePile, Foundation, TableauPile, GameHeader, GameControls, GameStats } from './index';
+import { MLVisualization } from './MLVisualization';
+import { Card } from '../types/game';
+import './GameBoard.css';
+
+const GameBoard: React.FC = () => {
+  const {
+    gameState,
+    initializeGame,
+    makeMove,
+    undoMove,
+    getHint,
+    newGame,
+    canUndo,
+    canHint,
+    isGameWon,
+    statistics,
+    mlAnalysis,
+    startDrag,
+    endDrag,
+    isDragging,
+    currentView,
+    setCurrentView
+  } = useGameStore();
+
+  const [showMLVisualization, setShowMLVisualization] = useState(false);
+
+  useEffect(() => {
+    initializeGame();
+  }, [initializeGame]);
+
+  const handleCardClick = (card: Card) => {
+    if (isDragging) {
+      endDrag();
+    } else {
+      startDrag(card);
+    }
+  };
+
+  const handleCardDoubleClick = (card: Card) => {
+    // Try to auto-move to foundation
+    makeMove({
+      type: 'foundation',
+      cardId: card.id,
+      sourceType: 'tableau',
+      targetType: 'foundation'
+    });
+  };
+
+  const handleStockClick = () => {
+    makeMove({
+      type: 'stock-flip',
+      cardId: '',
+      sourceType: 'stock',
+      targetType: 'waste'
+    });
+  };
+
+  const handleHint = async () => {
+    const hint = await getHint();
+    if (hint) {
+      // Highlight the suggested move
+      console.log('Hint:', hint);
+    }
+  };
+
+  const handleNewGame = () => {
+    newGame();
+    setShowMLVisualization(false);
+  };
+
+  const handleUndo = () => {
+    undoMove();
+  };
+
+  const handleViewChange = (view: string) => {
+    const validViews = ['game', 'stats', 'ml'] as const;
+    if (validViews.includes(view as any)) {
+      setCurrentView(view as 'game' | 'stats' | 'ml');
+      if (view === 'ml') {
+        setShowMLVisualization(true);
+      } else {
+        setShowMLVisualization(false);
+      }
+    }
+  };
+
+  if (!gameState) {
+    return <div className="loading">Loading game...</div>;
+  }
+
+  return (
+    <div className="game-board">
+      <GameHeader onViewChange={handleViewChange} />
+      
+      {currentView === 'game' && (
+        <>
+          <div className="game-area">
+            <div className="stock-waste-area">
+              <StockPile cards={gameState.stock} onStockClick={handleStockClick} />
+              <WastePile cards={gameState.waste} onCardClick={handleCardClick} />
+            </div>
+            
+            <div className="foundations">
+              {Object.entries(gameState.foundations).map(([suit, cards]) => (
+                <Foundation
+                  key={suit}
+                  suit={suit}
+                  cards={cards}
+                  onCardClick={handleCardClick}
+                />
+              ))}
+            </div>
+          </div>
+          
+          <div className="tableau">
+            {gameState.tableau.map((pile: Card[], index: number) => (
+              <TableauPile
+                key={index}
+                cards={pile}
+                onCardClick={handleCardClick}
+                onCardDoubleClick={handleCardDoubleClick}
+              />
+            ))}
+          </div>
+          
+          <GameControls
+            onNewGame={handleNewGame}
+            onUndo={handleUndo}
+            onHint={handleHint}
+            canUndo={canUndo}
+            canHint={canHint}
+          />
+          
+          {isGameWon && (
+            <div className="victory-message">
+              <h2>🎉 Congratulations! You won!</h2>
+              <button onClick={handleNewGame}>Play Again</button>
+            </div>
+          )}
+        </>
+      )}
+      
+      {currentView === 'stats' && (
+        <div className="stats-view">
+          <GameStats stats={statistics} />
+        </div>
+      )}
+      
+      {(currentView === 'ml' || showMLVisualization) && mlAnalysis && (
+        <div className="ml-view">
+          <MLVisualization analysis={mlAnalysis} />
+        </div>
+      )}
+    </div>
+  );
 };
 
-// Placeholder export to prevent TypeScript errors
-export default TEMPLATE_INFO; 
+export default GameBoard; 

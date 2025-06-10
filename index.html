@@ -25,7 +25,7 @@
   <meta property="twitter:image" content="https://your-domain.github.io/solitaireV5/og-image.png" />
   
   <!-- PWA -->
-  <link rel="manifest" href="/manifest.json" />
+  <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIktsb25kaWtlIFNvbGl0YWlyZSAtIEFJIEVuaGFuY2VkIiwKICAic2hvcnRfbmFtZSI6ICJTb2xpdGFpcmUgQUkiLAogICJkZXNjcmlwdGlvbiI6ICJBZHZhbmNlZCBLbG9uZGlrZSBTb2xpdGFpcmUgd2l0aCBBSS1wb3dlcmVkIGhpbnRzLCBjb21wbGV0ZSBib2FyZCBhbmFseXNpcywgYW5kIG1hY2hpbmUgbGVhcm5pbmcgYXNzaXN0YW5jZS4iLAogICJzdGFydF91cmwiOiAiLi8iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxZTUxMjgiLAogICJ0aGVtZV9jb2xvciI6ICIjMWU1MTI4IiwKICAib3JpZW50YXRpb24iOiAiYW55IiwKICAiY2F0ZWdvcmllcyI6IFsiZ2FtZXMiLCAiZW50ZXJ0YWlubWVudCJdLAogICJsYW5nIjogImVuIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaWNvbi5zdmciLAogICAgICAic2l6ZXMiOiAiYW55IiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIsCiAgICAgICJwdXJwb3NlIjogImFueSBtYXNrYWJsZSIKICAgIH0sCiAgICB7CiAgICAgICJzcmMiOiAiaWNvbi0xOTIucG5nIiwKICAgICAgInNpemVzIjogIjE5MngxOTIiLAogICAgICAidHlwZSI6ICJpbWFnZS9wbmciLAogICAgICAicHVycG9zZSI6ICJhbnkgbWFza2FibGUiCiAgICB9LAogICAgewogICAgICAic3JjIjogImljb24tNTEyLnBuZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIiwKICAgICAgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIgogICAgfQogIF0sCiAgInNob3J0Y3V0cyI6IFsKICAgIHsKICAgICAgIm5hbWUiOiAiTmV3IEdhbWUiLAogICAgICAic2hvcnRfbmFtZSI6ICJOZXcgR2FtZSIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJTdGFydCBhIG5ldyBLbG9uZGlrZSBTb2xpdGFpcmUgZ2FtZSIsCiAgICAgICJ1cmwiOiAiLi8/YWN0aW9uPW5ldyIsCiAgICAgICJpY29ucyI6IFt7ICJzcmMiOiAiaWNvbi0xOTIucG5nIiwgInNpemVzIjogIjE5MngxOTIiIH1dCiAgICB9LAogICAgewogICAgICAibmFtZSI6ICJEYWlseSBDaGFsbGVuZ2UiLAogICAgICAic2hvcnRfbmFtZSI6ICJEYWlseSIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJQbGF5IHRvZGF5J3MgZGFpbHkgY2hhbGxlbmdlIiwKICAgICAgInVybCI6ICIuLz9hY3Rpb249ZGFpbHkiLAogICAgICAiaWNvbnMiOiBbeyAic3JjIjogImljb24tMTkyLnBuZyIsICJzaXplcyI6ICIxOTJ4MTkyIiB9XQogICAgfQogIF0KfSA=" />
   <meta name="theme-color" content="#1e5128" />
       <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -76,7 +76,13 @@
       to { transform: rotate(360deg); }
     }
   </style>
-</head>
+  <script type="module" crossorigin src="/assets/index-4e5b7573.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/react-3d3f855c.js">
+  <link rel="modulepreload" crossorigin href="/assets/state-fae50fb7.js">
+  <link rel="modulepreload" crossorigin href="/assets/tensorflow-92d825d5.js">
+  <link rel="modulepreload" crossorigin href="/assets/animations-b0fd7e86.js">
+  <link rel="stylesheet" href="/assets/index-ecacaa5f.css">
+<link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
 <body>
   <div id="root">
     <div class="loading-screen">
@@ -87,7 +93,7 @@
   </div>
   
   <!-- React app script -->
-  <script type="module" src="/src/main.tsx"></script>
+  
   
   <!-- Service Worker Registration -->
   <script>

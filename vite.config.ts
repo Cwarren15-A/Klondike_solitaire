@@ -1,21 +1,37 @@
-// vite.config.ts - Future Build Configuration Template
-// This is a template for when you decide to modernize to a React/Vite setup
-// Your current HTML file approach is working perfectly and doesn't need this!
-
-// Note: This file will only be used if you migrate to a modern build system
-
+/// <reference types="node" />
+// @ts-nocheck
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import { resolve } from 'path'
+import { fileURLToPath } from 'url'
+import { dirname, resolve } from 'path'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+const isProd = process.env.NODE_ENV === 'production';
+const base = isProd ? '/klondike-solitaire-ai/' : '/';
+const assetPrefix = isProd ? '/klondike-solitaire-ai' : '';
 
 export default defineConfig({
-  base: '/klondike-solitaire-ai/',
+  base,
   plugins: [
-    react(),
+    react({
+      jsxRuntime: 'automatic',
+      jsxImportSource: 'react',
+      babel: {
+        plugins: [
+          ['@babel/plugin-transform-react-jsx', { runtime: 'automatic' }]
+        ]
+      }
+    }),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: [
+        `${assetPrefix}/favicon.ico`,
+        `${assetPrefix}/apple-touch-icon.png`,
+        `${assetPrefix}/masked-icon.svg`
+      ],
       manifest: {
         name: 'Klondike Solitaire Advanced',
         short_name: 'Solitaire AI',
@@ -26,15 +42,16 @@ export default defineConfig({
         orientation: 'any',
         categories: ['games', 'entertainment'],
         lang: 'en',
+        start_url: base,
         icons: [
           {
-            src: 'icon-192.png',
+            src: `${assetPrefix}/icon-192.png`,
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: 'icon-512.png',
+            src: `${assetPrefix}/icon-512.png`,
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
@@ -45,15 +62,15 @@ export default defineConfig({
             name: 'New Game',
             short_name: 'New Game',
             description: 'Start a new Klondike Solitaire game',
-            url: '/?action=new',
-            icons: [{ src: 'icon-192.png', sizes: '192x192' }]
+            url: `${base}?action=new`,
+            icons: [{ src: `${assetPrefix}/icon-192.png`, sizes: '192x192' }]
           },
           {
             name: 'Daily Challenge',
             short_name: 'Daily',
             description: 'Play today\'s daily challenge',
-            url: '/?action=daily',
-            icons: [{ src: 'icon-192.png', sizes: '192x192' }]
+            url: `${base}?action=daily`,
+            icons: [{ src: `${assetPrefix}/icon-192.png`, sizes: '192x192' }]
           }
         ]
       },
@@ -77,28 +94,26 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
-      '@components': resolve(__dirname, 'src/components'),
-      '@hooks': resolve(__dirname, 'src/hooks'),
-      '@stores': resolve(__dirname, 'src/stores'),
-      '@utils': resolve(__dirname, 'src/utils'),
-      '@types': resolve(__dirname, 'src/types'),
-      '@assets': resolve(__dirname, 'src/assets')
+      '@': resolve(__dirname, './src'),
+      '@components': resolve(__dirname, './src/components'),
+      '@hooks': resolve(__dirname, './src/hooks'),
+      '@stores': resolve(__dirname, './src/stores'),
+      '@utils': resolve(__dirname, './src/utils'),
+      '@types': resolve(__dirname, './src/types'),
+      '@assets': resolve(__dirname, './src/assets')
     }
   },
   build: {
-    target: 'es2020',
+    target: 'esnext',
     outDir: 'dist',
+    assetsDir: 'assets',
     sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks: {
-          // Vendor chunks for better caching
-          react: ['react', 'react-dom'],
-          tensorflow: ['@tensorflow/tfjs', '@tensorflow/tfjs-backend-webgl'],
-          animations: ['framer-motion', 'react-spring'],
-          gestures: ['react-use-gesture'],
-          state: ['zustand']
+          'react-vendor': ['react', 'react-dom'],
+          'tensorflow-vendor': ['@tensorflow/tfjs', '@tensorflow/tfjs-core'],
+          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-slot', 'class-variance-authority', 'clsx', 'tailwind-merge']
         }
       }
     },
@@ -130,9 +145,14 @@ export default defineConfig({
       'react',
       'react-dom',
       '@tensorflow/tfjs',
-      'framer-motion',
-      'zustand'
-    ]
+      '@tensorflow/tfjs-core',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-slot',
+      'class-variance-authority',
+      'clsx',
+      'tailwind-merge'
+    ],
+    exclude: ['@webgpu/types']
   }
 })
 

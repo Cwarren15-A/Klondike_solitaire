@@ -6,14 +6,22 @@ export interface Card {
   rank: string;
   value: number;
   faceUp: boolean;
+  location: 'stock' | 'waste' | 'tableau' | 'foundation';
+  position: number;
 }
 
 export interface GameState {
   stock: Card[];
   waste: Card[];
   tableau: Card[][];
-  foundations: Record<string, Card[]>;
-  gameStats: GameStats;
+  foundations: {
+    [key: string]: Card[];
+  };
+  gameStats: {
+    moves: number;
+    time: number;
+    score: number;
+  };
   drawMode: 1 | 3;
   gameHistory: GameStateSnapshot[];
   redoHistory: GameStateSnapshot[];
@@ -36,15 +44,12 @@ export interface GameStateSnapshot {
 }
 
 export interface Move {
-  type: 'foundation' | 'tableau' | 'waste-to-tableau' | 'foundation-to-tableau' | 'stock-flip';
+  type: 'stock' | 'waste' | 'tableau' | 'foundation';
   cardId: string;
-  sourceType: string;
-  targetType: string;
-  sourceIndex?: number;
-  targetIndex?: number;
-  priority?: number;
-  description?: string;
-  strategicReasoning?: string[];
+  fromLocation: string;
+  toLocation: string;
+  fromPosition: number;
+  toPosition: number;
 }
 
 export interface DragState {
@@ -64,8 +69,8 @@ export interface GameSettings {
   enableMLAnalysis: boolean;
   adaptiveDifficulty: boolean;
   drawMode: 1 | 3;
-  scoringMode: 'standard' | 'vegas';
-  theme: 'green' | 'blue' | 'dark' | 'light';
+  scoringMode: 'standard' | 'vegas' | 'custom';
+  theme: string;
   soundEnabled: boolean;
   showWinProbability: boolean;
 }
@@ -100,12 +105,34 @@ export interface AIAnalysis {
   winProbability: number;
   confidence: number;
   bestMove: Move | null;
-  difficulty: string;
-  recommendation: string;
   strategicInsights: string[];
-  moveQuality: number;
-  graphAnalysis?: GraphAnalysis;
-  polynomialFeatures?: PolynomialFeatures;
+  recommendation: string;
+  graphMetrics?: {
+    connectivity: number;
+    criticalPaths: number;
+    bottlenecks: number;
+  };
+  moveRelationships?: {
+    sequential: number;
+    strategic: number;
+  };
+  polynomialFeatures?: {
+    degrees: Array<{
+      name: string;
+      value: number;
+    }>;
+    complexityScore: number;
+    nonLinearPatterns: number;
+  };
+  modelMetrics?: {
+    type: string;
+    parameters: string;
+    layers: string;
+  };
+  performanceMetrics?: {
+    inferenceTime: string;
+    memoryUsage: string;
+  };
 }
 
 export interface GraphAnalysis {

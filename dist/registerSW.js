@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/klondike-solitaire-ai/sw.js', { scope: '/klondike-solitaire-ai/' })})}

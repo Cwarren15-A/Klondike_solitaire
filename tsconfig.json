@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ES2020", "DOM", "DOM.Iterable", "WebGL2", "WebGPU"],
     "module": "ESNext",
     "skipLibCheck": true,
 
@@ -13,6 +13,7 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    "jsxImportSource": "react",
 
     /* Module interop */
     "esModuleInterop": true,
@@ -23,6 +24,14 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "alwaysStrict": true,
 
     /* Path mapping */
     "baseUrl": "./src",
@@ -34,7 +43,10 @@
       "@utils/*": ["utils/*"],
       "@types/*": ["types/*"],
       "@assets/*": ["assets/*"]
-    }
+    },
+
+    /* Type Definitions */
+    "types": ["react", "react-dom", "node"]
   },
   "include": [
     "src/**/*.ts",

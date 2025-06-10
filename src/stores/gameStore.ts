@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { GameState, Card, Move, GameSettings, GameStatistics } from '../types/game';
+import { GameState, Card, Move, GameSettings, GameStatistics, AIAnalysis } from '../types/game';
 import { createInitialGameState } from '../utils/gameEngine';
 import { TensorFlowMLEngine } from '../utils/tensorflowEngine';
 import { GameEngine } from '../utils/gameEngine';
@@ -44,7 +44,7 @@ interface GameStore extends GameState {
   showHints: boolean;
   isGameWon: boolean;
   isGameLost: boolean;
-  mlAnalysis: any;
+  mlAnalysis: AIAnalysis | null;
   
   // Settings and stats
   settings: GameSettings;
@@ -76,6 +76,7 @@ interface GameStore extends GameState {
   toggleTheme: () => void;
   updateGameStats: (won: boolean) => void;
   resetStatistics: () => void;
+  getMLAnalysis: () => Promise<AIAnalysis | null>;
 }
 
 export const useGameStore = create<GameStore>()(
@@ -119,12 +120,21 @@ export const useGameStore = create<GameStore>()(
           
           // Actions
           initializeGame: async () => {
-            await mlEngine.initialize();
-            set((state) => {
-              const newState = createInitialGameState();
-              Object.assign(state, newState);
-              state.gameState = newState;
-            });
+            try {
+              await mlEngine.initialize();
+              set((state) => {
+                const newState = createInitialGameState();
+                Object.assign(state, newState);
+                state.gameState = newState;
+              });
+            } catch (error) {
+              console.warn('Failed to initialize ML engine:', error);
+              set((state) => {
+                const newState = createInitialGameState();
+                Object.assign(state, newState);
+                state.gameState = newState;
+              });
+            }
           },
 
           newGame: () => {
@@ -145,22 +155,26 @@ export const useGameStore = create<GameStore>()(
             const state = get();
             console.log('Making move:', move);
             
-                          set((draft) => {
-                draft.gameHistory.push({
-                  stock: [...draft.stock],
-                  waste: [...draft.waste],
-                  tableau: draft.tableau.map((pile: Card[]) => [...pile]),
-                  foundations: { ...draft.foundations },
-                  gameStats: { ...draft.gameStats },
-                });
-                draft.gameStats.moves++;
+            set((draft) => {
+              draft.gameHistory.push({
+                stock: [...draft.stock],
+                waste: [...draft.waste],
+                tableau: draft.tableau.map((pile: Card[]) => [...pile]),
+                foundations: { ...draft.foundations },
+                gameStats: { ...draft.gameStats },
               });
+              draft.gameStats.moves++;
+              draft.canUndo = true;
+            });
             
+            // Update ML analysis after move
             try {
-              const analysis = await mlEngine.getGameAnalysis(state.gameState);
-              set((draft) => {
-                draft.mlAnalysis = analysis;
-              });
+              if (mlEngine.isInitialized) {
+                const analysis = await mlEngine.getGameAnalysis(state.gameState);
+                set((draft) => {
+                  draft.mlAnalysis = analysis;
+                });
+              }
             } catch (error) {
               console.error('Failed to get ML analysis:', error);
             }
@@ -176,6 +190,7 @@ export const useGameStore = create<GameStore>()(
                   state.tableau = lastState.tableau;
                   state.foundations = lastState.foundations;
                   state.gameStats = lastState.gameStats;
+                  state.canUndo = state.gameHistory.length > 0;
                 }
               }
             });
@@ -188,11 +203,14 @@ export const useGameStore = create<GameStore>()(
           getHint: async () => {
             const state = get();
             try {
-              const bestMove = await state.mlEngine.getBestMove(state.gameState);
-              set((draft) => {
-                draft.hintCardId = bestMove?.cardId || null;
-              });
-              return bestMove;
+              if (mlEngine.isInitialized) {
+                const bestMove = await mlEngine.getBestMove(state.gameState);
+                set((draft) => {
+                  draft.hintCardId = bestMove?.cardId || null;
+                });
+                return bestMove;
+              }
+              return null;
             } catch (error) {
               console.error('Failed to get hint:', error);
               return null;
@@ -202,9 +220,13 @@ export const useGameStore = create<GameStore>()(
           getWinProbability: async () => {
             const state = get();
             try {
-              const analysis = await state.mlEngine.getGameAnalysis(state.gameState);
-              return analysis.winProbability || 0.5;
+              if (mlEngine.isInitialized) {
+                const analysis = await mlEngine.getGameAnalysis(state.gameState);
+                return analysis.winProbability;
+              }
+              return 0.5;
             } catch (error) {
+              console.error('Failed to get win probability:', error);
               return 0.5;
             }
           },
@@ -237,13 +259,13 @@ export const useGameStore = create<GameStore>()(
 
           updateSettings: (newSettings: Partial<GameSettings>) => {
             set((state) => {
-              Object.assign(state.settings, newSettings);
+              state.settings = { ...state.settings, ...newSettings };
             });
           },
 
           toggleTheme: () => {
             set((state) => {
-              const themes = ['green', 'blue', 'dark', 'light'] as const;
+              const themes: Array<'green' | 'blue' | 'dark' | 'light'> = ['green', 'blue', 'dark', 'light'];
               const currentIndex = themes.indexOf(state.settings.theme);
               const nextIndex = (currentIndex + 1) % themes.length;
               state.settings.theme = themes[nextIndex];
@@ -255,6 +277,12 @@ export const useGameStore = create<GameStore>()(
               state.statistics.gamesPlayed++;
               if (won) {
                 state.statistics.gamesWon++;
+                state.statistics.currentStreak++;
+                if (state.statistics.currentStreak > state.statistics.bestStreak) {
+                  state.statistics.bestStreak = state.statistics.currentStreak;
+                }
+              } else {
+                state.statistics.currentStreak = 0;
               }
               state.statistics.winRate = state.statistics.gamesWon / state.statistics.gamesPlayed;
             });
@@ -262,13 +290,31 @@ export const useGameStore = create<GameStore>()(
 
           resetStatistics: () => {
             set((state) => {
-              Object.assign(state.statistics, defaultStatistics);
+              state.statistics = { ...defaultStatistics };
             });
+          },
+
+          // Add new ML-related actions
+          getMLAnalysis: async () => {
+            const state = get();
+            try {
+              if (mlEngine.isInitialized) {
+                const analysis = await mlEngine.getGameAnalysis(state.gameState);
+                set((draft) => {
+                  draft.mlAnalysis = analysis;
+                });
+                return analysis;
+              }
+              return null;
+            } catch (error) {
+              console.error('Failed to get ML analysis:', error);
+              return null;
+            }
           },
         };
       }),
       {
-        name: 'klondike-solitaire-storage',
+        name: 'solitaire-game-store',
         partialize: (state) => ({
           settings: state.settings,
           statistics: state.statistics,
@@ -276,7 +322,7 @@ export const useGameStore = create<GameStore>()(
       }
     ),
     {
-      name: 'klondike-solitaire-store',
+      name: 'solitaire-game-store',
     }
   )
 ); 

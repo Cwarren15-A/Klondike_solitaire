@@ -18,15 +18,11 @@ export const createInitialGameState = (): GameState => {
     tableau: dealtCards.tableau,
     foundations: { '♠': [], '♥': [], '♦': [], '♣': [] },
     drawMode: 1,
-    moveHistory: [],
+    gameHistory: [],
     gameStats: { moves: 0, time: 0, score: 0 },
-    settings: {
-      drawMode: 1,
-      theme: 'green',
-      animations: true,
-      sounds: true,
-      autoComplete: true
-    }
+    redoHistory: [],
+    hintCardId: null,
+    hoveredCard: null
   };
 };
 
@@ -100,7 +96,7 @@ export class GameEngine {
   makeMove(gameState: GameState, move: Move): { success: boolean; newState: GameState } {
     // Simplified move validation and execution
     const newState = { ...gameState };
-    newState.moveHistory.push(move);
+    newState.gameHistory.push(move as any);
     newState.gameStats.moves++;
     
     return { success: true, newState };

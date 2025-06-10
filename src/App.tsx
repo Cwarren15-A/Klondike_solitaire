@@ -1,28 +1,14 @@
 import React, { useEffect } from 'react';
 import { useGameStore } from './stores/gameStore';
 import GameBoard from './components/GameBoard';
-import { 
-  GameHeader, 
-  GameStats, 
-  Settings, 
-  Achievements, 
-  LoadingScreen, 
-  VictoryModal, 
-  NotificationSystem, 
-  ThemeProvider 
-} from './components';
 import './styles/App.css';
 
 function App() {
   const {
     initializeGame,
-    settings,
     isGameWon,
-    gameStats,
-    statistics,
   } = useGameStore();
 
-  const [currentView, setCurrentView] = React.useState<'game' | 'settings' | 'achievements'>('game');
   const [isLoading, setIsLoading] = React.useState(true);
 
   useEffect(() => {
@@ -40,60 +26,41 @@ function App() {
   }, [initializeGame]);
 
   if (isLoading) {
-    return <LoadingScreen />;
+    return (
+      <div className="loading-screen">
+        <div className="loading-spinner"></div>
+        <p>Loading Advanced Klondike Solitaire...</p>
+      </div>
+    );
   }
 
   return (
-    <ThemeProvider theme={settings.theme}>
-      <div className="app">
-        <NotificationSystem />
+    <div className="app">
+      <main className="game-container">
+        <GameBoard />
         
-        <GameHeader 
-          currentView={currentView}
-          onViewChange={setCurrentView}
-        />
-
-        <main className="game-container">
-          {currentView === 'game' && (
-            <>
-              <GameStats 
-                stats={gameStats}
-                statistics={statistics}
-                showWinProbability={settings.showWinProbability}
-              />
-              <GameBoard />
-            </>
-          )}
-          
-          {currentView === 'settings' && (
-            <Settings />
-          )}
-          
-          {currentView === 'achievements' && (
-            <Achievements />
-          )}
-        </main>
-
         {isGameWon && (
-          <VictoryModal
-            stats={gameStats}
-            onNewGame={() => {
-              useGameStore.getState().newGame();
-            }}
-            onClose={() => {
-              // Victory modal will auto-close after celebration
-            }}
-          />
-        )}
-
-        {/* Keyboard shortcuts help */}
-        <div className="keyboard-shortcuts">
-          <div className="shortcuts-info">
-            <kbd>H</kbd> Hint • <kbd>U</kbd> Undo • <kbd>R</kbd> Redo • <kbd>N</kbd> New Game
+          <div className="victory-overlay">
+            <div className="victory-message">
+              <h2>🎉 Congratulations! You Won!</h2>
+              <button 
+                onClick={() => useGameStore.getState().newGame()}
+                className="new-game-btn"
+              >
+                Play Again
+              </button>
+            </div>
           </div>
+        )}
+      </main>
+
+      {/* Keyboard shortcuts help */}
+      <div className="keyboard-shortcuts">
+        <div className="shortcuts-info">
+          <kbd>H</kbd> Hint • <kbd>U</kbd> Undo • <kbd>R</kbd> Redo • <kbd>N</kbd> New Game
         </div>
       </div>
-    </ThemeProvider>
+    </div>
   );
 }
 

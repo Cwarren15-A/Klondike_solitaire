@@ -1,3 +1,237 @@
+/* Enhanced Game Board with 3D Physics */
+.game-board-with-webgpu {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  perspective: 1200px;
+  background: radial-gradient(ellipse at center, #1a4f3a 0%, #0f2d20 100%);
+}
+
+.webgpu-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.game-content {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  backdrop-filter: blur(0.5px);
+}
+
+/* Graphics Controls */
+.graphics-controls {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.realistic-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.realistic-toggle:hover {
+  transform: scale(1.02);
+  color: #4fc3f7;
+}
+
+.realistic-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #4fc3f7;
+  cursor: pointer;
+}
+
+.physics-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-indicator.active {
+  color: #4fc3f7;
+  background: rgba(79, 195, 247, 0.1);
+  border-color: rgba(79, 195, 247, 0.3);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(79, 195, 247, 0.3); }
+  50% { box-shadow: 0 0 15px rgba(79, 195, 247, 0.5); }
+}
+
+/* Game Area Layout */
+.game-area {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  align-items: center;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.stock-waste-area {
+  display: flex;
+  gap: 20px;
+  transform: translateZ(10px);
+}
+
+.foundations {
+  display: flex;
+  gap: 15px;
+  transform: translateZ(5px);
+}
+
+.tableau {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  transform: translateZ(0px);
+}
+
+/* Victory Screen */
+.victory-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: victory-appear 0.5s ease-out;
+}
+
+.victory-content {
+  background: linear-gradient(135deg, #1a4f3a 0%, #0f2d20 100%);
+  padding: 40px;
+  border-radius: 20px;
+  text-align: center;
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  transform: scale(0.8);
+  animation: victory-scale 0.5s ease-out 0.2s forwards;
+}
+
+.victory-content h2 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+  animation: victory-glow 2s ease-in-out infinite;
+}
+
+.victory-content p {
+  font-size: 1.2rem;
+  margin: 10px 0;
+  opacity: 0.9;
+}
+
+.victory-new-game-btn {
+  background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(79, 195, 247, 0.3);
+}
+
+.victory-new-game-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(79, 195, 247, 0.4);
+}
+
+/* Loading Screen */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at center, #1a4f3a 0%, #0f2d20 100%);
+  color: white;
+}
+
+.loading-text {
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-left: 4px solid #4fc3f7;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes victory-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes victory-scale {
+  to { transform: scale(1); }
+}
+
+@keyframes victory-glow {
+  0%, 100% { text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+  50% { text-shadow: 0 0 30px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.6); }
+}
+
 .game-board {
   padding: var(--spacing-lg);
   background: var(--color-background);

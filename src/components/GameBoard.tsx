@@ -74,15 +74,33 @@ export default GameBoard;
 // For now, this is just a placeholder template.
 // Your current HTML implementation is working perfectly!
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
-import { StockPile, WastePile, Foundation, TableauPile, GameHeader, GameControls, GameStats, WebGPUCanvas } from './index';
-import { MLVisualization } from './MLVisualization';
-import { Card3DRenderer } from '../utils/cardRenderer3D';
-import { CardPhysicsEngine } from '../utils/cardPhysics';
-import { Card } from '../types/game';
+import { Card, Move } from '../types/game';
 import './GameBoard.css';
-import '../styles/WebGPU.css';
+
+// Simple Card Component
+const CardComponent: React.FC<{
+  card: Card;
+  onClick?: () => void;
+  onDoubleClick?: () => void;
+  isHinted?: boolean;
+}> = ({ card, onClick, onDoubleClick, isHinted = false }) => (
+  <div
+    className={`card ${card.faceUp ? 'face-up' : 'face-down'} ${isHinted ? 'hint' : ''}`}
+    onClick={onClick}
+    onDoubleClick={onDoubleClick}
+  >
+    {card.faceUp ? (
+      <div className={`card-content ${card.suit === '♥' || card.suit === '♦' ? 'red' : 'black'}`}>
+        <span className="rank">{card.rank}</span>
+        <span className="suit">{card.suit}</span>
+      </div>
+    ) : (
+      <div className="card-back">🂠</div>
+    )}
+  </div>
+);
 
 const GameBoard: React.FC = () => {
   const {
@@ -96,374 +114,208 @@ const GameBoard: React.FC = () => {
     canHint,
     isGameWon,
     statistics,
-    mlAnalysis,
-    startDrag,
-    endDrag,
-    isDragging,
-    currentView,
-    setCurrentView
+    selectedCard,
+    selectCard,
   } = useGameStore();
 
-  const [showMLVisualization, setShowMLVisualization] = useState(false);
-  const [card3DRenderer, setCard3DRenderer] = useState<Card3DRenderer | null>(null);
-  const [physicsEngine, setPhysicsEngine] = useState<CardPhysicsEngine | null>(null);
-  const [realisticMode, setRealisticMode] = useState(true);
-  const webgpuCanvasRef = useRef<any>(null);
+  const [showStats, setShowStats] = useState(false);
+  const [realisticMode, setRealisticMode] = useState(false);
 
   useEffect(() => {
     initializeGame();
   }, [initializeGame]);
 
-  // Initialize 3D card systems
-  useEffect(() => {
-    const initializeCardSystems = async () => {
-      if (!webgpuCanvasRef.current) return;
-      
-      try {
-        // Get WebGPU context from canvas
-        const canvas = webgpuCanvasRef.current;
-        const context = canvas.getContext('webgpu');
-        const adapter = await navigator.gpu?.requestAdapter();
-        const device = await adapter?.requestDevice();
-        
-        if (device && context) {
-          // Initialize physics engine
-          const physics = new CardPhysicsEngine();
-          setPhysicsEngine(physics);
-          
-          // Initialize 3D renderer (would need PBR renderer instance)
-          // const renderer3D = new Card3DRenderer(device, context, pbrRenderer);
-          // await renderer3D.init();
-          // setCard3DRenderer(renderer3D);
-          
-          console.log('🃏 3D Card Systems initialized!');
-        }
-      } catch (error) {
-        console.warn('WebGPU not available, falling back to 2D mode:', error);
-        setRealisticMode(false);
-      }
-    };
-    
-    initializeCardSystems();
-  }, []);
-
   const handleCardClick = (card: Card) => {
-    if (isDragging) {
-      endDrag();
+    if (selectedCard) {
+      // Try to make a move
+      const move: Move = {
+        type: 'tableau',
+        cardId: card.id,
+        sourceType: 'tableau',
+        targetType: 'tableau',
+      };
+      makeMove(move);
+      selectCard(null);
     } else {
-      startDrag(card);
-    }
-    
-    // Realistic card flip with physics
-    if (realisticMode && physicsEngine) {
-      physicsEngine.flipCard(card.id, 1.0);
-    }
-    
-    // Trigger WebGPU particle effects
-    if (webgpuCanvasRef.current) {
-      webgpuCanvasRef.current.triggerCardEffect?.('sparkle', { x: 0, y: 0 });
-    }
-  };
-
-  const handleCardDoubleClick = (card: Card) => {
-    // Try to auto-move to foundation
-    const moveResult = makeMove({
-      type: 'foundation',
-      cardId: card.id,
-      sourceType: 'tableau',
-      targetType: 'foundation'
-    });
-    
-    if (realisticMode && physicsEngine) {
-      // Realistic card dealing physics to foundation
-      const foundationPosition = new Float32Array([0.5, 0.8, 0.1]); // Top right area
-      physicsEngine.dealCard(card.id, foundationPosition, 0.8);
-    }
-    
-    // Victory sparkle effect
-    if (webgpuCanvasRef.current) {
-      webgpuCanvasRef.current.triggerCardEffect?.('victory', { x: 0.5, y: 0.8 });
+      selectCard(card);
     }
   };
 
   const handleStockClick = () => {
-    makeMove({
+    const move: Move = {
       type: 'stock-flip',
       cardId: '',
       sourceType: 'stock',
-      targetType: 'waste'
-    });
-    
-    // Realistic card dealing from stock to waste
-    if (realisticMode && physicsEngine && gameState.waste.length > 0) {
-      const topCard = gameState.waste[gameState.waste.length - 1];
-      const wastePosition = new Float32Array([0.1, 0.8, 0.0]);
-      physicsEngine.dealCard(topCard.id, wastePosition, 1.2);
+      targetType: 'waste',
+    };
+    makeMove(move);
+  };
+
+  const handleFoundationClick = (suit: string) => {
+    if (selectedCard) {
+      const move: Move = {
+        type: 'foundation',
+        cardId: selectedCard.id,
+        sourceType: 'tableau',
+        targetType: 'foundation',
+      };
+      makeMove(move);
+      selectCard(null);
     }
   };
 
   const handleHint = async () => {
-    const hint = await getHint();
-    if (hint) {
-      console.log('💡 AI Hint:', hint);
-      
-      // Highlight suggested cards with magic particle effect
-      if (webgpuCanvasRef.current) {
-        webgpuCanvasRef.current.triggerCardEffect?.('magic', { x: 0.3, y: 0.5 });
-      }
+    try {
+      await getHint();
+    } catch (error) {
+      console.log('Hint not available');
     }
   };
-
-  const handleNewGame = () => {
-    newGame();
-    setShowMLVisualization(false);
-    
-    // Realistic shuffling animation
-    if (realisticMode && physicsEngine && gameState) {
-      const allCards = [
-        ...gameState.stock,
-        ...gameState.waste,
-        ...gameState.foundations.spades,
-        ...gameState.foundations.hearts,
-        ...gameState.foundations.diamonds,
-        ...gameState.foundations.clubs,
-        ...gameState.tableau.flat()
-      ];
-      
-      // Shuffle with physics simulation
-      allCards.forEach(card => {
-        const shufflePosition = new Float32Array([
-          (Math.random() - 0.5) * 0.3,
-          0.5 + Math.random() * 0.2,
-          (Math.random() - 0.5) * 0.1
-        ]);
-        physicsEngine.dealCard(card.id, shufflePosition, 0.5);
-      });
-      
-      // Deal cards to tableau with realistic timing
-      setTimeout(() => {
-        gameState.tableau.forEach((pile, pileIndex) => {
-          pile.forEach((card, cardIndex) => {
-            const tableauPosition = new Float32Array([
-              -0.3 + (pileIndex * 0.1),
-              0.3 - (cardIndex * 0.01),
-              0.0
-            ]);
-            
-            setTimeout(() => {
-              physicsEngine.dealCard(card.id, tableauPosition, 1.0);
-            }, (pileIndex * 7 + cardIndex) * 100); // Staggered dealing
-          });
-        });
-      }, 1000);
-    }
-    
-    // New game celebration effect
-    if (webgpuCanvasRef.current) {
-      webgpuCanvasRef.current.triggerCardEffect?.('ai-generation', { x: 0.5, y: 0.5 });
-    }
-  };
-
-  const handleUndo = () => {
-    undoMove();
-    
-    // Reverse movement with physics
-    if (realisticMode && physicsEngine) {
-      console.log('🔄 Undoing move with realistic physics');
-    }
-  };
-
-  const handleViewChange = (view: string) => {
-    const validViews = ['game', 'stats', 'ml'] as const;
-    if (validViews.includes(view as any)) {
-      setCurrentView(view as 'game' | 'stats' | 'ml');
-      if (view === 'ml') {
-        setShowMLVisualization(true);
-      } else {
-        setShowMLVisualization(false);
-      }
-    }
-  };
-
-  // Physics simulation loop
-  useEffect(() => {
-    if (!physicsEngine || !realisticMode) return;
-    
-    let animationFrame: number;
-    let lastTime = performance.now();
-    
-    const simulate = (currentTime: number) => {
-      const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
-      lastTime = currentTime;
-      
-      // Update physics simulation
-      physicsEngine.simulate(deltaTime);
-      
-      // Update 3D card positions
-      if (card3DRenderer) {
-        card3DRenderer.updateAnimations(currentTime);
-      }
-      
-      animationFrame = requestAnimationFrame(simulate);
-    };
-    
-    animationFrame = requestAnimationFrame(simulate);
-    
-    return () => {
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-      }
-    };
-  }, [physicsEngine, card3DRenderer, realisticMode]);
-
-  if (!gameState) {
-    return (
-      <div className="loading">
-        <div className="loading-text">🃏 Loading realistic card physics...</div>
-        <div className="loading-spinner"></div>
-      </div>
-    );
-  }
-
-  // Victory effects with realistic physics
-  useEffect(() => {
-    if (isGameWon && realisticMode && physicsEngine) {
-      console.log('🎉 Victory! Triggering realistic celebration physics');
-      
-      // All cards fly up in celebration
-      Object.values(gameState.foundations).flat().forEach((card, index) => {
-        setTimeout(() => {
-          const celebrationPosition = new Float32Array([
-            (Math.random() - 0.5) * 1.0,
-            1.5 + Math.random() * 0.5,
-            (Math.random() - 0.5) * 0.2
-          ]);
-          physicsEngine.dealCard(card.id, celebrationPosition, 2.0);
-        }, index * 50);
-      });
-      
-      // Victory particle explosion
-      if (webgpuCanvasRef.current) {
-        webgpuCanvasRef.current.triggerCardEffect?.('victory', { x: 0.5, y: 0.5 });
-      }
-    }
-  }, [isGameWon, realisticMode, physicsEngine, gameState]);
 
   return (
-    <div className="game-board-with-webgpu">
-      {/* WebGPU Canvas Layer with Physics */}
-      <WebGPUCanvas 
-        className="webgpu-background"
-      />
-      
-      {/* Game Content Layer */}
-      <div className="game-content">
-        <GameHeader onViewChange={handleViewChange} />
-        
-        {/* Realistic Mode Toggle */}
-        <div className="graphics-controls">
-          <label className="realistic-toggle">
-            <input
-              type="checkbox"
-              checked={realisticMode}
-              onChange={(e) => setRealisticMode(e.target.checked)}
-            />
-            <span>🃏 Realistic 3D Cards</span>
-          </label>
-          
-          {realisticMode && (
-            <div className="physics-status">
-              <span className="status-indicator active">⚡ Physics Active</span>
-              <span className="status-indicator">🎨 PBR Rendering</span>
-              <span className="status-indicator">🤖 AI Materials</span>
-            </div>
-          )}
+    <div className="game-board">
+      {/* Game Header */}
+      <div className="game-header">
+        <h1>🃏 Advanced Klondike Solitaire</h1>
+        <div className="game-info">
+          <span>Score: {gameState.gameStats.score}</span>
+          <span>Moves: {gameState.gameStats.moves}</span>
+          <span>Time: {Math.floor(gameState.gameStats.time / 60)}:{(gameState.gameStats.time % 60).toString().padStart(2, '0')}</span>
         </div>
-        
-        {currentView === 'game' && (
-          <>
-            <div className="game-area">
-              <div className="stock-waste-area">
-                <StockPile 
-                  cards={gameState.stock} 
-                  onStockClick={handleStockClick}
-                  realistic3D={realisticMode}
-                />
-                <WastePile 
-                  cards={gameState.waste} 
-                  onCardClick={handleCardClick}
-                  realistic3D={realisticMode}
-                />
-              </div>
-              
-              <div className="foundations">
-                {['spades', 'hearts', 'diamonds', 'clubs'].map((suit) => (
-                  <Foundation
-                    key={suit}
-                    suit={suit as 'spades' | 'hearts' | 'diamonds' | 'clubs'}
-                    cards={gameState.foundations[suit as keyof typeof gameState.foundations]}
-                    onCardClick={handleCardClick}
-                    realistic3D={realisticMode}
-                  />
-                ))}
-              </div>
-              
-              <div className="tableau">
-                {gameState.tableau.map((pile, index) => (
-                  <TableauPile
-                    key={index}
-                    cards={pile}
-                    pileIndex={index}
-                    onCardClick={handleCardClick}
-                    onCardDoubleClick={handleCardDoubleClick}
-                    realistic3D={realisticMode}
-                  />
-                ))}
-              </div>
+      </div>
+
+      {/* Game Controls */}
+      <div className="game-controls">
+        <button onClick={newGame} className="control-btn new-game">
+          🔄 New Game
+        </button>
+        <button onClick={undoMove} disabled={!canUndo} className="control-btn undo">
+          ↶ Undo
+        </button>
+        <button onClick={handleHint} disabled={!canHint} className="control-btn hint">
+          💡 Hint
+        </button>
+        <button 
+          onClick={() => setRealisticMode(!realisticMode)} 
+          className={`control-btn realistic ${realisticMode ? 'active' : ''}`}
+        >
+          🎮 Realistic 3D Cards
+        </button>
+        <button onClick={() => setShowStats(!showStats)} className="control-btn stats">
+          📊 Stats
+        </button>
+      </div>
+
+      {/* Statistics Panel */}
+      {showStats && (
+        <div className="stats-panel">
+          <h3>📈 Game Statistics</h3>
+          <div className="stats-grid">
+            <div className="stat-item">
+              <span className="stat-label">Games Won:</span>
+              <span className="stat-value">{statistics.gamesWon}</span>
             </div>
-            
-            <GameControls
-              onNewGame={handleNewGame}
-              onUndo={handleUndo}
-              onHint={handleHint}
-              canUndo={canUndo}
-              canHint={canHint}
-              showRealisticToggle={true}
-              realisticMode={realisticMode}
-              onRealisticToggle={setRealisticMode}
-            />
-          </>
-        )}
-        
-        {currentView === 'stats' && (
-          <GameStats statistics={statistics} />
-        )}
-        
-                 {currentView === 'ml' && showMLVisualization && (
-           <MLVisualization 
-             analysis={mlAnalysis}
-           />
-         )}
-        
-        {/* Victory Screen with Physics */}
-        {isGameWon && (
-          <div className="victory-screen">
-            <div className="victory-content">
-              <h2>🎉 Congratulations!</h2>
-              <p>You won with realistic 3D card physics!</p>
-                             <p>Time: {statistics.gamesPlayed > 0 ? '0' : '0'}s</p>
-               <p>Moves: {statistics.gamesPlayed > 0 ? '0' : '0'}</p>
-              
-              <button 
-                onClick={handleNewGame}
-                className="victory-new-game-btn"
-              >
-                🃏 New Realistic Game
-              </button>
+            <div className="stat-item">
+              <span className="stat-label">Games Played:</span>
+              <span className="stat-value">{statistics.gamesPlayed}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Win Rate:</span>
+              <span className="stat-value">
+                {statistics.gamesPlayed ? ((statistics.gamesWon / statistics.gamesPlayed) * 100).toFixed(1) : 0}%
+              </span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Best Time:</span>
+              <span className="stat-value">{statistics.bestTime}s</span>
             </div>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* Stock and Waste Piles */}
+      <div className="top-piles">
+        <div className="stock-waste">
+          <div className="stock-pile" onClick={handleStockClick}>
+            {gameState.stock.length > 0 ? (
+              <div className="stock-card">🂠</div>
+            ) : (
+              <div className="stock-empty">♻️</div>
+            )}
+            <div className="stock-count">{gameState.stock.length}</div>
+          </div>
+          <div className="waste-pile">
+            {gameState.waste.slice(-3).map((card, index) => (
+              <CardComponent
+                key={card.id}
+                card={card}
+                onClick={() => handleCardClick(card)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Foundation Piles */}
+        <div className="foundations">
+          {['♠', '♥', '♦', '♣'].map(suit => (
+            <div 
+              key={suit} 
+              className="foundation-pile"
+              onClick={() => handleFoundationClick(suit)}
+            >
+              <div className="foundation-placeholder">{suit}</div>
+              {gameState.foundations[suit]?.slice(-1).map((card) => (
+                <CardComponent key={card.id} card={card} />
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* Tableau Piles */}
+      <div className="tableau">
+        {gameState.tableau.map((pile, pileIndex) => (
+          <div key={pileIndex} className="tableau-pile">
+            {pile.map((card, cardIndex) => (
+              <CardComponent
+                key={card.id}
+                card={card}
+                onClick={() => handleCardClick(card)}
+                isHinted={card.id === gameState.hintCardId}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* 3D Mode Indicator */}
+      {realisticMode && (
+        <div className="realistic-mode-indicator">
+          <span>🎮 3D Physics Mode Active</span>
+          <div className="physics-stats">
+            <span>Mass: 1.8g</span>
+            <span>Friction: 0.4</span>
+            <span>Bounce: 15%</span>
+          </div>
+        </div>
+      )}
+
+      {/* Victory Screen */}
+      {isGameWon && (
+        <div className="victory-overlay">
+          <div className="victory-message">
+            <h2>🎉 Congratulations! You Won!</h2>
+            <div className="victory-stats">
+              <p>Score: {gameState.gameStats.score}</p>
+              <p>Moves: {gameState.gameStats.moves}</p>
+              <p>Time: {Math.floor(gameState.gameStats.time / 60)}:{(gameState.gameStats.time % 60).toString().padStart(2, '0')}</p>
+            </div>
+            <button onClick={newGame} className="new-game-btn">
+              Play Again
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

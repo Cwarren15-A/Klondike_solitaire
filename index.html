@@ -2734,17 +2734,101 @@
             
             // Utility functions for auto-complete
             cloneGameState() {
-                // Clone only the essential game state, avoiding circular references
-                const state = this.game.state;
-                return {
-                    tableau: JSON.parse(JSON.stringify(state.tableau)),
-                    foundations: JSON.parse(JSON.stringify(state.foundations)),
-                    stock: JSON.parse(JSON.stringify(state.stock)),
-                    waste: JSON.parse(JSON.stringify(state.waste)),
-                    drawMode: state.drawMode || 3,
-                    moves: state.moves || 0,
-                    score: state.score || 0
-                };
+                try {
+                    // Clone only the essential game state, avoiding circular references
+                    const state = this.game.state;
+                    return {
+                        tableau: state.tableau.map(pile => 
+                            pile.map(card => ({
+                                id: card.id,
+                                suit: card.suit,
+                                value: card.value,
+                                faceUp: card.faceUp
+                            }))
+                        ),
+                        foundations: Object.fromEntries(
+                            Object.entries(state.foundations).map(([suit, pile]) => [
+                                suit,
+                                pile.map(card => ({
+                                    id: card.id,
+                                    suit: card.suit,
+                                    value: card.value,
+                                    faceUp: card.faceUp
+                                }))
+                            ])
+                        ),
+                        stock: state.stock.map(card => ({
+                            id: card.id,
+                            suit: card.suit,
+                            value: card.value,
+                            faceUp: card.faceUp
+                        })),
+                        waste: state.waste.map(card => ({
+                            id: card.id,
+                            suit: card.suit,
+                            value: card.value,
+                            faceUp: card.faceUp
+                        })),
+                        drawMode: state.drawMode || 3,
+                        moves: state.gameStats?.moves || 0,
+                        score: state.gameStats?.score || 0
+                    };
+                } catch (error) {
+                    console.error('Error cloning game state:', error);
+                    return {
+                        tableau: Array.from({ length: 7 }, () => []),
+                        foundations: { '♠': [], '♥': [], '♦': [], '♣': [] },
+                        stock: [],
+                        waste: [],
+                        drawMode: 3,
+                        moves: 0,
+                        score: 0
+                    };
+                }
+            }
+            
+            deepCloneState(state) {
+                try {
+                    return {
+                        tableau: state.tableau.map(pile => 
+                            pile.map(card => ({
+                                id: card.id,
+                                suit: card.suit,
+                                value: card.value,
+                                faceUp: card.faceUp
+                            }))
+                        ),
+                        foundations: Object.fromEntries(
+                            Object.entries(state.foundations).map(([suit, pile]) => [
+                                suit,
+                                pile.map(card => ({
+                                    id: card.id,
+                                    suit: card.suit,
+                                    value: card.value,
+                                    faceUp: card.faceUp
+                                }))
+                            ])
+                        ),
+                        stock: state.stock.map(card => ({
+                            id: card.id,
+                            suit: card.suit,
+                            value: card.value,
+                            faceUp: card.faceUp
+                        })),
+                        waste: state.waste.map(card => ({
+                            id: card.id,
+                            suit: card.suit,
+                            value: card.value,
+                            faceUp: card.faceUp
+                        })),
+                        drawMode: state.drawMode || 3,
+                        moves: state.moves || 0,
+                        score: state.score || 0
+                    };
+                } catch (error) {
+                    console.error('Error deep cloning state:', error);
+                    return state; // Return original state on error
+                }
             }
             
             isGameWon(state) {
@@ -2859,7 +2943,7 @@
             }
             
             applyMoveToState(state, move) {
-                const newState = JSON.parse(JSON.stringify(state)); // Deep clone
+                const newState = this.deepCloneState(state); // Use safe clone method
                 
                 try {
                     switch (move.type) {

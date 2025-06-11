@@ -2946,7 +2946,7 @@
                 }
                 
                 // First, try auto-complete for immediate win detection
-                const autoComplete = await this.autoCompleteGame(25); // Shorter depth for hints
+                const autoComplete = await this.autoCompleteGame(150); // Full depth for complete analysis
                 
                 if (autoComplete.canWin && autoComplete.moves.length > 0) {
                     const nextMove = autoComplete.moves[0];
@@ -4112,12 +4112,27 @@
                 
                 // Check if we can draw from stock (stock has cards) or reset waste to stock (stock empty but waste has cards)
                 if (this.game.state.stock.length > 0) {
+                    let stockDescription = 'Draw card(s) from stock';
+                    
+                    // Get AI stock recommendation if available
+                    try {
+                        if (this.game.aiHint && this.game.aiHint.analyzeStock) {
+                            const stockAnalysis = this.game.aiHint.analyzeStock();
+                            const rec = stockAnalysis.recommendation;
+                            if (rec && rec.shouldDraw && rec.drawsNeeded > 0) {
+                                stockDescription = `Draw ${rec.drawsNeeded} time${rec.drawsNeeded > 1 ? 's' : ''} from stock`;
+                            }
+                        }
+                    } catch (error) {
+                        // Fallback to generic description if AI analysis fails
+                    }
+                    
                     moves.push({
                         type: 'stock-draw',
                         cardId: null,
                         card: null,
                         priority: 1, // Low priority, but still a valid move
-                        description: 'Draw card(s) from stock'
+                        description: stockDescription
                     });
                 } else if (this.game.state.waste.length > 0) {
                     moves.push({

@@ -31,7 +31,7 @@ class SolitaireAIWorker {
         }
     }
 
-    async findWinningPath(gameState, maxDepth = 25) {
+    async findWinningPath(gameState, maxDepth = 150) {
         try {
             const startTime = performance.now();
             const result = await this.searchWinningPath(gameState, [], maxDepth);
@@ -193,13 +193,16 @@ class SolitaireAIWorker {
             }
         }
 
-        // Stock draw move
+        // Stock draw move with AI recommendation
         if (state.stock.length > 0 || state.waste.length > 0) {
+            const stockAnalysis = this.analyzeStock(state);
             moves.push({
                 type: 'draw_stock',
                 from: { source: 'stock' },
                 to: { source: 'waste' },
-                priority: 10
+                priority: stockAnalysis.shouldDraw ? 15 : 5,
+                drawsNeeded: stockAnalysis.drawsNeeded || 1,
+                stockRecommendation: stockAnalysis
             });
         }
 
@@ -447,7 +450,7 @@ self.onmessage = async function(event) {
                 break;
                 
             case 'findWinningPath':
-                result = await aiWorker.findWinningPath(data.gameState, data.maxDepth || 25);
+                result = await aiWorker.findWinningPath(data.gameState, data.maxDepth || 150);
                 break;
                 
             case 'getHint':

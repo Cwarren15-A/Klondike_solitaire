@@ -4526,11 +4526,68 @@
                 this.ctx.save();
                 this.ctx.globalAlpha = alpha;
                 
-                const shadowOffset = isHovered ? 4 : 2;
-                const shadowAlpha = isHovered ? 0.4 : 0.3;
-                this.ctx.fillStyle = `rgba(0,0,0,${shadowAlpha})`;
-                this.ctx.fillRect(x + shadowOffset, y + shadowOffset, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
+                // Enhanced shadow with multiple layers for depth
+                const shadowOffset = isHovered ? 6 : 3;
+                const shadowBlur = isHovered ? 8 : 4;
                 
+                // Soft shadow
+                this.ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                this.ctx.shadowBlur = shadowBlur;
+                this.ctx.shadowOffsetX = shadowOffset;
+                this.ctx.shadowOffsetY = shadowOffset;
+                
+                // Card border radius for rounded corners
+                const cornerRadius = 8;
+                
+                if (card.faceUp) {
+                    // Professional white card face with subtle gradient
+                    const faceGradient = this.ctx.createLinearGradient(x, y, x, y + this.game.constants.CARD_HEIGHT);
+                    faceGradient.addColorStop(0, '#ffffff');
+                    faceGradient.addColorStop(0.05, '#fefefe');
+                    faceGradient.addColorStop(0.95, '#f8f9fa');
+                    faceGradient.addColorStop(1, '#f1f3f4');
+                    this.ctx.fillStyle = faceGradient;
+                } else {
+                    // Enhanced card back with professional blue gradient
+                    const backGradient = this.ctx.createLinearGradient(x, y, x + this.game.constants.CARD_WIDTH, y + this.game.constants.CARD_HEIGHT);
+                    backGradient.addColorStop(0, '#1e40af');
+                    backGradient.addColorStop(0.3, '#2563eb');
+                    backGradient.addColorStop(0.7, '#3b82f6');
+                    backGradient.addColorStop(1, '#1e40af');
+                    this.ctx.fillStyle = backGradient;
+                }
+                
+                // Draw rounded rectangle for card
+                this.ctx.beginPath();
+                if (this.ctx.roundRect) {
+                    this.ctx.roundRect(x, y, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT, cornerRadius);
+                } else {
+                    // Fallback for browsers without roundRect support
+                    this.ctx.moveTo(x + cornerRadius, y);
+                    this.ctx.lineTo(x + this.game.constants.CARD_WIDTH - cornerRadius, y);
+                    this.ctx.quadraticCurveTo(x + this.game.constants.CARD_WIDTH, y, x + this.game.constants.CARD_WIDTH, y + cornerRadius);
+                    this.ctx.lineTo(x + this.game.constants.CARD_WIDTH, y + this.game.constants.CARD_HEIGHT - cornerRadius);
+                    this.ctx.quadraticCurveTo(x + this.game.constants.CARD_WIDTH, y + this.game.constants.CARD_HEIGHT, x + this.game.constants.CARD_WIDTH - cornerRadius, y + this.game.constants.CARD_HEIGHT);
+                    this.ctx.lineTo(x + cornerRadius, y + this.game.constants.CARD_HEIGHT);
+                    this.ctx.quadraticCurveTo(x, y + this.game.constants.CARD_HEIGHT, x, y + this.game.constants.CARD_HEIGHT - cornerRadius);
+                    this.ctx.lineTo(x, y + cornerRadius);
+                    this.ctx.quadraticCurveTo(x, y, x + cornerRadius, y);
+                    this.ctx.closePath();
+                }
+                this.ctx.fill();
+                
+                // Reset shadow for other elements
+                this.ctx.shadowColor = 'transparent';
+                this.ctx.shadowBlur = 0;
+                this.ctx.shadowOffsetX = 0;
+                this.ctx.shadowOffsetY = 0;
+                
+                // Enhanced border
+                this.ctx.strokeStyle = isHovered ? '#22c55e' : '#d1d5db';
+                this.ctx.lineWidth = isHovered ? 2.5 : 1.5;
+                this.ctx.stroke();
+                
+                // Highlight effects
                 if (highlighted) {
                     this.ctx.strokeStyle = '#ffd700';
                     this.ctx.lineWidth = 4;
@@ -4544,75 +4601,94 @@
                 }
                 
                 if (card.faceUp) {
-                    const gradient = this.ctx.createLinearGradient(x, y, x, y + this.game.constants.CARD_HEIGHT);
-                    gradient.addColorStop(0, '#ffffff');
-                    gradient.addColorStop(0.1, '#f8f9fa');
-                    gradient.addColorStop(0.9, '#e9ecef');
-                    gradient.addColorStop(1, '#dee2e6');
-                    this.ctx.fillStyle = gradient;
-                } else {
-                    const gradient = this.ctx.createRadialGradient(
-                        x + this.game.constants.CARD_WIDTH/2, y + this.game.constants.CARD_HEIGHT/2, 0,
-                        x + this.game.constants.CARD_WIDTH/2, y + this.game.constants.CARD_HEIGHT/2, Math.max(this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT)/2
-                    );
-                    gradient.addColorStop(0, '#3b82f6');
-                    gradient.addColorStop(0.7, '#2563eb');
-                    gradient.addColorStop(1, '#1e40af');
-                    this.ctx.fillStyle = gradient;
-                }
-                
-                this.ctx.fillRect(x, y, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
-                
-                this.ctx.strokeStyle = isHovered ? '#22c55e' : '#374151';
-                this.ctx.lineWidth = isHovered ? 2.5 : 2;
-                this.ctx.strokeRect(x, y, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
-                
-                if (card.faceUp) {
+                    // Professional card face rendering
                     const isRed = this.game.constants.RED_SUITS.has(card.suit);
-                    this.ctx.fillStyle = isRed ? '#dc2626' : '#000000';
-                    this.ctx.font = 'bold 16px Arial';
+                    const cardColor = isRed ? '#dc2626' : '#1f2937';
+                    this.ctx.fillStyle = cardColor;
+                    
+                    // Top-left corner values
+                    this.ctx.font = 'bold 18px "Times New Roman", serif';
                     this.ctx.textAlign = 'left';
                     this.ctx.textBaseline = 'top';
                     
-                    this.ctx.fillText(card.rank, x + 4, y + 4);
-                    this.ctx.fillText(card.suit, x + 4, y + 20);
+                    this.ctx.fillText(card.rank, x + 8, y + 8);
+                    this.ctx.font = 'bold 16px "Times New Roman", serif';
+                    this.ctx.fillText(card.suit, x + 8, y + 28);
                     
+                    // Bottom-right corner values (rotated)
                     this.ctx.save();
-                    this.ctx.translate(x + this.game.constants.CARD_WIDTH - 4, y + this.game.constants.CARD_HEIGHT - 4);
+                    this.ctx.translate(x + this.game.constants.CARD_WIDTH - 8, y + this.game.constants.CARD_HEIGHT - 8);
                     this.ctx.rotate(Math.PI);
+                    this.ctx.font = 'bold 18px "Times New Roman", serif';
                     this.ctx.fillText(card.rank, 0, 0);
-                    this.ctx.fillText(card.suit, 0, 16);
+                    this.ctx.font = 'bold 16px "Times New Roman", serif';
+                    this.ctx.fillText(card.suit, 0, 20);
                     this.ctx.restore();
                     
-                    this.ctx.font = 'bold 24px Arial';
+                    // Center suit symbol (larger)
+                    this.ctx.font = 'bold 36px "Times New Roman", serif';
                     this.ctx.textAlign = 'center';
                     this.ctx.textBaseline = 'middle';
                     
+                    // Add subtle shadow to center symbol
+                    this.ctx.shadowColor = 'rgba(0,0,0,0.1)';
+                    this.ctx.shadowBlur = 2;
+                    this.ctx.shadowOffsetX = 1;
+                    this.ctx.shadowOffsetY = 1;
+                    
                     this.ctx.fillText(card.suit, x + this.game.constants.CARD_WIDTH/2, y + this.game.constants.CARD_HEIGHT/2);
                     
+                    // Reset shadow
+                    this.ctx.shadowColor = 'transparent';
+                    this.ctx.shadowBlur = 0;
+                    this.ctx.shadowOffsetX = 0;
+                    this.ctx.shadowOffsetY = 0;
+                    
                 } else {
+                    // Enhanced card back pattern
+                    this.ctx.save();
+                    this.ctx.globalAlpha = 0.4 * alpha;
+                    
+                    // Decorative border
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(x + 12, y + 12, this.game.constants.CARD_WIDTH - 24, this.game.constants.CARD_HEIGHT - 24);
+                    
+                    // Elegant diamond pattern
                     this.ctx.fillStyle = '#ffffff';
                     this.ctx.globalAlpha = 0.3 * alpha;
                     
+                    const centerX = x + this.game.constants.CARD_WIDTH/2;
+                    const centerY = y + this.game.constants.CARD_HEIGHT/2;
+                    
+                    // Central diamond
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(centerX, centerY - 20);
+                    this.ctx.lineTo(centerX + 15, centerY);
+                    this.ctx.lineTo(centerX, centerY + 20);
+                    this.ctx.lineTo(centerX - 15, centerY);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    
+                    // Corner diamonds
                     for (let i = 0; i < 4; i++) {
-                        for (let j = 0; j < 6; j++) {
-                            const patternX = x + 8 + i * 18;
-                            const patternY = y + 8 + j * 18;
-                            
-                            this.ctx.beginPath();
-                            this.ctx.arc(patternX, patternY, 4, 0, Math.PI * 2);
-                            this.ctx.fill();
-                            
-                            this.ctx.beginPath();
-                            this.ctx.arc(patternX + 9, patternY + 9, 2, 0, Math.PI * 2);
-                            this.ctx.fill();
-                        }
+                        this.ctx.save();
+                        this.ctx.translate(centerX, centerY);
+                        this.ctx.rotate(i * Math.PI / 2);
+                        this.ctx.translate(0, -30);
+                        
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(0, -8);
+                        this.ctx.lineTo(6, 0);
+                        this.ctx.lineTo(0, 8);
+                        this.ctx.lineTo(-6, 0);
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                        
+                        this.ctx.restore();
                     }
                     
-                    this.ctx.strokeStyle = '#ffffff';
-                    this.ctx.lineWidth = 1;
-                    this.ctx.globalAlpha = 0.4 * alpha;
-                    this.ctx.strokeRect(x + 6, y + 6, this.game.constants.CARD_WIDTH - 12, this.game.constants.CARD_HEIGHT - 12);
+                    this.ctx.restore();
                 }
                 
                 this.ctx.restore();

@@ -2594,50 +2594,447 @@
                 this.game = gameInstance;
             }
             
-            async showHint() {
+            // New method: Analyze complete deck state with stock preview
+            analyzeCompleteGameState() {
+                const analysis = {
+                    stockAnalysis: this.analyzeStock(),
+                    foundationNeeds: this.analyzeFoundationNeeds(),
+                    tableauOpportunities: this.analyzeTableauOpportunities(),
+                    winProbabilityFactors: this.calculateWinFactors()
+                };
+                
+                return analysis;
+            }
+            
+            // Analyze what cards are coming in the stock
+            analyzeStock() {
+                const stockCards = [...this.game.state.stock];
+                const wasteCards = [...this.game.state.waste];
+                const drawMode = this.game.state.drawMode || 3;
+                
+                // Simulate stock drawing to see upcoming cards
+                const upcomingCards = [];
+                const stockCopy = [...stockCards];
+                const wasteCopy = [...wasteCards];
+                
+                // Simulate next 10 draws to see what's coming
+                for (let draw = 0; draw < 10 && (stockCopy.length > 0 || wasteCopy.length > 0); draw++) {
+                    if (stockCopy.length === 0) {
+                        // Reset stock from waste
+                        stockCopy.push(...wasteCopy.reverse());
+                        wasteCopy.length = 0;
+                    }
+                    
+                    const cardsDrawn = stockCopy.splice(-Math.min(drawMode, stockCopy.length));
+                    if (cardsDrawn.length > 0) {
+                        const topCard = cardsDrawn[cardsDrawn.length - 1];
+                        upcomingCards.push({
+                            card: topCard,
+                            drawNumber: draw + 1,
+                            useful: this.isCardUseful(topCard)
+                        });
+                        wasteCopy.push(...cardsDrawn);
+                    }
+                }
+                
+                return {
+                    totalCards: stockCards.length,
+                    upcomingCards: upcomingCards,
+                    nextUsefulCard: upcomingCards.find(item => item.useful),
+                    recommendation: this.generateStockRecommendation(upcomingCards)
+                };
+            }
+            
+            // Check if a card would be immediately useful
+            isCardUseful(card) {
+                // Check if can go to foundation
+                if (this.game.rules.canPlaceOnFoundation(card)) {
+                    return { type: 'foundation', reason: `Can place ${card.rank}${card.suit} on foundation` };
+                }
+                
+                // Check if can go to tableau
+                for (let i = 0; i < this.game.state.tableau.length; i++) {
+                    if (this.game.rules.canPlaceOnTableau(card, this.game.state.tableau[i])) {
+                        const onEmpty = this.game.state.tableau[i].length === 0;
+                        return { 
+                            type: 'tableau', 
+                            reason: `Can place ${card.rank}${card.suit} on ${onEmpty ? 'empty tableau' : 'tableau'}`,
+                            priority: onEmpty && card.value === 13 ? 'high' : 'medium'
+                        };
+                    }
+                }
+                
+                // Check if would uncover useful hidden cards
+                const wouldReveal = this.wouldRevealUsefulCards(card);
+                if (wouldReveal.length > 0) {
+                    return { 
+                        type: 'reveal', 
+                        reason: `Placing ${card.rank}${card.suit} would reveal: ${wouldReveal.join(', ')}`,
+                        priority: 'high'
+                    };
+                }
+                
+                return null;
+            }
+            
+            // Check what hidden cards would be revealed by using a card
+            wouldRevealUsefulCards(card) {
+                const reveals = [];
+                
+                for (let i = 0; i < this.game.state.tableau.length; i++) {
+                    const pile = this.game.state.tableau[i];
+                    if (pile.length > 0) {
+                        const topCard = pile[pile.length - 1];
+                        
+                        // If this card can be placed on the tableau pile
+                        if (this.game.rules.canPlaceOnTableau(card, pile)) {
+                            // Check what would be revealed in other piles if we moved topCard
+                            for (let j = 0; j < this.game.state.tableau.length; j++) {
+                                if (i !== j) {
+                                    const otherPile = this.game.state.tableau[j];
+                                    if (this.game.rules.canPlaceOnTableau(topCard, otherPile)) {
+                                        // Check if moving topCard would reveal a hidden card
+                                        if (pile.length > 1 && !pile[pile.length - 2].faceUp) {
+                                            const hiddenCard = pile[pile.length - 2];
+                                            reveals.push(`${hiddenCard.rank}${hiddenCard.suit}`);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                return reveals;
+            }
+            
+            // Generate strategic stock drawing recommendation
+            generateStockRecommendation(upcomingCards) {
+                const nextUseful = upcomingCards.find(item => item.useful);
+                
+                if (!nextUseful) {
+                    return {
+                        shouldDraw: false,
+                        drawsNeeded: 0,
+                        reason: "No immediately useful cards in next 10 draws. Focus on tableau moves first.",
+                        priority: 'low'
+                    };
+                }
+                
+                const drawsNeeded = nextUseful.drawNumber;
+                const useful = nextUseful.useful;
+                
+                if (drawsNeeded === 1) {
+                    return {
+                        shouldDraw: true,
+                        drawsNeeded: 1,
+                        reason: `Next card (${nextUseful.card.rank}${nextUseful.card.suit}) is immediately useful: ${useful.reason}`,
+                        priority: useful.priority || 'high'
+                    };
+                } else if (drawsNeeded <= 3) {
+                    return {
+                        shouldDraw: true,
+                        drawsNeeded: drawsNeeded,
+                        reason: `Draw ${drawsNeeded} time${drawsNeeded > 1 ? 's' : ''} to get ${nextUseful.card.rank}${nextUseful.card.suit}: ${useful.reason}`,
+                        priority: useful.priority || 'medium'
+                    };
+                } else {
+                    return {
+                        shouldDraw: false,
+                        drawsNeeded: drawsNeeded,
+                        reason: `Useful card (${nextUseful.card.rank}${nextUseful.card.suit}) is ${drawsNeeded} draws away. Focus on tableau first.`,
+                        priority: 'low'
+                    };
+                }
+            }
+            
+            // Analyze what foundations need
+            analyzeFoundationNeeds() {
+                const needs = {};
+                Object.keys(this.game.state.foundations).forEach(suit => {
+                    const pile = this.game.state.foundations[suit];
+                    const nextValue = pile.length + 1;
+                    if (nextValue <= 13) {
+                        needs[suit] = nextValue;
+                    }
+                });
+                return needs;
+            }
+            
+            // Analyze tableau opportunities
+            analyzeTableauOpportunities() {
+                const opportunities = [];
+                
+                for (let i = 0; i < this.game.state.tableau.length; i++) {
+                    const pile = this.game.state.tableau[i];
+                    
+                    if (pile.length === 0) {
+                        opportunities.push({
+                            type: 'empty_space',
+                            pileIndex: i,
+                            needs: 'King',
+                            priority: 'medium'
+                        });
+                    } else {
+                        const topCard = pile[pile.length - 1];
+                        if (topCard.faceUp) {
+                            const needsValue = topCard.value - 1;
+                            const needsColor = (topCard.suit === '♠' || topCard.suit === '♣') ? 'red' : 'black';
+                            const needsSuits = needsColor === 'red' ? ['♥', '♦'] : ['♠', '♣'];
+                            
+                            if (needsValue > 0) {
+                                opportunities.push({
+                                    type: 'tableau_placement',
+                                    pileIndex: i,
+                                    needsValue: needsValue,
+                                    needsSuits: needsSuits,
+                                    priority: pile.filter(c => !c.faceUp).length > 0 ? 'high' : 'medium'
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                return opportunities;
+            }
+            
+            // Calculate win probability factors
+            calculateWinFactors() {
+                const factors = {
+                    foundationProgress: 0,
+                    hiddenCards: 0,
+                    blockedCards: 0,
+                    availableMoves: 0
+                };
+                
+                // Foundation progress
+                const totalFoundationCards = Object.values(this.game.state.foundations)
+                    .reduce((sum, pile) => sum + pile.length, 0);
+                factors.foundationProgress = totalFoundationCards / 52;
+                
+                // Hidden cards (lower is better)
+                factors.hiddenCards = this.game.state.tableau
+                    .reduce((sum, pile) => sum + pile.filter(c => !c.faceUp).length, 0);
+                
+                // Available moves
+                factors.availableMoves = this.findAllPossibleMoves().length;
+                
+                                 return factors;
+             }
+             
+             // Filter out non-strategic moves
+             filterStrategicMoves(moves, completeAnalysis) {
+                 // Remove lateral moves that don't provide value
+                 const filtered = moves.filter(move => {
+                     // Always keep foundation moves
+                     if (move.type === 'foundation') return true;
+                     
+                     // Always keep stock drawing
+                     if (move.type === 'stock-draw' || move.type === 'stock-reset') return true;
+                     
+                     // For tableau moves, check if they're actually strategic
+                     if (move.type === 'tableau' || move.type === 'waste-to-tableau') {
+                         return this.isStrategicMove(move, completeAnalysis);
+                     }
+                     
+                     return true;
+                 });
+                 
+                 return filtered;
+             }
+             
+             // Check if a move is actually strategic (not just legal)
+             isStrategicMove(move, completeAnalysis) {
+                 const card = move.card;
+                 if (!card) return false;
+                 
+                 // Check if this move reveals hidden cards
+                 const cardLocation = this.game.cards.findCardLocation(card);
+                 if (cardLocation && cardLocation.type === 'tableau') {
+                     const pile = this.game.state.tableau[cardLocation.pileIndex];
+                     if (pile.length > 1 && !pile[pile.length - 2].faceUp) {
+                         return true; // Reveals hidden card
+                     }
+                 }
+                 
+                 // Check if this move enables foundation building
+                 const foundationNeeds = completeAnalysis.foundationNeeds;
+                 const wouldEnableFoundation = Object.keys(foundationNeeds).some(suit => {
+                     const neededValue = foundationNeeds[suit];
+                     return neededValue === card.value && suit === card.suit;
+                 });
+                 
+                 if (wouldEnableFoundation) return true;
+                 
+                 // Check if this move puts a King on an empty space
+                 const targetEmpty = this.getTargetPileEmpty(move);
+                 if (targetEmpty && card.value === 13) return true;
+                 
+                 // Otherwise, it might be a lateral move - check if it actually helps
+                 return this.evaluateLateralMoveValue(move, completeAnalysis);
+             }
+             
+             // Evaluate if a lateral move provides strategic value
+             evaluateLateralMoveValue(move, completeAnalysis) {
+                 // For now, be conservative - reject most lateral moves unless they clearly help
+                 // This prevents the AI from suggesting moving cards back and forth
+                 return false;
+             }
+             
+             // Check if target pile is empty
+             getTargetPileEmpty(move) {
+                 // This would need to be implemented based on move details
+                 // For now, return false as we don't have enough info
+                 return false;
+             }
+             
+             // Evaluate strategic value of a move
+             evaluateStrategicMove(move, completeAnalysis) {
+                 let strategicScore = move.priority || 1;
+                 let reasoning = [];
+                 
+                 // Foundation moves get highest priority
+                 if (move.type === 'foundation') {
+                     strategicScore += 50;
+                     reasoning.push('Builds foundation');
+                 }
+                 
+                 // Stock drawing - use complete analysis
+                 if (move.type === 'stock-draw' || move.type === 'stock-reset') {
+                     const stockRec = completeAnalysis.stockAnalysis.recommendation;
+                     if (stockRec.shouldDraw) {
+                         strategicScore += stockRec.priority === 'high' ? 30 : 
+                                         stockRec.priority === 'medium' ? 20 : 10;
+                         reasoning.push(stockRec.reason);
+                     } else {
+                         strategicScore = 5; // Low priority if stock not recommended
+                         reasoning.push('Stock not immediately beneficial');
+                     }
+                 }
+                 
+                 // Tableau moves
+                 if (move.type === 'tableau' || move.type === 'waste-to-tableau') {
+                     const card = move.card;
+                     if (card) {
+                         // Check if reveals hidden card
+                         const cardLocation = this.game.cards.findCardLocation(card);
+                         if (cardLocation && cardLocation.type === 'tableau') {
+                             const pile = this.game.state.tableau[cardLocation.pileIndex];
+                             if (pile.length > 1 && !pile[pile.length - 2].faceUp) {
+                                 strategicScore += 25;
+                                 reasoning.push('Reveals hidden card');
+                             }
+                         }
+                         
+                         // Check if King to empty space
+                         if (card.value === 13) {
+                             strategicScore += 20;
+                             reasoning.push('King to empty space');
+                         }
+                         
+                         // Check if enables foundation building
+                         const foundationNeeds = completeAnalysis.foundationNeeds;
+                         const enablesFoundation = Object.keys(foundationNeeds).some(suit => {
+                             return foundationNeeds[suit] === card.value && suit === card.suit;
+                         });
+                         
+                         if (enablesFoundation) {
+                             strategicScore += 15;
+                             reasoning.push('Enables foundation building');
+                         }
+                     }
+                 }
+                 
+                 return {
+                     strategicScore: strategicScore,
+                     strategicReasoning: reasoning,
+                     confidence: Math.min(strategicScore / 50, 1)
+                 };
+             }
+             
+             // Calculate win probability
+             calculateWinProbability(completeAnalysis) {
+                 const factors = completeAnalysis.winProbabilityFactors;
+                 let probability = factors.foundationProgress * 0.4; // 40% weight on foundation progress
+                 
+                 // Factor in hidden cards (more hidden = lower probability)
+                 probability += (1 - (factors.hiddenCards / 21)) * 0.3; // 30% weight
+                 
+                 // Factor in available moves
+                 probability += Math.min(factors.availableMoves / 10, 0.3) * 0.3; // 30% weight
+                 
+                 return Math.max(0.1, Math.min(0.95, probability));
+             }
+             
+             // Assess difficulty
+             assessDifficulty(completeAnalysis) {
+                 const factors = completeAnalysis.winProbabilityFactors;
+                 const winProb = this.calculateWinProbability(completeAnalysis);
+                 
+                 if (winProb > 0.7) return 'easy';
+                 if (winProb > 0.4) return 'medium';
+                 if (winProb > 0.2) return 'hard';
+                 return 'expert';
+             }
+             
+             // Generate strategic recommendation
+             generateRecommendation(completeAnalysis, bestMove) {
+                 const stockRec = completeAnalysis.stockAnalysis.recommendation;
+                 const factors = completeAnalysis.winProbabilityFactors;
+                 
+                 if (stockRec.shouldDraw && stockRec.priority === 'high') {
+                     return `${stockRec.reason} Focus on tableau moves after.`;
+                 }
+                 
+                 if (factors.hiddenCards > 14) {
+                     return 'Focus on revealing hidden cards to improve your options.';
+                 }
+                 
+                 if (factors.foundationProgress < 0.2) {
+                     return 'Build foundations when possible to create space.';
+                 }
+                 
+                 return 'Continue with strategic tableau building and foundation moves.';
+             }
+             
+             async showHint() {
                 try {
                     this.game.sound.play('cardFlip');
+                    
+                    // Get comprehensive game state analysis using complete board vision
+                    const completeAnalysis = this.analyzeCompleteGameState();
+                    console.log('🔍 Complete Board Analysis:', completeAnalysis);
                     
                     const moves = this.findAllPossibleMoves();
                     this.game.state.hintCardId = null;
                     
-                    if (moves.length > 0) {
+                    // Filter out non-strategic moves (like lateral moves between same-value cards)
+                    const strategicMoves = this.filterStrategicMoves(moves, completeAnalysis);
+                    
+                    if (strategicMoves.length > 0) {
                         let bestMove, analysis, smartMoves;
                         
-                        // Use advanced ML evaluation for each move
-                        try {
-                            if (this.game.ml && this.game.ml.isInitialized && this.game.settings.data.enableMLAnalysis) {
-                                console.log('🧠 Using advanced AI analysis...');
-                                
-                                // Evaluate all moves with advanced AI
-                                const evaluatedMoves = [];
-                                for (const move of moves) {
-                                    const evaluation = await this.game.ml.evaluateMove(move, this.game.state);
-                                    evaluatedMoves.push(evaluation);
-                                }
-                                
-                                // Sort by AI score
-                                smartMoves = evaluatedMoves.sort((a, b) => b.aiScore - a.aiScore);
-                                bestMove = smartMoves[0];
-                                
-                                // Get comprehensive game analysis
-                                analysis = await this.game.ml.getGameAnalysis(this.game.state);
-                            }
-                        } catch (mlError) {
-                            console.warn('Advanced AI analysis failed, using fallback:', mlError);
-                        }
+                        // Use enhanced strategic evaluation
+                        console.log('🧠 Using enhanced strategic analysis with complete board vision...');
                         
-                        // Fallback to basic prioritization if ML failed
-                        if (!bestMove) {
-                            smartMoves = this.prioritizeMoves(moves);
-                            bestMove = smartMoves[0];
-                            analysis = {
-                                winProbability: 0.5,
-                                difficulty: 'unknown',
-                                recommendation: 'Keep playing strategically!',
-                                stockRecommendation: { shouldDraw: true, reason: 'Standard progression' }
-                            };
-                        }
+                        // Evaluate moves with complete board context
+                        const evaluatedMoves = strategicMoves.map(move => {
+                            const evaluation = this.evaluateStrategicMove(move, completeAnalysis);
+                            return { ...move, ...evaluation };
+                        });
+                        
+                        // Sort by strategic score
+                        smartMoves = evaluatedMoves.sort((a, b) => b.strategicScore - a.strategicScore);
+                        bestMove = smartMoves[0];
+                        
+                        // Create enhanced analysis
+                        analysis = {
+                            winProbability: this.calculateWinProbability(completeAnalysis),
+                            difficulty: this.assessDifficulty(completeAnalysis),
+                            recommendation: this.generateRecommendation(completeAnalysis, bestMove),
+                            stockRecommendation: completeAnalysis.stockAnalysis.recommendation,
+                            completeAnalysis: completeAnalysis
+                        };
                         
                         this.game.state.hintCardId = bestMove.cardId;
                         this.game.renderer.render();
@@ -2647,31 +3044,46 @@
                         const aiIcon = mlMode ? '🧠' : '🎯';
                         const aiType = mlMode ? 'Advanced AI with Complete Board Vision' : 'Smart Analysis';
                         
-                        // Prepare move reasoning
+                        // Enhanced move reasoning with strategic analysis
                         let moveReasoning = '';
                         if (bestMove.strategicReasoning && bestMove.strategicReasoning.length > 0) {
                             moveReasoning = `
                                 <div style="margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 6px;">
-                                    <strong>🎯 Strategic Reasoning:</strong><br>
+                                    <strong>🎯 Strategic Analysis:</strong><br>
                                     <ul style="margin: 5px 0; padding-left: 20px; font-size: 12px;">
                                         ${bestMove.strategicReasoning.map(reason => `<li>${reason}</li>`).join('')}
                                     </ul>
+                                    <small><strong>Strategic Score:</strong> ${Math.round(bestMove.strategicScore)}/100 | <strong>Confidence:</strong> ${Math.round(bestMove.confidence * 100)}%</small>
                                 </div>
                             `;
                         }
                         
-                        // Stock drawing recommendation
+                        // Enhanced stock drawing recommendation with complete analysis
                         let stockAdvice = '';
                         if (analysis.stockRecommendation) {
                             const stockRec = analysis.stockRecommendation;
+                            const stockAnalysis = analysis.completeAnalysis.stockAnalysis;
+                            
+                            let upcomingCardsText = '';
+                            if (stockAnalysis.upcomingCards && stockAnalysis.upcomingCards.length > 0) {
+                                const nextFew = stockAnalysis.upcomingCards.slice(0, 5);
+                                const upcomingList = nextFew.map(item => {
+                                    const card = item.card;
+                                    const useful = item.useful ? ' ✅' : '';
+                                    return `${card.rank}${card.suit}${useful}`;
+                                }).join(', ');
+                                upcomingCardsText = `<br><small>Next 5 cards: ${upcomingList}</small>`;
+                            }
+                            
                             stockAdvice = `
                                 <div style="margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 6px;">
-                                    <strong>📚 Stock Strategy:</strong><br>
+                                    <strong>📚 Complete Board Vision - Stock Strategy:</strong><br>
                                     <span style="color: ${stockRec.shouldDraw ? '#4ade80' : '#f59e0b'};">
-                                        ${stockRec.shouldDraw ? '✅ Draw from stock' : '⏸️ Focus on tableau first'}
+                                        ${stockRec.shouldDraw ? `✅ Draw ${stockRec.drawsNeeded} time${stockRec.drawsNeeded > 1 ? 's' : ''}` : '⏸️ Focus on tableau first'}
                                     </span><br>
                                     <small>${stockRec.reason}</small>
-                                    ${stockRec.upcomingCards ? `<br><small>Next cards: ${stockRec.upcomingCards.join(', ')}</small>` : ''}
+                                    ${upcomingCardsText}
+                                    ${stockAnalysis.nextUsefulCard ? `<br><small><strong>Next useful:</strong> ${stockAnalysis.nextUsefulCard.card.rank}${stockAnalysis.nextUsefulCard.card.suit} in ${stockAnalysis.nextUsefulCard.drawNumber} draws</small>` : ''}
                                 </div>
                             `;
                         }
@@ -2761,22 +3173,49 @@
                         this.game.ui.showNotification(message, 'hint', 20000);
                         
                     } else if (this.game.state.stock.length > 0 || this.game.state.waste.length > 0) {
-                        // No moves available - provide stock drawing guidance
-                        let stockGuidance = '';
-                        try {
-                            if (this.game.ml && this.game.ml.isInitialized) {
-                                const stockAnalysis = await this.game.ml.recommendStockDrawing(this.game.state);
-                                stockGuidance = `
-                                    <br><strong>📚 Stock Analysis:</strong><br>
-                                    <small>${stockAnalysis.reason}</small>
-                                    ${stockAnalysis.upcomingCards ? `<br><small>Next: ${stockAnalysis.upcomingCards.join(', ')}</small>` : ''}
-                                `;
-                            }
-                        } catch (error) {
-                            console.warn('Stock analysis failed:', error);
+                        // No strategic moves available - provide enhanced stock analysis
+                        const stockAnalysis = completeAnalysis.stockAnalysis;
+                        const stockRec = stockAnalysis.recommendation;
+                        
+                        let upcomingCardsText = '';
+                        if (stockAnalysis.upcomingCards && stockAnalysis.upcomingCards.length > 0) {
+                            const nextFew = stockAnalysis.upcomingCards.slice(0, 3);
+                            const upcomingList = nextFew.map(item => {
+                                const card = item.card;
+                                const useful = item.useful ? ' ✅' : '';
+                                return `${card.rank}${card.suit}${useful}`;
+                            }).join(', ');
+                            upcomingCardsText = `<br><strong>Next cards:</strong> ${upcomingList}`;
                         }
                         
-                        this.game.ui.showNotification(`📚 Draw from stock to reveal new options${stockGuidance}`, 'hint', 5000);
+                        const message = `
+                            <div style="text-align: left; line-height: 1.6; font-size: 14px; max-width: 500px;">
+                                <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; text-align: center;">
+                                    🔍 Complete Board Vision Analysis
+                                </div>
+                                
+                                <div style="margin-bottom: 10px;">
+                                    <strong>📚 Stock Recommendation:</strong><br>
+                                    <span style="color: ${stockRec.shouldDraw ? '#4ade80' : '#f59e0b'};">
+                                        ${stockRec.shouldDraw ? `✅ Draw ${stockRec.drawsNeeded} time${stockRec.drawsNeeded > 1 ? 's' : ''} from stock` : '⏸️ Focus on tableau moves first'}
+                                    </span>
+                                </div>
+                                
+                                <div style="margin-bottom: 10px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 6px;">
+                                    <strong>🧠 AI Analysis:</strong><br>
+                                    <small>${stockRec.reason}</small>
+                                    ${upcomingCardsText}
+                                    ${stockAnalysis.nextUsefulCard ? `<br><strong>Next useful:</strong> ${stockAnalysis.nextUsefulCard.card.rank}${stockAnalysis.nextUsefulCard.card.suit} in ${stockAnalysis.nextUsefulCard.drawNumber} draws` : ''}
+                                </div>
+                                
+                                <div style="text-align: center; margin-top: 15px; font-size: 11px; opacity: 0.7;">
+                                    <strong>Powered by:</strong> Complete Board Vision AI<br>
+                                    Analyzing all hidden cards • Strategic planning • Win probability calculation
+                                </div>
+                            </div>
+                        `;
+                        
+                        this.game.ui.showNotification(message, 'hint', 15000);
                     } else {
                         // No moves and no stock - advanced analysis for stuck situations
                         let stuckAnalysis = '';

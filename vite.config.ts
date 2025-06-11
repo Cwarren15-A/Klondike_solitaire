@@ -10,8 +10,8 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 const isProd = process.env.NODE_ENV === 'production';
-const base = isProd ? '/klondike-solitaire-ai/' : '/';
-const assetPrefix = isProd ? '/klondike-solitaire-ai' : '';
+const base = isProd ? '/Klondike_solitaire/' : '/';
+const assetPrefix = isProd ? '/Klondike_solitaire' : '';
 
 export default defineConfig({
   base,

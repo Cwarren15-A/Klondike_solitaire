@@ -24,8 +24,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Solitaire AI">
-    <link rel="apple-touch-icon" href="data:image/png;base64,IA==">
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIktsb25kaWtlIFNvbGl0YWlyZSAtIEFJIEVuaGFuY2VkIiwKICAic2hvcnRfbmFtZSI6ICJTb2xpdGFpcmUgQUkiLAogICJkZXNjcmlwdGlvbiI6ICJBZHZhbmNlZCBLbG9uZGlrZSBTb2xpdGFpcmUgd2l0aCBBSS1wb3dlcmVkIGhpbnRzLCBjb21wbGV0ZSBib2FyZCBhbmFseXNpcywgYW5kIG1hY2hpbmUgbGVhcm5pbmcgYXNzaXN0YW5jZS4iLAogICJzdGFydF91cmwiOiAiLi8iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxZTUxMjgiLAogICJ0aGVtZV9jb2xvciI6ICIjMWU1MTI4IiwKICAib3JpZW50YXRpb24iOiAiYW55IiwKICAiY2F0ZWdvcmllcyI6IFsiZ2FtZXMiLCAiZW50ZXJ0YWlubWVudCJdLAogICJsYW5nIjogImVuIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaWNvbi5zdmciLAogICAgICAic2l6ZXMiOiAiYW55IiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIsCiAgICAgICJwdXJwb3NlIjogImFueSBtYXNrYWJsZSIKICAgIH0sCiAgICB7CiAgICAgICJzcmMiOiAiaWNvbi0xOTIucG5nIiwKICAgICAgInNpemVzIjogIjE5MngxOTIiLAogICAgICAidHlwZSI6ICJpbWFnZS9wbmciLAogICAgICAicHVycG9zZSI6ICJhbnkgbWFza2FibGUiCiAgICB9LAogICAgewogICAgICAic3JjIjogImljb24tNTEyLnBuZyIsCiAgICAgICJzaXplcyI6ICI1MTJ4NTEyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIiwKICAgICAgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIgogICAgfQogIF0sCiAgInNob3J0Y3V0cyI6IFsKICAgIHsKICAgICAgIm5hbWUiOiAiTmV3IEdhbWUiLAogICAgICAic2hvcnRfbmFtZSI6ICJOZXcgR2FtZSIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJTdGFydCBhIG5ldyBLbG9uZGlrZSBTb2xpdGFpcmUgZ2FtZSIsCiAgICAgICJ1cmwiOiAiLi8/YWN0aW9uPW5ldyIsCiAgICAgICJpY29ucyI6IFt7ICJzcmMiOiAiaWNvbi0xOTIucG5nIiwgInNpemVzIjogIjE5MngxOTIiIH1dCiAgICB9LAogICAgewogICAgICAibmFtZSI6ICJEYWlseSBDaGFsbGVuZ2UiLAogICAgICAic2hvcnRfbmFtZSI6ICJEYWlseSIsCiAgICAgICJkZXNjcmlwdGlvbiI6ICJQbGF5IHRvZGF5J3MgZGFpbHkgY2hhbGxlbmdlIiwKICAgICAgInVybCI6ICIuLz9hY3Rpb249ZGFpbHkiLAogICAgICAiaWNvbnMiOiBbeyAic3JjIjogImljb24tMTkyLnBuZyIsICJzaXplcyI6ICIxOTJ4MTkyIiB9XQogICAgfQogIF0KfSA=">
+    <link rel="apple-touch-icon" href="./public/icons/icon-192.png">
+    <link rel="manifest" href="./public/manifest.json">
     
     <!-- Performance and SEO -->
     <meta name="robots" content="index, follow">
@@ -45,9 +45,9 @@
         body {
             margin: 0;
             padding: 20px;
-            background: linear-gradient(135deg, #1e5128, #2d5016);
+            background: linear-gradient(135deg, var(--bg-primary, #1e5128), var(--bg-secondary, #2d5016));
             font-family: 'Arial', sans-serif;
-            color: white;
+            color: var(--text-color, white);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -58,23 +58,33 @@
             user-select: none;
         }
         
+        /* Default theme */
+        body {
+            --bg-primary: #1e5128;
+            --bg-secondary: #2d5016;
+            --card-color: #ffffff;
+            --text-color: white;
+        }
+        
         .dark-theme {
             --bg-primary: #0f1419;
             --bg-secondary: #1a1a2e;
             --card-color: #ffffff;
+            --text-color: white;
         }
         
         .light-theme {
             --bg-primary: #e3f2fd;
             --bg-secondary: #bbdefb;
             --card-color: #333333;
-            color: #333333;
+            --text-color: #333333;
         }
         
         .blue-theme {
             --bg-primary: #1e3a8a;
             --bg-secondary: #1e40af;
             --card-color: #ffffff;
+            --text-color: white;
         }
         
         .game-header {
@@ -277,7 +287,7 @@
             box-shadow: 0 10px 30px rgba(255,215,0,0.4);
             z-index: 2000;
             animation: notificationPop 2s ease-out;
-            max-width: 90vw;
+            max-width: 95vw;
             text-align: center;
         }
         
@@ -350,6 +360,28 @@
         .diff-hard { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
         .diff-expert { background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; }
         
+        /* Deadlock analysis styles */
+        .deadlock-analysis {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 10px 0;
+        }
+        
+        .analysis-item {
+            margin: 8px 0;
+            font-size: 13px;
+        }
+        
+        .analysis-item.suggestion {
+            color: #a78bfa;
+            font-style: italic;
+            background: rgba(167, 139, 250, 0.1);
+            padding: 6px;
+            border-radius: 4px;
+        }
+        
         /* Accessibility improvements */
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
@@ -401,6 +433,32 @@
                 min-width: 60px;
                 padding: 6px 8px;
             }
+            
+            /* Mobile-friendly AI Analysis */
+            .hint-notification {
+                min-width: auto !important;
+                max-width: 95vw !important;
+                max-height: 90vh !important;
+                padding: 15px 35px 15px 15px !important;
+                font-size: 12px !important;
+                overflow-y: auto !important;
+                top: 5% !important;
+                transform: translateX(-50%) !important;
+                left: 50% !important;
+            }
+            
+            /* Ensure close button is always visible and clickable */
+            .hint-notification .close-btn,
+            .notification .close-btn {
+                pointer-events: all !important;
+                touch-action: manipulation !important;
+                z-index: 9999 !important;
+                position: absolute !important;
+                top: 8px !important;
+                right: 8px !important;
+                min-width: 32px !important;
+                min-height: 32px !important;
+            }
         }
         
         .btn-orange:hover:not(:disabled) {
@@ -408,7 +466,7 @@
             transform: translateY(-2px);
         }
     </style>
-<link rel="manifest" href="/klondike-solitaire-ai/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/klondike-solitaire-ai/registerSW.js"></script><link rel="manifest" href="/klondike-solitaire-ai/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/klondike-solitaire-ai/registerSW.js"></script></head>
+</head>
 <body>
     <button class="theme-toggle" onclick="safeGameCall('ui.toggleTheme')" title="Toggle theme" aria-label="Toggle color theme">🌓</button>
     <button class="sound-toggle" onclick="safeGameCall('ui.toggleSound')" title="Toggle sound" aria-label="Toggle sound effects">🔊</button>
@@ -540,57 +598,65 @@
         // Main game class
         class KlondikeSolitaire {
             constructor() {
-                this.initializeComponents();
-                this.setupEventListeners();
-                this.loadGameData();
-                this.ui.applyTheme();
-            }
-            
-            initializeComponents() {
                 this.constants = new GameConstants();
                 this.storage = new StorageManager();
+                this.memory = new MemoryManager(); // Memory optimization system
                 this.settings = new SettingsManager(this);
                 this.stats = new StatisticsManager(this);
                 this.achievements = new AchievementManager(this);
-                this.daily = new DailyChallenge(this);
                 this.sound = new SoundManager(this);
                 this.ui = new UIManager(this);
                 this.cards = new CardManager(this);
-                this.state = new GameState(this);
-                this.rules = new GameRules(this);
-                this.ai = new AIHintSystem(this);
                 this.input = new InputManager(this);
                 this.renderer = new RenderEngine(this);
-                this.ml = new MLManager(this); // Initialize ML system
-                
-                // Initialize new enhanced features
-                this.haptics = HapticManager;
-                this.particles = null; // Will be initialized when canvas is ready
-                
-                this.gameWon = false;
+                this.rules = new GameRules(this);
+                this.state = new GameState(this);
+                this.ai = new AIHintSystem(this);
+                this.daily = new DailyChallenge(this);
+                this.ml = new MLManager(this);
                 this.timer = null;
-                this.currentGameMode = 'normal';
+                this.gameWon = false;
+                this.currentGameMode = 'standard';
                 this.currentDifficulty = 'medium';
+                this.gameHistory = [];
+                this.redoHistory = [];
+                this.haptics = HapticManager;
             }
             
-            setupEventListeners() {
-                window.addEventListener('error', (e) => {
-                    console.error('Game error:', e.error);
+            undo() {
+                if (!this.gameHistory || this.gameHistory.length === 0) {
+                    console.log('No moves to undo');
+                    return;
+                }
+                
+                const prevState = this.gameHistory.pop();
+                if (!prevState) return;
+                
+                // Save current state to redo history before undoing
+                this.redoHistory.push({
+                    stock: this.state.stock.map(card => ({ ...card })),
+                    waste: this.state.waste.map(card => ({ ...card })),
+                    tableau: this.state.tableau.map(pile => pile.map(card => ({ ...card }))),
+                    foundations: Object.fromEntries(
+                        Object.entries(this.state.foundations).map(([suit, pile]) => 
+                            [suit, pile.map(card => ({ ...card }))]
+                        )
+                    ),
+                    gameStats: { ...this.state.gameStats }
                 });
                 
-                window.addEventListener('beforeunload', () => {
-                    this.cleanup();
-                });
-            }
-            
-            loadGameData() {
-                try {
-                    this.settings.loadSettings();
-                    this.stats.loadStatistics();
-                    this.achievements.loadAchievements();
-                } catch (error) {
-                    console.error('Error loading game data:', error);
-                }
+                // Restore previous state
+                this.state.stock = prevState.stock;
+                this.state.waste = prevState.waste;
+                this.state.tableau = prevState.tableau;
+                this.state.foundations = prevState.foundations;
+                this.state.gameStats = { ...prevState.gameStats };
+                this.state.hintCardId = null;
+                this.state.hoveredCard = null;
+                this.input.resetDragState();
+                
+                this.ui.updateUI();
+                this.renderer.render();
             }
             
             startGame(drawMode) {
@@ -638,56 +704,30 @@
                 }
             }
             
-            undo() {
-                const prevState = this.gameHistory.pop();
-                if (!prevState) return;
-                
-                // Save current state to redo history before undoing
-                this.redoHistory.push({
-                    stock: this.stock.map(card => ({ ...card })),
-                    waste: this.waste.map(card => ({ ...card })),
-                    tableau: this.tableau.map(pile => pile.map(card => ({ ...card }))),
-                    foundations: Object.fromEntries(
-                        Object.entries(this.foundations).map(([suit, pile]) => 
-                            [suit, pile.map(card => ({ ...card }))]
-                        )
-                    ),
-                    gameStats: { ...this.gameStats }
-                });
-                
-                // Restore previous state
-                this.stock = prevState.stock;
-                this.waste = prevState.waste;
-                this.tableau = prevState.tableau;
-                this.foundations = prevState.foundations;
-                this.gameStats = { ...prevState.gameStats };
-                this.hintCardId = null;
-                this.hoveredCard = null;
-                this.game.input.resetDragState();
-                
-                this.game.ui.updateUI();
-                this.game.renderer.render();
-            }
-            
             redo() {
+                if (!this.redoHistory || this.redoHistory.length === 0) {
+                    console.log('No moves to redo');
+                    return;
+                }
+                
                 const nextState = this.redoHistory.pop();
                 if (!nextState) return;
                 
                 // Save current state to undo history before redoing
-                this.saveGameState();
+                this.state.saveGameState();
                 
                 // Restore next state
-                this.stock = nextState.stock;
-                this.waste = nextState.waste;
-                this.tableau = nextState.tableau;
-                this.foundations = nextState.foundations;
-                this.gameStats = { ...nextState.gameStats };
-                this.hintCardId = null;
-                this.hoveredCard = null;
-                this.game.input.resetDragState();
+                this.state.stock = nextState.stock;
+                this.state.waste = nextState.waste;
+                this.state.tableau = nextState.tableau;
+                this.state.foundations = nextState.foundations;
+                this.state.gameStats = { ...nextState.gameStats };
+                this.state.hintCardId = null;
+                this.state.hoveredCard = null;
+                this.input.resetDragState();
                 
-                this.game.ui.updateUI();
-                this.game.renderer.render();
+                this.ui.updateUI();
+                this.renderer.render();
             }
             
             cleanup() {
@@ -944,7 +984,11 @@
                     
                     if (won) {
                         setTimeout(() => {
-                            this.game.achievements.checkAchievements();
+                            if (this.game.achievements && typeof this.game.achievements.checkAchievements === 'function') {
+                                this.game.achievements.checkAchievements();
+                            } else {
+                                console.warn('Achievements system not available');
+                            }
                         }, 1000);
                     }
                 } catch (error) {
@@ -1011,7 +1055,8 @@
                     }
                     
                     if (!this.achievements.perfectGame.unlocked && 
-                        this.game.gameWon && this.game.state.gameHistory.length === 0) {
+                        this.game.gameWon && 
+                        this.game.state.gameHistory && this.game.state.gameHistory.length === 0) {
                         this.unlockAchievement('perfectGame');
                     }
                     
@@ -1162,6 +1207,44 @@
                 try {
                     const notification = document.createElement('div');
                     
+                    // Create close button
+                    const closeButton = document.createElement('button');
+                    closeButton.innerHTML = '×';
+                    closeButton.className = 'close-btn';
+                    closeButton.style.cssText = `
+                        position: absolute !important;
+                        top: 8px !important;
+                        right: 8px !important;
+                        background: rgba(255, 255, 255, 0.8) !important;
+                        border: 2px solid rgba(0, 0, 0, 0.2) !important;
+                        border-radius: 50% !important;
+                        width: 32px !important;
+                        height: 32px !important;
+                        color: #333 !important;
+                        font-size: 18px !important;
+                        font-weight: bold !important;
+                        cursor: pointer !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        transition: all 0.2s ease !important;
+                        z-index: 9999 !important;
+                        pointer-events: all !important;
+                        touch-action: manipulation !important;
+                    `;
+                    
+                    closeButton.addEventListener('mouseenter', () => {
+                        closeButton.style.background = 'rgba(255, 99, 99, 0.9) !important';
+                        closeButton.style.color = 'white !important';
+                        closeButton.style.transform = 'scale(1.1) !important';
+                    });
+                    
+                    closeButton.addEventListener('mouseleave', () => {
+                        closeButton.style.background = 'rgba(255, 255, 255, 0.8) !important';
+                        closeButton.style.color = '#333 !important';
+                        closeButton.style.transform = 'scale(1) !important';
+                    });
+                    
                     if (type === 'error') {
                         notification.className = 'error-message';
                         notification.style.cssText = `
@@ -1171,7 +1254,7 @@
                             transform: translateX(-50%) scale(1);
                             background: linear-gradient(135deg, #ef4444, #dc2626);
                             color: white;
-                            padding: 15px 25px;
+                            padding: 15px 35px 15px 25px;
                             border-radius: 10px;
                             font-weight: bold;
                             z-index: 2000;
@@ -1184,20 +1267,24 @@
                         notification.className = 'hint-notification';
                         notification.style.cssText = `
                             position: fixed;
-                            top: 50%;
+                            top: 5%;
                             left: 50%;
-                            transform: translate(-50%, -50%) scale(1);
+                            transform: translateX(-50%) scale(1);
                             background: linear-gradient(135deg, #1f2937, #374151);
                             color: white;
-                            padding: 20px;
+                            padding: 20px 40px 20px 20px;
                             border-radius: 15px;
                             font-weight: normal;
                             font-size: 14px;
                             box-shadow: 0 10px 30px rgba(0,0,0,0.4);
                             z-index: 2000;
-                            max-width: 90vw;
+                            max-width: 95vw;
+                            max-height: 90vh;
+                            width: auto;
+                            min-width: 300px;
                             border: 2px solid #4ade80;
                             animation: notificationPop 0.5s ease-out;
+                            overflow-y: auto;
                         `;
                     } else {
                         notification.className = 'notification';
@@ -1208,7 +1295,7 @@
                             transform: translate(-50%, -50%) scale(1);
                             background: linear-gradient(135deg, #ffd700, #ffed4e);
                             color: #333;
-                            padding: 20px 30px;
+                            padding: 20px 40px 20px 30px;
                             border-radius: 15px;
                             font-weight: bold;
                             font-size: 18px;
@@ -1220,24 +1307,69 @@
                         `;
                     }
                     
-                    notification.innerHTML = message;
-                    document.body.appendChild(notification);
-                    notification.offsetHeight;
+                    // Create content wrapper
+                    const contentDiv = document.createElement('div');
+                    contentDiv.innerHTML = message;
                     
-                    setTimeout(() => {
+                    // Function to close notification
+                    const closeNotification = () => {
                         try {
                             if (notification && notification.parentNode) {
                                 notification.style.transform = notification.style.transform.replace('scale(1)', 'scale(0)');
+                                
+                                // Also fade out backdrop if it exists
+                                if (notification.backdrop && notification.backdrop.parentNode) {
+                                    notification.backdrop.style.opacity = '0';
+                                }
+                                
                                 setTimeout(() => {
                                     if (notification && notification.parentNode) {
                                         document.body.removeChild(notification);
+                                    }
+                                    if (notification.backdrop && notification.backdrop.parentNode) {
+                                        document.body.removeChild(notification.backdrop);
                                     }
                                 }, 300);
                             }
                         } catch (removeError) {
                             console.warn('Error removing notification:', removeError);
                         }
-                    }, duration);
+                    };
+                    
+                    closeButton.addEventListener('click', closeNotification);
+                    
+                    // Add backdrop for modal-like notifications
+                    if (type === 'hint' || type === 'achievement') {
+                        const backdrop = document.createElement('div');
+                        backdrop.style.cssText = `
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 100%;
+                            background: rgba(0, 0, 0, 0.5);
+                            z-index: 1999;
+                        `;
+                        backdrop.addEventListener('click', closeNotification);
+                        document.body.appendChild(backdrop);
+                        
+                        // Store backdrop reference for cleanup
+                        notification.backdrop = backdrop;
+                    }
+                    
+                    // Assemble notification
+                    notification.appendChild(closeButton);
+                    notification.appendChild(contentDiv);
+                    document.body.appendChild(notification);
+                    notification.offsetHeight;
+                    
+                    // Auto-close timer
+                    const autoCloseTimer = setTimeout(closeNotification, duration);
+                    
+                    // Cancel auto-close if user closes manually
+                    closeButton.addEventListener('click', () => {
+                        clearTimeout(autoCloseTimer);
+                    });
                     
                 } catch (error) {
                     console.error('Error showing notification:', error);
@@ -1280,6 +1412,10 @@
                     case 'light':
                         body.classList.add('light-theme');
                         document.querySelector('.theme-toggle').textContent = '☀️';
+                        break;
+                    case 'blue':
+                        body.classList.add('blue-theme');
+                        document.querySelector('.theme-toggle').textContent = '🌊';
                         break;
                     default:
                         document.querySelector('.theme-toggle').textContent = '🌓';
@@ -1357,8 +1493,8 @@
                     document.getElementById('time').textContent = 
                         `${minutes}:${seconds.toString().padStart(2, '0')}`;
                     document.getElementById('score').textContent = this.game.state.gameStats.score;
-                    document.getElementById('undoBtn').disabled = this.game.state.gameHistory.length === 0;
-                    document.getElementById('redoBtn').disabled = this.game.state.redoHistory.length === 0;
+                    document.getElementById('undoBtn').disabled = this.game.gameHistory.length === 0;
+                    document.getElementById('redoBtn').disabled = this.game.redoHistory.length === 0;
                     
                     this.updateProgressBar();
                     this.updateWinProbability();
@@ -1389,6 +1525,50 @@
                 `, 'win', 10000);
                 
                 this.game.sound.play('victory');
+            }
+            
+            showDeadlockModal() {
+                const minutes = Math.floor(this.game.state.gameStats.time / 60);
+                const seconds = this.game.state.gameStats.time % 60;
+                const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                // Get deadlock analysis if available
+                let analysisContent = '';
+                if (this.game.ml && this.game.ml.lastDeadlockAnalysis) {
+                    const analysis = this.game.ml.lastDeadlockAnalysis;
+                    analysisContent = `
+                        <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; margin: 10px 0; text-align: left;">
+                            <h4 style="margin: 0 0 8px 0; color: #fbbf24;">🔍 AI Analysis</h4>
+                            <div style="margin-bottom: 6px;"><strong>Primary Cause:</strong> ${this.formatDeadlockCause(analysis.primaryCause)}</div>
+                            <div style="color: #a78bfa; font-style: italic; font-size: 13px;">💡 ${analysis.suggestion}</div>
+                            ${analysis.criticalMovePoint ? `<div style="font-size: 12px; color: #ef4444; margin-top: 4px;">⚠️ Critical point around move ${analysis.criticalMovePoint}</div>` : ''}
+                            ${analysis.stockCycles > 2 ? `<div style="font-size: 12px; color: #f59e0b; margin-top: 4px;">🔄 Stock cycled ${analysis.stockCycles} times</div>` : ''}
+                        </div>
+                    `;
+                }
+                
+                this.showNotification(`
+                    <h2>🚫 Game Deadlocked</h2>
+                    <p>No more moves are available. Your game has been recorded for AI learning.</p>
+                    <div style="background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; margin: 10px 0;">
+                        <strong>Final Stats:</strong><br>
+                        Time: ${timeStr} | Moves: ${this.game.state.gameStats.moves} | Score: ${this.game.state.gameStats.score}
+                    </div>
+                    ${analysisContent}
+                    <button class="btn-green" onclick="if(window.game && game.ui) game.ui.backToMenu(); else location.reload();" style="margin-top: 15px; padding: 10px 20px;">New Game</button>
+                `, 'error', 15000);
+                
+                console.log('🧠 Deadlock recorded for AI learning');
+            }
+            
+            formatDeadlockCause(cause) {
+                const causes = {
+                    'excessive_stock_cycling': 'Too many stock cycles',
+                    'suboptimal_mid_game_decisions': 'Poor mid-game decisions', 
+                    'unfavorable_initial_deal': 'Challenging initial deal',
+                    'analysis_error': 'Could not analyze'
+                };
+                return causes[cause] || cause;
             }
             
             showDailyChallenge() {
@@ -1713,55 +1893,112 @@
                         Math.round((foundationCards / this.game.state.gameStats.moves) * 100) : 0;
                     
                     const message = `
-                        <div style="text-align: left; line-height: 1.6; font-size: 14px; max-width: 550px;">
-                            <div style="font-size: 20px; font-weight: bold; margin-bottom: 20px; text-align: center;">
-                                ${aiIcon} Advanced AI Complete Analysis
+                        <div style="text-align: left; line-height: 1.5; font-size: 13px; max-width: 700px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div style="grid-column: 1 / -1; font-size: 18px; font-weight: bold; margin-bottom: 15px; text-align: center;">
+                                ${aiIcon} AI Complete Analysis
                             </div>
                             
-                            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                                <strong>🎯 Win Probability</strong><br>
-                                <div style="background: #374151; border-radius: 10px; height: 20px; margin: 8px 0; position: relative;">
-                                    <div style="background: linear-gradient(90deg, #ef4444, #f59e0b, #4ade80); width: ${Math.round(analysis.winProbability * 100)}%; height: 100%; border-radius: 10px; transition: width 0.5s ease;"></div>
-                                    <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; color: white; font-size: 12px;">
-                                        ${Math.round(analysis.winProbability * 100)}%
-                                    </span>
+                            <!-- Left Column -->
+                            <div>
+                                <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                                    <strong>🎯 Win Probability: ${Math.round(analysis.winProbability * 100)}%</strong><br>
+                                    <div style="background: #374151; border-radius: 8px; height: 16px; margin-top: 6px; position: relative;">
+                                        <div style="background: linear-gradient(90deg, #ef4444, #f59e0b, #4ade80); width: ${Math.round(analysis.winProbability * 100)}%; height: 100%; border-radius: 8px;"></div>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                                <strong>📊 Game Metrics</strong><br>
-                                <div style="margin-top: 8px; font-size: 13px; line-height: 1.4;">
-                                    • Progress: ${foundationCards}/52 cards (${Math.round((foundationCards/52)*100)}%)<br>
-                                    • Hidden cards: ${blockedCards}<br>
-                                    • Empty spaces: ${emptySpaces}<br>
-                                    • Move efficiency: ${moveEfficiency}% (cards per move)<br>
-                                    • Difficulty: <span class="difficulty-indicator diff-${analysis.difficulty}">${analysis.difficulty.toUpperCase()}</span>
+                                
+                                <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                                    <strong>📊 Game Metrics</strong><br>
+                                    <div style="font-size: 12px; margin-top: 6px;">
+                                        Progress: ${foundationCards}/52 (${Math.round((foundationCards/52)*100)}%) | Hidden: ${blockedCards}<br>
+                                        Empty spaces: ${emptySpaces} | Efficiency: ${moveEfficiency}%<br>
+                                        Difficulty: <span class="difficulty-indicator diff-${analysis.difficulty}">${analysis.difficulty.toUpperCase()}</span>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            ${stockAnalysis}
-                            ${hiddenCardAnalysis}
-                            
-                            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                                <strong>🎯 Top AI Move Recommendations</strong><br>
-                                <div style="margin-top: 8px; font-size: 13px; line-height: 1.4;">
-                                    ${moveAnalysis}
+                                
+                                <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                                    <strong>🎯 Top Moves</strong><br>
+                                    <div style="font-size: 12px; margin-top: 6px; line-height: 1.3;">
+                                        ${moves && moves.length > 0 ? moves.slice(0, 3).map((move, i) => {
+                                            const score = move.aiScore !== undefined ? Math.round(move.aiScore) : Math.round((move.priority / 20) * 100);
+                                            return `${i + 1}. ${move.description} (${score}${move.aiScore !== undefined ? 'pts' : '%'})`;
+                                        }).join('<br>') : 'No immediate moves - check stock'}
+                                    </div>
                                 </div>
+                                
+                                ${analysis.stockRecommendation ? `
+                                <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px;">
+                                    <strong>📚 Stock Strategy</strong><br>
+                                    <div style="font-size: 12px; margin-top: 6px;">
+                                        <span style="color: ${analysis.stockRecommendation.shouldDraw ? '#4ade80' : '#f59e0b'};">
+                                            ${analysis.stockRecommendation.shouldDraw ? '✅ Draw' : '⏸️ Wait'}
+                                        </span> - ${analysis.stockRecommendation.reason}<br>
+                                        ${analysis.stockRecommendation.upcomingCards ? `Next: ${analysis.stockRecommendation.upcomingCards.slice(0,3).join(', ')}` : ''}
+                                    </div>
+                                </div>
+                                ` : ''}
                             </div>
                             
-                            ${learningProgress}
-                            ${strategicInsights}
-                            ${webAIInsights}
-                            ${neuralWeights}
+                            <!-- Right Column -->
+                            <div>
+                                ${analysis.hiddenCardInsights && analysis.hiddenCardInsights.insights.length > 0 ? `
+                                <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                                    <strong>🔍 Hidden Cards (${analysis.hiddenCardInsights.count})</strong><br>
+                                    <div style="font-size: 12px; margin-top: 6px; line-height: 1.3;">
+                                        Value: ${analysis.hiddenCardInsights.totalValue}<br>
+                                        ${analysis.hiddenCardInsights.insights.slice(0, 3).map(insight => `• ${insight}`).join('<br>')}
+                                    </div>
+                                </div>
+                                ` : ''}
+                                
+                                ${analysis.learningInsights ? `
+                                <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                                    <strong>🧠 AI Learning</strong><br>
+                                    <div style="font-size: 12px; margin-top: 6px;">
+                                        Database: ${analysis.learningInsights.totalLearningData} wins<br>
+                                        Similar positions: ${analysis.learningInsights.similarWinningGames}<br>
+                                        Confidence boost: +${Math.round(analysis.learningInsights.confidenceBoost * 100)}%
+                                    </div>
+                                </div>
+                                ` : ''}
+                                
+                                ${analysis.strategicInsights && analysis.strategicInsights.length > 0 ? `
+                                <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                                    <strong>🎯 Strategic Insights</strong><br>
+                                    <div style="font-size: 12px; margin-top: 6px; line-height: 1.3;">
+                                        ${analysis.strategicInsights.slice(0, 3).map(insight => `• ${insight}`).join('<br>')}
+                                    </div>
+                                </div>
+                                ` : ''}
+                                
+                                ${analysis.webAIInsights ? `
+                                <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                                    <strong>🌐 External AI</strong><br>
+                                    <div style="font-size: 12px; margin-top: 6px;">
+                                        Confidence: ${Math.round(analysis.webAIInsights.confidence * 100)}%<br>
+                                        Risk: ${analysis.webAIInsights.riskAssessment}
+                                    </div>
+                                </div>
+                                ` : ''}
+                                
+                                ${analysis.neuralWeights && mlAvailable ? `
+                                <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px;">
+                                    <strong>🧮 Neural Weights</strong><br>
+                                    <div style="font-size: 11px; margin-top: 4px; opacity: 0.8;">
+                                        F:${analysis.neuralWeights.foundationValue.toFixed(1)} S:${analysis.neuralWeights.sequenceValue.toFixed(1)} 
+                                        R:${analysis.neuralWeights.revealValue.toFixed(1)} E:${analysis.neuralWeights.emptySpaceValue.toFixed(1)}
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
                             
-                            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;">
-                                <strong>💭 AI Strategic Recommendation</strong><br>
+                            <div style="grid-column: 1 / -1; background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; margin-top: 8px;">
+                                <strong>💭 AI Recommendation:</strong><br>
                                 <span style="color: #a78bfa; font-style: italic;">${analysis.recommendation}</span>
                             </div>
                             
-                            <div style="text-align: center; margin-top: 15px; font-size: 12px; opacity: 0.7;">
-                                <strong>Analysis powered by:</strong> ${aiMode}<br>
-                                <small>${aiStatus}</small>
+                            <div style="grid-column: 1 / -1; text-align: center; font-size: 11px; opacity: 0.7; margin-top: 8px;">
+                                <strong>Powered by:</strong> ${aiMode}
                             </div>
                         </div>
                     `;
@@ -1857,16 +2094,40 @@
                 this.tableau = Array.from({ length: 7 }, () => []);
                 this.foundations = { '♠': [], '♥': [], '♦': [], '♣': [] };
                 this.gameStats = { moves: 0, time: 0, score: 0 };
-                this.gameHistory = [];
-                this.redoHistory = []; // Add redo history
                 this.hintCardId = null;
                 this.hoveredCard = null;
+            }
+            
+            saveGameState() {
+                if (!this.game.gameHistory) {
+                    this.game.gameHistory = [];
+                }
+                
+                // Create a deep copy of the current state
+                const currentState = {
+                    stock: this.stock.map(card => ({ ...card })),
+                    waste: this.waste.map(card => ({ ...card })),
+                    tableau: this.tableau.map(pile => pile.map(card => ({ ...card }))),
+                    foundations: Object.fromEntries(
+                        Object.entries(this.foundations).map(([suit, pile]) => 
+                            [suit, pile.map(card => ({ ...card }))]
+                        )
+                    ),
+                    gameStats: { ...this.gameStats }
+                };
+                
+                // Add to history
+                this.game.gameHistory.push(currentState);
+                
+                // Limit history size
+                if (this.game.gameHistory.length > this.game.constants.MAX_HISTORY_SIZE) {
+                    this.game.gameHistory.shift();
+                }
             }
             
             initializeGame() {
                 try {
                     this.gameStats = { moves: 0, time: 0, score: 0 };
-                    this.gameHistory = [];
                     this.hintCardId = null;
                     this.game.gameWon = false;
                     this.hoveredCard = null;
@@ -1889,22 +2150,15 @@
                     this.waste = [];
                     this.foundations = { '♠': [], '♥': [], '♦': [], '♣': [] };
                     
+                    // Clear game history when starting a new game
+                    this.game.gameHistory = [];
+                    this.game.redoHistory = [];
+                    
                     if (this.game.settings.data.scoringMode === 'vegas') {
                         this.gameStats.score = -52;
-                    } else {
-                        this.gameStats.score = this.tableau.reduce((score, pile) => {
-                            return score + (pile.length > 0 && pile[pile.length - 1].faceUp ? 5 : 0);
-                        }, 0);
                     }
                     
-                    if (this.game.currentGameMode !== 'restored') {
-                        this.game.stats.data.gamesPlayed++;
-                        this.game.stats.saveStatistics();
-                    }
-                    
-                    this.game.ui.updateUI();
-                    this.game.renderer.render();
-                    this.startTimer();
+                    this.saveGameState(); // Save initial state
                 } catch (error) {
                     console.error('Error initializing game:', error);
                 }
@@ -1920,43 +2174,6 @@
                     
                     this.game.ui.updateUI();
                 }, 1000);
-            }
-            
-            saveGameState() {
-                if (this.gameHistory.length >= this.game.constants.MAX_HISTORY_SIZE) {
-                    this.gameHistory.shift();
-                }
-                
-                // Clear redo history when making a new move
-                this.redoHistory = [];
-                
-                this.gameHistory.push({
-                    stock: this.stock.map(card => ({ ...card })),
-                    waste: this.waste.map(card => ({ ...card })),
-                    tableau: this.tableau.map(pile => pile.map(card => ({ ...card }))),
-                    foundations: Object.fromEntries(
-                        Object.entries(this.foundations).map(([suit, pile]) => 
-                            [suit, pile.map(card => ({ ...card }))]
-                        )
-                    ),
-                    gameStats: { ...this.gameStats }
-                });
-            }
-            
-            undo() {
-                try {
-                    this.state.undo();
-                } catch (error) {
-                    console.error('Error undoing move:', error);
-                }
-            }
-            
-            redo() {
-                try {
-                    this.state.redo();
-                } catch (error) {
-                    console.error('Error redoing move:', error);
-                }
             }
             
             updateScore(action) {
@@ -1999,6 +2216,7 @@
             checkWinCondition() {
                 const totalFoundationCards = Object.values(this.foundations)
                     .reduce((sum, pile) => sum + pile.length, 0);
+                
                 if (totalFoundationCards === 52 && !this.game.gameWon) {
                     this.game.gameWon = true;
                     if (this.game.timer) clearInterval(this.game.timer);
@@ -2021,7 +2239,7 @@
                     // Record game completion for advanced ML learning
                     if (this.game.ml && !this.game.ml.isDisposed) {
                         try {
-                            const allMoves = this.gameHistory.map(state => ({
+                            const allMoves = this.game.gameHistory.map(state => ({
                                 type: 'game_state',
                                 gameStats: state.gameStats,
                                 timestamp: Date.now()
@@ -2043,7 +2261,204 @@
                     }, 500);
                     
                     this.game.ui.updateUI();
+                } else {
+                    // Check for deadlock condition
+                    this.checkDeadlockCondition();
                 }
+            }
+            
+            checkDeadlockCondition() {
+                if (this.game.gameWon) return; // Already won, no need to check
+                
+                // Get all possible moves
+                const possibleMoves = this.game.ai.findAllPossibleMoves();
+                
+                console.log(`🔍 Deadlock Check: Found ${possibleMoves.length} possible moves`);
+                if (possibleMoves.length > 0) {
+                    console.log(`🔍 Available moves: ${possibleMoves.map(m => m.description).join(', ')}`);
+                }
+                
+                // True deadlock: no moves available at all (including stock moves)
+                if (possibleMoves.length === 0) {
+                    this.handleDeadlock();
+                    return;
+                }
+                
+                // Advanced deadlock detection: Check for infinite cycling
+                const nonStockMoves = possibleMoves.filter(move => 
+                    move.type !== 'stock-draw' && move.type !== 'stock-reset'
+                );
+                
+                // If only stock moves are available, check for cycling patterns
+                if (nonStockMoves.length === 0 && possibleMoves.length > 0) {
+                    // Only stock cycling moves available - check if we're in a cycle
+                    if (this.detectStockCycling()) {
+                        console.log('🚫 Detected stock cycling deadlock!');
+                        this.handleDeadlock();
+                    }
+                }
+            }
+            
+            detectStockCycling() {
+                // Track recent game states to detect cycling
+                if (!this.cycleDetectionHistory) {
+                    this.cycleDetectionHistory = [];
+                }
+                
+                // Create a signature of the current game state (simplified)
+                const currentSignature = this.createGameStateSignature();
+                
+                // Add current state to history
+                this.cycleDetectionHistory.push({
+                    signature: currentSignature,
+                    timestamp: Date.now()
+                });
+                
+                // Keep only recent history (last 20 states)
+                if (this.cycleDetectionHistory.length > 20) {
+                    this.cycleDetectionHistory.shift();
+                }
+                
+                // Check for repeated states (indicating cycling)
+                const recentStates = this.cycleDetectionHistory.slice(-10); // Check last 10 states
+                const signatureCount = {};
+                
+                recentStates.forEach(state => {
+                    signatureCount[state.signature] = (signatureCount[state.signature] || 0) + 1;
+                });
+                
+                // If any state signature appears 3+ times in recent history, it's likely cycling
+                const maxRepeats = Math.max(...Object.values(signatureCount));
+                return maxRepeats >= 3;
+            }
+            
+            createGameStateSignature() {
+                // Create a simplified signature of the game state to detect cycles
+                const tableauTops = this.tableau.map(pile => {
+                    if (pile.length === 0) return 'empty';
+                    const topCard = pile[pile.length - 1];
+                    return topCard.faceUp ? `${topCard.value}${topCard.suit}` : 'hidden';
+                });
+                
+                const wasteTop = this.waste.length > 0 ? 
+                    `${this.waste[this.waste.length - 1].value}${this.waste[this.waste.length - 1].suit}` : 'empty';
+                
+                const foundationLengths = Object.values(this.foundations).map(pile => pile.length);
+                
+                return `T:${tableauTops.join(',')}|W:${wasteTop}|F:${foundationLengths.join(',')}|S:${this.stock.length}`;
+            }
+            
+            handleDeadlock() {
+                console.log('🚫 Deadlock detected!');
+                
+                if (this.game.timer) clearInterval(this.game.timer);
+                
+                // Record deadlock for ML learning
+                if (this.game.ml && !this.game.ml.isDisposed) {
+                    try {
+                        const gameHistory = this.game.gameHistory.map(state => ({
+                            type: 'game_state',
+                            gameStats: state.gameStats,
+                            timestamp: Date.now()
+                        }));
+                        
+                        // Analyze where the user went wrong
+                        const analysis = this.analyzeDeadlockCause(gameHistory);
+                        
+                        // Record the deadlock as a loss for learning
+                        this.game.ml.recordGameOutcome(this, gameHistory, false, {
+                            reason: 'deadlock',
+                            analysis: analysis,
+                            finalState: {
+                                foundationCards: Object.values(this.foundations).reduce((sum, pile) => sum + pile.length, 0),
+                                hiddenCards: this.tableau.reduce((sum, pile) => sum + pile.filter(c => !c.faceUp).length, 0),
+                                stockRemaining: this.stock.length,
+                                wasteCards: this.waste.length
+                            }
+                        });
+                        
+                        console.log('🧠 Recorded deadlock for AI learning with analysis:', analysis);
+                    } catch (mlError) {
+                        console.warn('Error recording deadlock for ML:', mlError);
+                    }
+                }
+                
+                // Update statistics
+                this.game.stats.updateGameStatistics(false);
+                
+                // Show deadlock notification
+                setTimeout(() => {
+                    this.game.ui.showDeadlockModal();
+                }, 500);
+            }
+            
+            analyzeDeadlockCause(gameHistory) {
+                try {
+                    const analysis = {
+                        criticalMovePoint: null,
+                        missedOpportunities: [],
+                        suboptimalMoves: [],
+                        stockCycles: 0,
+                        foundationMissedMoves: 0
+                    };
+                    
+                    // Analyze game history to find critical decisions
+                    for (let i = 0; i < gameHistory.length; i++) {
+                        const state = gameHistory[i];
+                        
+                        // Count stock cycles (going through waste pile)
+                        if (i > 0 && state.gameStats.moves > gameHistory[i-1].gameStats.moves) {
+                            // This was a move, check if it was drawing from empty stock
+                            if (gameHistory[i-1].stock && gameHistory[i-1].stock.length === 0 && 
+                                state.stock && state.stock.length > 0) {
+                                analysis.stockCycles++;
+                            }
+                        }
+                        
+                        // Look for missed foundation opportunities
+                        // (This would require more complex analysis of what cards were available)
+                        
+                        // Identify potential critical decision points
+                        // Points where multiple high-value moves were available
+                        if (i > 2 && i < gameHistory.length - 5) {
+                            // This is a potential critical decision point
+                            const progressBefore = this.calculateGameProgress(gameHistory[i-1]);
+                            const progressAfter = this.calculateGameProgress(gameHistory[i+3]);
+                            
+                            if (progressAfter - progressBefore < 0.1) { // Low progress made
+                                analysis.criticalMovePoint = i;
+                            }
+                        }
+                    }
+                    
+                    // Determine primary cause
+                    if (analysis.stockCycles > 3) {
+                        analysis.primaryCause = 'excessive_stock_cycling';
+                        analysis.suggestion = 'Try to focus on tableau moves and foundation building before cycling through the stock multiple times.';
+                    } else if (analysis.criticalMovePoint) {
+                        analysis.primaryCause = 'suboptimal_mid_game_decisions';
+                        analysis.suggestion = `Critical decisions around move ${gameHistory[analysis.criticalMovePoint].gameStats.moves} may have limited future options.`;
+                    } else {
+                        analysis.primaryCause = 'unfavorable_initial_deal';
+                        analysis.suggestion = 'This deal may have been particularly challenging. Focus on uncovering hidden cards early.';
+                    }
+                    
+                    return analysis;
+                } catch (error) {
+                    console.warn('Error analyzing deadlock cause:', error);
+                    return { primaryCause: 'analysis_error', suggestion: 'Unable to analyze the cause of deadlock.' };
+                }
+            }
+            
+            calculateGameProgress(state) {
+                if (!state || !state.gameStats) return 0;
+                
+                // Simple progress metric based on foundations and exposed cards
+                const foundationProgress = Object.values(state.foundations || {})
+                    .reduce((sum, pile) => sum + pile.length, 0) / 52;
+                const moveEfficiency = Math.min(state.gameStats.score / (state.gameStats.moves || 1), 1);
+                
+                return foundationProgress * 0.7 + moveEfficiency * 0.3;
             }
             
             saveToLocalStorage() {
@@ -2389,6 +2804,7 @@
                 moves.push(...this.findFoundationMoves());
                 moves.push(...this.findTableauMoves());
                 moves.push(...this.findWasteMoves());
+                moves.push(...this.findStockMoves());
                 
                 return moves;
             }
@@ -2396,37 +2812,89 @@
             findFoundationMoves() {
                 const moves = [];
                 
+                // Check waste pile
                 if (this.game.state.waste.length > 0) {
                     const topCard = this.game.state.waste[this.game.state.waste.length - 1];
                     if (this.game.rules.canPlaceOnFoundation(topCard)) {
+                        let priority = 10 + topCard.value;
+                        
+                        // Extra priority for breaking deadlocks (6s that can move to foundation)
+                        if (topCard.value === 6 && this.hasLateralMovesSixOrFive()) {
+                            priority += 15;
+                        }
+                        
                         moves.push({
                             type: 'foundation',
                             cardId: topCard.id,
                             card: topCard,
-                            priority: 10 + topCard.value,
+                            priority: priority,
                             description: `Move ${topCard.rank}${topCard.suit} to foundation`
                         });
                     }
                 }
                 
+                // Check tableau piles
                 for (let i = 0; i < this.game.state.tableau.length; i++) {
                     const pile = this.game.state.tableau[i];
                     if (pile.length > 0) {
                         const topCard = pile[pile.length - 1];
                         if (topCard.faceUp && this.game.rules.canPlaceOnFoundation(topCard)) {
-                            const willReveal = pile.length > 1 && !pile[pile.length - 2].faceUp;
+                            const willReveal = pile.length > 1 && pile[pile.length - 2] && !pile[pile.length - 2].faceUp;
+                            let priority = 10 + topCard.value + (willReveal ? 5 : 0);
+                            
+                            // Extra priority for breaking deadlocks (6s that can move to foundation)
+                            if (topCard.value === 6 && this.hasLateralMovesSixOrFive()) {
+                                priority += 15;
+                                console.log(`🎯 Found 6 that can break deadlock: ${topCard.rank}${topCard.suit}`);
+                            }
+                            
                             moves.push({
                                 type: 'foundation',
                                 cardId: topCard.id,
                                 card: topCard,
-                                priority: 10 + topCard.value + (willReveal ? 5 : 0),
-                                description: `Move ${topCard.rank}${topCard.suit} to foundation${willReveal ? ' (reveals card)' : ''}`
+                                priority: priority,
+                                description: `Move ${topCard.rank}${topCard.suit} to foundation${willReveal ? ' (reveals card)' : ''}${topCard.value === 6 && this.hasLateralMovesSixOrFive() ? ' (breaks deadlock!)' : ''}`
                             });
                         }
                     }
                 }
                 
                 return moves;
+            }
+            
+            hasLateralMovesSixOrFive() {
+                // Check if there are 5s or 6s that can move between multiple black 6s (deadlock pattern)
+                let blackSixes = 0;
+                let redFives = 0;
+                
+                // Count black 6s and red 5s that can move laterally
+                for (let i = 0; i < this.game.state.tableau.length; i++) {
+                    const pile = this.game.state.tableau[i];
+                    if (pile.length > 0) {
+                        const topCard = pile[pile.length - 1];
+                        if (topCard.faceUp) {
+                            // Count black 6s on tableau
+                            if (topCard.value === 6 && (topCard.suit === '♠' || topCard.suit === '♣')) {
+                                blackSixes++;
+                            }
+                            // Count red 5s that could move between them
+                            if (topCard.value === 5 && (topCard.suit === '♥' || topCard.suit === '♦')) {
+                                redFives++;
+                            }
+                        }
+                    }
+                }
+                
+                // Also check waste for red 5s
+                if (this.game.state.waste.length > 0) {
+                    const wasteCard = this.game.state.waste[this.game.state.waste.length - 1];
+                    if (wasteCard.value === 5 && (wasteCard.suit === '♥' || wasteCard.suit === '♦')) {
+                        redFives++;
+                    }
+                }
+                
+                // Deadlock pattern: multiple black 6s with red 5s that can bounce between them
+                return blackSixes >= 2 && redFives >= 1;
             }
             
             findTableauMoves() {
@@ -2483,14 +2951,160 @@
                 return moves;
             }
             
+            findStockMoves() {
+                const moves = [];
+                
+                // Check if we can draw from stock (stock has cards) or reset waste to stock (stock empty but waste has cards)
+                if (this.game.state.stock.length > 0) {
+                    moves.push({
+                        type: 'stock-draw',
+                        cardId: null,
+                        card: null,
+                        priority: 1, // Low priority, but still a valid move
+                        description: 'Draw card(s) from stock'
+                    });
+                } else if (this.game.state.waste.length > 0) {
+                    moves.push({
+                        type: 'stock-reset',
+                        cardId: null,
+                        card: null,
+                        priority: 1, // Low priority, but still a valid move
+                        description: 'Reset waste pile to stock'
+                    });
+                }
+                
+                return moves;
+            }
+            
             prioritizeMoves(moves) {
-                return moves.sort((a, b) => {
-                    if (a.priority !== b.priority) {
-                        return b.priority - a.priority;
+                // Check for deadlock patterns (lateral moves)
+                const lateralMoves = this.detectLateralMoves(moves);
+                
+                // Enhanced prioritization
+                const prioritizedMoves = moves.map(move => {
+                    let enhancedPriority = move.priority;
+                    
+                    // Heavily prioritize foundation moves
+                    if (move.type === 'foundation') {
+                        enhancedPriority += 20;
+                        
+                        // Special priority for foundation moves that break deadlocks
+                        if (this.isFoundationMoveBreaksDeadlock(move)) {
+                            enhancedPriority += 10;
+                        }
                     }
                     
-                    const typeOrder = { foundation: 4, tableau: 2, 'waste-to-tableau': 1 };
+                    // Penalize lateral moves (moves that don't advance game state)
+                    if (lateralMoves.includes(move)) {
+                        enhancedPriority -= 15;
+                    }
+                    
+                    // Check if move creates meaningful progress
+                    if (this.createsMeaningfulProgress(move)) {
+                        enhancedPriority += 5;
+                    }
+                    
+                    // Penalize repetitive patterns
+                    if (this.isRepetitiveMove(move)) {
+                        enhancedPriority -= 10;
+                    }
+                    
+                    return { ...move, enhancedPriority };
+                });
+                
+                return prioritizedMoves.sort((a, b) => {
+                    if (a.enhancedPriority !== b.enhancedPriority) {
+                        return b.enhancedPriority - a.enhancedPriority;
+                    }
+                    
+                    // Secondary sort by type
+                    const typeOrder = { foundation: 4, tableau: 2, 'waste-to-tableau': 1, 'stock-draw': 0.5, 'stock-reset': 0.5 };
                     return (typeOrder[b.type] || 0) - (typeOrder[a.type] || 0);
+                });
+            }
+            
+            detectLateralMoves(moves) {
+                const lateralMoves = [];
+                
+                // Look for cards that can move between multiple tableau positions
+                const cardTargets = new Map();
+                
+                moves.forEach(move => {
+                    if (move.type === 'tableau' && move.card) {
+                        const cardKey = `${move.card.value}-${move.card.suit}`;
+                        if (!cardTargets.has(cardKey)) {
+                            cardTargets.set(cardKey, []);
+                        }
+                        cardTargets.get(cardKey).push(move);
+                    }
+                });
+                
+                // Identify cards with multiple possible placements (potential lateral moves)
+                cardTargets.forEach((movesForCard, cardKey) => {
+                    if (movesForCard.length > 1) {
+                        // These are potential lateral moves - add penalty
+                        lateralMoves.push(...movesForCard);
+                    }
+                });
+                
+                return lateralMoves;
+            }
+            
+            isFoundationMoveBreaksDeadlock(move) {
+                if (move.type !== 'foundation' || !move.card) return false;
+                
+                // Check if this foundation move would free up cards for other foundation moves
+                const cardValue = move.card.value;
+                const cardSuit = move.card.suit;
+                
+                // Look for cards that could benefit from this foundation move
+                for (let i = 0; i < this.game.state.tableau.length; i++) {
+                    const pile = this.game.state.tableau[i];
+                    for (let j = 0; j < pile.length; j++) {
+                        const card = pile[j];
+                        if (card.faceUp && card.suit === cardSuit && card.value === cardValue + 1) {
+                            // This foundation move would enable the next card in sequence
+                            return true;
+                        }
+                    }
+                }
+                
+                return false;
+            }
+            
+            createsMeaningfulProgress(move) {
+                if (!move.card) return false;
+                
+                // Foundation moves always create meaningful progress
+                if (move.type === 'foundation') return true;
+                
+                // Moving Kings to empty spaces is meaningful
+                if (move.card.value === 13 && move.description && move.description.includes('empty space')) {
+                    return true;
+                }
+                
+                // Moves that reveal hidden cards are meaningful
+                if (move.description && move.description.includes('reveals card')) {
+                    return true;
+                }
+                
+                return false;
+            }
+            
+            isRepetitiveMove(move) {
+                // Simple check for recently made similar moves
+                // This could be enhanced with move history tracking
+                if (!this.game.state.gameHistory || this.game.state.gameHistory.length === 0) {
+                    return false;
+                }
+                
+                const recentMoves = this.game.state.gameHistory.slice(-5); // Check last 5 moves
+                const currentMoveSignature = `${move.card?.value}-${move.card?.suit}-${move.type}`;
+                
+                return recentMoves.some(historicalMove => {
+                    if (!historicalMove.move) return false;
+                    const histSignature = `${historicalMove.move.card?.value}-${historicalMove.move.card?.suit}-${historicalMove.move.type}`;
+                    return histSignature === currentMoveSignature;
                 });
             }
             
@@ -3827,87 +4441,118 @@
                 return strategicValue;
             }
             
-            // Advanced move evaluation with complete board knowledge
+            // Memory-optimized advanced move evaluation with complete board knowledge
             async evaluateMove(move, gameState) {
-                this.updateCompleteBoard(gameState);
+                // Acquire evaluation object from memory pool
+                const evaluation = this.game.memory.acquireMoveEvaluation();
                 
-                let score = 0;
-                let confidence = 0.5;
-                let strategicReasoning = [];
-                
-                // Base move value
-                score += move.priority || 0;
-                
-                // Foundation moves are always valuable
-                if (move.type === 'foundation') {
-                    score += this.neuralWeights.foundationValue;
-                    confidence += 0.3;
-                    strategicReasoning.push('Foundation building increases win probability');
+                try {
+                    this.updateCompleteBoard(gameState);
                     
-                    // Bonus for balanced foundation building
-                    const foundations = Object.values(gameState.foundations);
-                    const heights = foundations.map(pile => pile.length);
-                    const maxHeight = Math.max(...heights);
-                    const minHeight = Math.min(...heights);
-                    if (maxHeight - minHeight <= 2) {
-                        score += 3;
-                        strategicReasoning.push('Maintains balanced foundation building');
+                    // Cache game state for repeated analysis
+                    const stateKey = this.hashGameState(gameState);
+                    let cachedState = this.game.memory.getCachedGameState(stateKey);
+                    if (!cachedState) {
+                        cachedState = gameState;
+                        this.game.memory.cacheGameState(stateKey, gameState);
                     }
-                }
-                
-                // Sequence building evaluation with lookahead
-                if (move.type === 'tableau' || move.type === 'waste-to-tableau') {
-                    const sequenceValue = this.evaluateSequenceBuilding(move, gameState);
-                    score += sequenceValue * this.neuralWeights.sequenceValue;
-                    if (sequenceValue > 0.5) {
-                        confidence += 0.2;
-                        strategicReasoning.push('Creates beneficial card sequences');
+                    
+                    let score = 0;
+                    let confidence = 0.5;
+                    evaluation.strategicReasoning.length = 0; // Reset array
+                    
+                    // Base move value
+                    score += move.priority || 0;
+                    
+                    // Foundation moves are always valuable
+                    if (move.type === 'foundation') {
+                        score += this.neuralWeights.foundationValue;
+                        confidence += 0.3;
+                        evaluation.strategicReasoning.push('Foundation building increases win probability');
+                        
+                        // Bonus for balanced foundation building
+                        const foundations = Object.values(cachedState.foundations);
+                        const heights = foundations.map(pile => pile.length);
+                        const maxHeight = Math.max(...heights);
+                        const minHeight = Math.min(...heights);
+                        if (maxHeight - minHeight <= 2) {
+                            score += 3;
+                            evaluation.strategicReasoning.push('Maintains balanced foundation building');
+                        }
                     }
+                    
+                    // Sequence building evaluation with lookahead
+                    if (move.type === 'tableau' || move.type === 'waste-to-tableau') {
+                        const sequenceValue = this.evaluateSequenceBuilding(move, cachedState);
+                        score += sequenceValue * this.neuralWeights.sequenceValue;
+                        if (sequenceValue > 0.5) {
+                            confidence += 0.2;
+                            evaluation.strategicReasoning.push('Creates beneficial card sequences');
+                        }
+                    }
+                    
+                    // Card reveal evaluation with hidden knowledge
+                    const revealValue = this.evaluateCardReveal(move, cachedState);
+                    if (revealValue > 0) {
+                        score += revealValue * this.neuralWeights.revealValue;
+                        confidence += 0.15;
+                        evaluation.strategicReasoning.push(`Will reveal ${revealValue > 5 ? 'high-value' : 'useful'} hidden card`);
+                    }
+                    
+                    // Empty space utilization
+                    const emptySpaceValue = this.evaluateEmptySpaceUse(move, cachedState);
+                    if (emptySpaceValue > 0) {
+                        score += emptySpaceValue * this.neuralWeights.emptySpaceValue;
+                        evaluation.strategicReasoning.push('Optimizes empty space usage');
+                    }
+                    
+                    // Risk assessment with complete board vision
+                    const riskAssessment = this.assessMoveRisk(move, cachedState);
+                    score -= riskAssessment.risk * this.neuralWeights.riskMitigation;
+                    if (riskAssessment.risk > 0.3) {
+                        confidence -= 0.1;
+                        evaluation.strategicReasoning.push(`Risk: ${riskAssessment.reason}`);
+                    }
+                    
+                    // Learning from historical data
+                    const historicalValue = this.getHistoricalMoveValue(move, cachedState);
+                    score += historicalValue * 2;
+                    if (historicalValue > 0.5) {
+                        confidence += 0.1;
+                        evaluation.strategicReasoning.push('Historically successful move pattern');
+                    }
+                    
+                    // Future planning with stock knowledge
+                    const futureValue = this.evaluateFuturePlanning(move, cachedState);
+                    score += futureValue;
+                    
+                    // Store metadata for debugging
+                    evaluation.metadata.set('cacheHit', cachedState !== gameState);
+                    evaluation.metadata.set('totalCalculations', evaluation.strategicReasoning.length);
+                    evaluation.metadata.set('poolUsage', this.game.memory.getMemoryStats().hitRate);
+                    
+                    // Populate evaluation
+                    evaluation.move = move;
+                    evaluation.aiScore = Math.max(0, score);
+                    evaluation.confidence = Math.min(0.95, confidence);
+                    evaluation.riskAssessment = riskAssessment;
+                    evaluation.historicalValue = historicalValue;
+                    evaluation.futurePlanning = futureValue;
+                    
+                    // Return optimized result
+                    return {
+                        ...move,
+                        aiScore: evaluation.aiScore,
+                        confidence: evaluation.confidence,
+                        strategicReasoning: [...evaluation.strategicReasoning], // Copy array
+                        futureValue: evaluation.futurePlanning,
+                        riskAssessment: { ...evaluation.riskAssessment } // Copy object
+                    };
+                    
+                } finally {
+                    // Always release evaluation back to pool
+                    this.game.memory.releaseMoveEvaluation(evaluation);
                 }
-                
-                // Card reveal evaluation with hidden knowledge
-                const revealValue = this.evaluateCardReveal(move, gameState);
-                if (revealValue > 0) {
-                    score += revealValue * this.neuralWeights.revealValue;
-                    confidence += 0.15;
-                    strategicReasoning.push(`Will reveal ${revealValue > 5 ? 'high-value' : 'useful'} hidden card`);
-                }
-                
-                // Empty space utilization
-                const emptySpaceValue = this.evaluateEmptySpaceUse(move, gameState);
-                if (emptySpaceValue > 0) {
-                    score += emptySpaceValue * this.neuralWeights.emptySpaceValue;
-                    strategicReasoning.push('Optimizes empty space usage');
-                }
-                
-                // Risk assessment with complete board vision
-                const riskAssessment = this.assessMoveRisk(move, gameState);
-                score -= riskAssessment.risk * this.neuralWeights.riskMitigation;
-                if (riskAssessment.risk > 0.3) {
-                    confidence -= 0.1;
-                    strategicReasoning.push(`Risk: ${riskAssessment.reason}`);
-                }
-                
-                // Learning from historical data
-                const historicalValue = this.getHistoricalMoveValue(move, gameState);
-                score += historicalValue * 2;
-                if (historicalValue > 0.5) {
-                    confidence += 0.1;
-                    strategicReasoning.push('Historically successful move pattern');
-                }
-                
-                // Future planning with stock knowledge
-                const futureValue = this.evaluateFuturePlanning(move, gameState);
-                score += futureValue;
-                
-                return {
-                    ...move,
-                    aiScore: Math.max(0, score),
-                    confidence: Math.min(0.95, confidence),
-                    strategicReasoning: strategicReasoning,
-                    futureValue: futureValue,
-                    riskAssessment: riskAssessment
-                };
             }
             
             evaluateSequenceBuilding(move, gameState) {
@@ -3960,29 +4605,34 @@
             evaluateCardReveal(move, gameState) {
                 let value = 0;
                 
-                // Check if this move will reveal a hidden card
-                if (move.type === 'tableau' || move.type === 'foundation') {
-                    const cardLocation = this.game.cards.findCardLocation(move.card);
-                    if (cardLocation && cardLocation.type === 'tableau') {
-                        const pile = gameState.tableau[cardLocation.pileIndex];
-                        const cardIndex = cardLocation.cardIndex;
-                        
-                        if (cardIndex > 0 && !pile[cardIndex - 1].faceUp) {
-                            const hiddenCard = pile[cardIndex - 1];
+                try {
+                    // Check if this move will reveal a hidden card
+                    if (move && move.card && (move.type === 'tableau' || move.type === 'foundation')) {
+                        const cardLocation = this.game.cards.findCardLocation(move.card);
+                        if (cardLocation && cardLocation.type === 'tableau' && 
+                            gameState && gameState.tableau && gameState.tableau[cardLocation.pileIndex]) {
+                            const pile = gameState.tableau[cardLocation.pileIndex];
+                            const cardIndex = cardLocation.cardIndex;
                             
-                            // AI knows what the hidden card is
-                            value += hiddenCard.value; // Base value
-                            
-                            // Bonus for high-value cards
-                            if (hiddenCard.value === 1) value += 8; // Aces
-                            if (hiddenCard.value === 13) value += 6; // Kings
-                            if (hiddenCard.value >= 11) value += 4; // Face cards
-                            
-                            // Check if revealed card will create immediate opportunities
-                            const immediateUse = this.canUseCardImmediately(hiddenCard, gameState);
-                            if (immediateUse) value += 5;
+                            if (cardIndex > 0 && pile && pile[cardIndex - 1] && !pile[cardIndex - 1].faceUp) {
+                                const hiddenCard = pile[cardIndex - 1];
+                                
+                                // AI knows what the hidden card is
+                                value += hiddenCard.value || 0; // Base value
+                                
+                                // Bonus for high-value cards
+                                if (hiddenCard.value === 1) value += 8; // Aces
+                                if (hiddenCard.value === 13) value += 6; // Kings
+                                if (hiddenCard.value >= 11) value += 4; // Face cards
+                                
+                                // Check if revealed card will create immediate opportunities
+                                const immediateUse = this.canUseCardImmediately(hiddenCard, gameState);
+                                if (immediateUse) value += 5;
+                            }
                         }
                     }
+                } catch (error) {
+                    console.warn('Error evaluating card reveal:', error);
                 }
                 
                 return value;
@@ -4014,29 +4664,39 @@
                 let risk = 0;
                 let reason = '';
                 
-                // Risk of moving from foundation
-                if (move.type === 'foundation-to-tableau') {
-                    risk += 0.4;
-                    reason = 'Moving from foundation is risky';
-                }
-                
-                // Risk of placing King on empty space without good reason
-                if (move.card && move.card.value === 13 && move.type === 'tableau') {
-                    const targetPile = gameState.tableau[move.targetPileIndex];
-                    if (targetPile.length === 0) {
-                        const emptySpaces = gameState.tableau.filter(pile => pile.length === 0).length;
-                        if (emptySpaces === 1) { // Last empty space
-                            risk += 0.3;
-                            reason = 'Using last empty space without clear benefit';
+                try {
+                    // Risk of moving from foundation
+                    if (move.type === 'foundation-to-tableau') {
+                        risk += 0.4;
+                        reason = 'Moving from foundation is risky';
+                    }
+                    
+                    // Risk of placing King on empty space without good reason
+                    if (move.card && move.card.value === 13 && move.type === 'tableau' && 
+                        typeof move.targetPileIndex === 'number' && 
+                        gameState.tableau && gameState.tableau[move.targetPileIndex]) {
+                        const targetPile = gameState.tableau[move.targetPileIndex];
+                        if (targetPile && targetPile.length === 0) {
+                            const emptySpaces = gameState.tableau.filter(pile => pile && pile.length === 0).length;
+                            if (emptySpaces === 1) { // Last empty space
+                                risk += 0.3;
+                                reason = 'Using last empty space without clear benefit';
+                            }
                         }
                     }
-                }
-                
-                // Risk assessment based on game progress
-                const foundationProgress = Object.values(gameState.foundations).reduce((sum, pile) => sum + pile.length, 0) / 52;
-                if (foundationProgress < 0.3 && move.type === 'foundation-to-tableau') {
-                    risk += 0.5;
-                    reason = 'Too early to move from foundation';
+                    
+                    // Risk assessment based on game progress
+                    if (gameState.foundations) {
+                        const foundationProgress = Object.values(gameState.foundations).reduce((sum, pile) => sum + (pile ? pile.length : 0), 0) / 52;
+                        if (foundationProgress < 0.3 && move.type === 'foundation-to-tableau') {
+                            risk += 0.5;
+                            reason = 'Too early to move from foundation';
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Error in risk assessment:', error);
+                    risk = 0.5; // Default moderate risk
+                    reason = 'Unable to assess risk';
                 }
                 
                 return { risk, reason };
@@ -4065,17 +4725,94 @@
             evaluateFuturePlanning(move, gameState) {
                 let value = 0;
                 
-                // Use stock knowledge to plan ahead
-                const upcomingCards = this.completeBoard.futureStockCards;
-                
-                upcomingCards.forEach((card, index) => {
-                    // Check if this move sets up future opportunities
-                    if (this.moveCreatesOpportunityFor(move, card)) {
-                        value += (6 - index) * 0.5; // Earlier cards are more valuable
+                try {
+                    // Use stock knowledge to plan ahead
+                    if (this.completeBoard && this.completeBoard.futureStockCards) {
+                        const upcomingCards = this.completeBoard.futureStockCards;
+                        
+                        upcomingCards.forEach((card, index) => {
+                            // Check if this move sets up future opportunities
+                            if (this.moveCreatesOpportunityFor && this.moveCreatesOpportunityFor(move, card)) {
+                                value += (6 - index) * 0.5; // Earlier cards are more valuable
+                            }
+                        });
                     }
-                });
+                } catch (error) {
+                    console.warn('Error in future planning evaluation:', error);
+                }
                 
                 return value;
+            }
+            
+            moveCreatesOpportunityFor(move, card) {
+                // Simple check if a move creates opportunities for a future card
+                try {
+                    if (!move || !card) return false;
+                    
+                    // If move reveals a space, check if the card could use it
+                    if (move.willReveal && card.value === 13) {
+                        return true; // King can use revealed space
+                    }
+                    
+                    // If move to foundation, it might clear space for the card
+                    if (move.type === 'foundation' && card.value <= 11) {
+                        return true; // Provides tableau space
+                    }
+                    
+                    return false;
+                } catch (error) {
+                    return false;
+                }
+            }
+            
+            canUseCardImmediately(card, gameState) {
+                try {
+                    if (!card || !gameState) return false;
+                    
+                    // Check if card can go to foundation
+                    if (gameState.foundations && gameState.foundations[card.suit]) {
+                        const foundation = gameState.foundations[card.suit];
+                        if (foundation.length === 0 && card.value === 1) return true; // Ace
+                        if (foundation.length > 0 && foundation[foundation.length - 1].value === card.value - 1) return true;
+                    }
+                    
+                    // Check if card can go to tableau
+                    if (gameState.tableau) {
+                        for (const pile of gameState.tableau) {
+                            if (pile.length === 0 && card.value === 13) return true; // King on empty
+                            if (pile.length > 0) {
+                                const topCard = pile[pile.length - 1];
+                                if (topCard.faceUp && topCard.value === card.value + 1) {
+                                    // Check color alternation
+                                    const isRedCard = card.suit === '♥' || card.suit === '♦';
+                                    const isTopRed = topCard.suit === '♥' || topCard.suit === '♦';
+                                    if (isRedCard !== isTopRed) return true;
+                                }
+                            }
+                        }
+                    }
+                    
+                    return false;
+                } catch (error) {
+                    return false;
+                }
+            }
+            
+            helpsFoundationBuilding(card, gameState) {
+                try {
+                    if (!card || !gameState || !gameState.foundations) return false;
+                    
+                    // Check if this card can go directly to foundation
+                    const foundation = gameState.foundations[card.suit];
+                    if (!foundation) return false;
+                    
+                    if (foundation.length === 0 && card.value === 1) return true; // Ace
+                    if (foundation.length > 0 && foundation[foundation.length - 1].value === card.value - 1) return true;
+                    
+                    return false;
+                } catch (error) {
+                    return false;
+                }
             }
             
             // Stock drawing recommendation system
@@ -4090,7 +4827,8 @@
                     };
                 }
                 
-                const upcomingCards = this.completeBoard.futureStockCards;
+                const upcomingCards = this.completeBoard && this.completeBoard.futureStockCards ? 
+                    this.completeBoard.futureStockCards : [];
                 const currentMoves = this.game.ai.findAllPossibleMoves();
                 
                 // Analyze next few stock cards
@@ -4098,24 +4836,26 @@
                 let immediateUseCards = 0;
                 let valuableCards = 0;
                 
-                upcomingCards.slice(0, gameState.drawMode).forEach(card => {
-                    // Check if card can be used immediately
-                    if (this.canUseCardImmediately(card, gameState)) {
-                        immediateUseCards++;
-                        drawValue += 5;
-                    }
-                    
-                    // Check strategic value
-                    if (card.value === 1 || card.value === 13 || card.value >= 11) {
-                        valuableCards++;
-                        drawValue += 2;
-                    }
-                    
-                    // Check if card helps with foundation building
-                    if (this.helpsFoundationBuilding(card, gameState)) {
-                        drawValue += 3;
-                    }
-                });
+                if (upcomingCards.length > 0) {
+                    upcomingCards.slice(0, gameState.drawMode || 1).forEach(card => {
+                        // Check if card can be used immediately
+                        if (this.canUseCardImmediately && this.canUseCardImmediately(card, gameState)) {
+                            immediateUseCards++;
+                            drawValue += 5;
+                        }
+                        
+                        // Check strategic value
+                        if (card.value === 1 || card.value === 13 || card.value >= 11) {
+                            valuableCards++;
+                            drawValue += 2;
+                        }
+                        
+                        // Check if card helps with foundation building
+                        if (this.helpsFoundationBuilding && this.helpsFoundationBuilding(card, gameState)) {
+                            drawValue += 3;
+                        }
+                    });
+                }
                 
                 // Decision logic
                 let shouldDraw = false;
@@ -4144,7 +4884,8 @@
                     drawValue,
                     immediateUseCards,
                     valuableCards,
-                    upcomingCards: upcomingCards.slice(0, gameState.drawMode).map(card => `${card.rank}${card.suit}`),
+                    upcomingCards: upcomingCards.length > 0 ? 
+                        upcomingCards.slice(0, gameState.drawMode || 1).map(card => `${card.rank}${card.suit}`) : [],
                     recommendation: shouldDraw ? 
                         `Draw ${gameState.drawMode} card(s) from stock` : 
                         'Focus on tableau moves first'
@@ -4234,18 +4975,47 @@
                 }
             }
             
-            // Learning system - record game outcomes
-            recordGameOutcome(gameState, moves, won) {
+            // Memory-optimized learning system - record game outcomes
+            recordGameOutcome(gameState, moves, won, additionalData = null) {
+                try {
+                    if (!gameState) {
+                        console.warn('Cannot record game outcome - no game state provided');
+                        return;
+                    }
+                    
+                    // Use memory manager for efficient game record creation
+                    const compressedState = this.game.memory.compressGameState(gameState);
+                
                 const gameRecord = {
-                    gameState: this.cloneGameState(gameState),
+                    gameState: compressedState, // Store compressed state
                     moves: [...moves],
                     won: won,
                     timestamp: Date.now(),
                     difficulty: this.calculateGameDifficulty(gameState),
                     finalScore: gameState.gameStats.score,
                     totalTime: gameState.gameStats.time,
-                    totalMoves: gameState.gameStats.moves
+                    totalMoves: gameState.gameStats.moves,
+                    additionalData: additionalData
                 };
+                
+                // Store deadlock analysis for UI display
+                if (additionalData && additionalData.reason === 'deadlock') {
+                    this.lastDeadlockAnalysis = additionalData.analysis;
+                    
+                    // Record as a special category for learning
+                    if (!this.gameMemory.deadlockGames) {
+                        this.gameMemory.deadlockGames = [];
+                    }
+                    this.gameMemory.deadlockGames.push(gameRecord);
+                    
+                    // Learn from deadlock patterns using memory manager
+                    this.recordDeadlockPatterns(gameRecord);
+                    
+                    // Limit deadlock memory
+                    if (this.gameMemory.deadlockGames.length > 30) {
+                        this.gameMemory.deadlockGames.shift();
+                    }
+                }
                 
                 if (won) {
                     this.gameMemory.winningGames.push(gameRecord);
@@ -4253,28 +5023,129 @@
                     // Update neural weights based on successful strategies
                     this.updateNeuralWeights(gameRecord);
                     
-                    // Record successful move patterns
-                    this.recordSuccessfulMoves(moves);
+                    // Record successful move patterns with memory optimization
+                    this.recordSuccessfulMovesOptimized(moves);
                     
                     // Limit memory size
-                    if (this.gameMemory.winningGames.length > 100) {
+                    if (this.gameMemory.winningGames.length > 50) { // Reduced from 100 for memory efficiency
                         this.gameMemory.winningGames.shift();
                     }
                 } else {
+                    if (!this.gameMemory.losingGames) this.gameMemory.losingGames = [];
                     this.gameMemory.losingGames.push(gameRecord);
                     
                     // Learn from failures too
-                    this.recordFailedMoves(moves);
+                    this.recordFailedMovesOptimized(moves);
                     
-                    if (this.gameMemory.losingGames.length > 50) {
+                    if (this.gameMemory.losingGames.length > 25) { // Reduced for memory efficiency
                         this.gameMemory.losingGames.shift();
                     }
                 }
                 
-                // Save learning data
-                this.saveLearningData();
+                // Use memory manager for move history tracking
+                this.game.memory.moveHistory.push({
+                    outcome: won ? 'win' : (additionalData?.reason === 'deadlock' ? 'deadlock' : 'loss'),
+                    totalMoves: gameState.gameStats.moves,
+                    finalScore: gameState.gameStats.score,
+                    timestamp: Date.now()
+                });
                 
-                console.log(`🧠 Recorded ${won ? 'winning' : 'losing'} game. Total learning data: ${this.gameMemory.winningGames.length} wins, ${this.gameMemory.moveOutcomes.size} move patterns`);
+                // Asynchronous save to prevent blocking
+                setTimeout(() => this.saveLearningData(), 100);
+                
+                const gameType = additionalData?.reason === 'deadlock' ? 'deadlocked' : (won ? 'winning' : 'losing');
+                console.log(`🧠 Recorded ${gameType} game (optimized). Memory stats: Pool hit rate ${this.game.memory.getMemoryStats().hitRate}%, Cache size: ${this.game.memory.getMemoryStats().cacheSize}`);
+                } catch (error) {
+                    console.error('Error recording game outcome:', error);
+                }
+            }
+            
+            // Memory-optimized move recording
+            recordSuccessfulMovesOptimized(moves) {
+                moves.forEach(move => {
+                    const pattern = this.createMovePattern(move);
+                    this.game.memory.storePattern(pattern, true); // Success = true
+                    
+                    // Update traditional move outcomes too
+                    const patternKey = `${move.type}-${move.card?.value}-${move.card?.suit}`;
+                    if (!this.gameMemory.moveOutcomes.has(patternKey)) {
+                        this.gameMemory.moveOutcomes.set(patternKey, {
+                            successes: 0,
+                            failures: 0,
+                            successRate: 0
+                        });
+                    }
+                    
+                    const outcome = this.gameMemory.moveOutcomes.get(patternKey);
+                    outcome.successes++;
+                    outcome.successRate = outcome.successes / (outcome.successes + outcome.failures);
+                });
+            }
+            
+            recordFailedMovesOptimized(moves) {
+                moves.forEach(move => {
+                    const pattern = this.createMovePattern(move);
+                    this.game.memory.storePattern(pattern, false); // Success = false
+                    
+                    // Update traditional move outcomes too
+                    const patternKey = `${move.type}-${move.card?.value}-${move.card?.suit}`;
+                    if (!this.gameMemory.moveOutcomes.has(patternKey)) {
+                        this.gameMemory.moveOutcomes.set(patternKey, {
+                            successes: 0,
+                            failures: 0,
+                            successRate: 0
+                        });
+                    }
+                    
+                    const outcome = this.gameMemory.moveOutcomes.get(patternKey);
+                    outcome.failures++;
+                    outcome.successRate = outcome.successes / (outcome.successes + outcome.failures);
+                });
+            }
+            
+            createMovePattern(move) {
+                return {
+                    type: move.type,
+                    cardValue: move.card?.value || 0,
+                    cardSuit: move.card?.suit || '',
+                    targetType: move.targetType || '',
+                    timestamp: Date.now()
+                };
+            }
+            
+            recordDeadlockPatterns(gameRecord) {
+                try {
+                    const analysis = gameRecord.additionalData.analysis;
+                    
+                    // Record common deadlock patterns for future detection
+                    if (!this.gameMemory.deadlockPatterns) {
+                        this.gameMemory.deadlockPatterns = {
+                            excessiveStockCycling: 0,
+                            suboptimalMidGame: 0,
+                            unfavorableDeal: 0,
+                            stockCycleThresholds: []
+                        };
+                    }
+                    
+                    // Track pattern frequencies
+                    if (analysis.primaryCause === 'excessive_stock_cycling') {
+                        this.gameMemory.deadlockPatterns.excessiveStockCycling++;
+                        this.gameMemory.deadlockPatterns.stockCycleThresholds.push(analysis.stockCycles);
+                    } else if (analysis.primaryCause === 'suboptimal_mid_game_decisions') {
+                        this.gameMemory.deadlockPatterns.suboptimalMidGame++;
+                    } else if (analysis.primaryCause === 'unfavorable_initial_deal') {
+                        this.gameMemory.deadlockPatterns.unfavorableDeal++;
+                    }
+                    
+                    // Learn optimal stock cycle limits
+                    if (this.gameMemory.deadlockPatterns.stockCycleThresholds.length > 10) {
+                        this.gameMemory.deadlockPatterns.stockCycleThresholds.shift();
+                    }
+                    
+                    console.log('🧠 Recorded deadlock pattern for future prevention');
+                } catch (error) {
+                    console.warn('Error recording deadlock pattern:', error);
+                }
             }
             
             updateNeuralWeights(winningGame) {
@@ -4384,137 +5255,228 @@
             }
             
             performBasicAnalysis(gameState) {
-                const foundationCards = Object.values(gameState.foundations).reduce((sum, pile) => sum + pile.length, 0);
-                const foundationProgress = foundationCards / 52;
-                const faceUpCards = gameState.tableau.reduce((sum, pile) => sum + pile.filter(c => c.faceUp).length, 0);
-                const emptySpaces = gameState.tableau.filter(pile => pile.length === 0).length;
-                const blockedCards = gameState.tableau.reduce((sum, pile) => sum + pile.filter(c => !c.faceUp).length, 0);
-                
-                return {
-                    foundationProgress,
-                    faceUpCards,
-                    emptySpaces,
-                    blockedCards,
-                    stockRemaining: gameState.stock.length,
-                    wasteSize: gameState.waste.length
-                };
+                try {
+                    if (!gameState) {
+                        return {
+                            foundationProgress: 0,
+                            faceUpCards: 0,
+                            emptySpaces: 0,
+                            blockedCards: 0,
+                            stockRemaining: 0,
+                            wasteSize: 0
+                        };
+                    }
+                    
+                    const foundationCards = gameState.foundations ? 
+                        Object.values(gameState.foundations).reduce((sum, pile) => sum + (pile ? pile.length : 0), 0) : 0;
+                    const foundationProgress = foundationCards / 52;
+                    const faceUpCards = (gameState.tableau || []).reduce((sum, pile) => 
+                        sum + (pile ? pile.filter(c => c && c.faceUp).length : 0), 0);
+                    const emptySpaces = (gameState.tableau || []).filter(pile => !pile || pile.length === 0).length;
+                    const blockedCards = (gameState.tableau || []).reduce((sum, pile) => 
+                        sum + (pile ? pile.filter(c => c && !c.faceUp).length : 0), 0);
+                    
+                    return {
+                        foundationProgress,
+                        faceUpCards,
+                        emptySpaces,
+                        blockedCards,
+                        stockRemaining: gameState.stock ? gameState.stock.length : 0,
+                        wasteSize: gameState.waste ? gameState.waste.length : 0
+                    };
+                } catch (error) {
+                    console.warn('Error in basic analysis:', error);
+                    return {
+                        foundationProgress: 0,
+                        faceUpCards: 0,
+                        emptySpaces: 0,
+                        blockedCards: 0,
+                        stockRemaining: 0,
+                        wasteSize: 0
+                    };
+                }
             }
             
             performStrategicAnalysis(gameState) {
-                const insights = [];
-                let difficulty = 'medium';
-                let strategicValue = 0;
-                
-                // Analyze foundation balance
-                const foundations = Object.values(gameState.foundations).map(pile => pile.length);
-                const maxFoundation = Math.max(...foundations);
-                const minFoundation = Math.min(...foundations);
-                const foundationGap = maxFoundation - minFoundation;
-                
-                if (foundationGap <= 1) {
-                    insights.push('Excellent foundation balance maintained');
-                    strategicValue += 3;
-                } else if (foundationGap >= 4) {
-                    insights.push('Foundation imbalance detected - focus on lagging suits');
-                    strategicValue -= 2;
-                }
-                
-                // Analyze sequence opportunities with complete board vision
-                let longSequences = 0;
-                gameState.tableau.forEach(pile => {
-                    let currentSequence = 0;
-                    for (let i = pile.length - 1; i > 0; i--) {
-                        if (pile[i].faceUp && pile[i-1].faceUp &&
-                            pile[i-1].value === pile[i].value + 1 &&
-                            this.game.constants.RED_SUITS.has(pile[i-1].suit) !== this.game.constants.RED_SUITS.has(pile[i].suit)) {
-                            currentSequence++;
-                        } else {
-                            break;
+                try {
+                    const insights = [];
+                    let difficulty = 'medium';
+                    let strategicValue = 0;
+                    let foundationGap = 0;
+                    let longSequences = 0;
+                    
+                    if (!gameState) {
+                        return {
+                            insights: ['Strategic analysis unavailable - no game state'],
+                            difficulty: 'medium',
+                            strategicValue: 0,
+                            foundationGap: 0,
+                            longSequences: 0,
+                            complexityScore: 3
+                        };
+                    }
+                    
+                    // Analyze foundation balance
+                    if (gameState.foundations) {
+                        const foundations = Object.values(gameState.foundations).map(pile => pile ? pile.length : 0);
+                        const maxFoundation = foundations.length > 0 ? Math.max(...foundations) : 0;
+                        const minFoundation = foundations.length > 0 ? Math.min(...foundations) : 0;
+                        foundationGap = maxFoundation - minFoundation;
+                        
+                        if (foundationGap <= 1) {
+                            insights.push('Excellent foundation balance maintained');
+                            strategicValue += 3;
+                        } else if (foundationGap >= 4) {
+                            insights.push('Foundation imbalance detected - focus on lagging suits');
+                            strategicValue -= 2;
                         }
                     }
-                    if (currentSequence >= 3) longSequences++;
-                });
-                
-                if (longSequences >= 2) {
-                    insights.push('Multiple long sequences available for strategic moves');
-                    strategicValue += 2;
+                    
+                    // Analyze sequence opportunities with complete board vision
+                    if (gameState.tableau && Array.isArray(gameState.tableau)) {
+                        gameState.tableau.forEach(pile => {
+                            if (pile && Array.isArray(pile) && pile.length > 1) {
+                                let currentSequence = 0;
+                                for (let i = pile.length - 1; i > 0; i--) {
+                                    if (pile[i] && pile[i-1] && pile[i].faceUp && pile[i-1].faceUp &&
+                                        pile[i-1].value === pile[i].value + 1 &&
+                                        this.game.constants.RED_SUITS.has(pile[i-1].suit) !== this.game.constants.RED_SUITS.has(pile[i].suit)) {
+                                        currentSequence++;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                                if (currentSequence >= 3) longSequences++;
+                            }
+                        });
+                        
+                        if (longSequences >= 2) {
+                            insights.push('Multiple long sequences available for strategic moves');
+                            strategicValue += 2;
+                        }
+                    }
+                    
+                    // Analyze hidden card potential
+                    const hiddenHighValue = this.countHiddenHighValueCards(gameState);
+                    if (hiddenHighValue.aces > 0) {
+                        insights.push(`${hiddenHighValue.aces} hidden Ace(s) - prioritize revealing them`);
+                    }
+                    if (hiddenHighValue.kings > 0 && gameState.tableau && 
+                        gameState.tableau.filter(pile => !pile || pile.length === 0).length > 0) {
+                        insights.push(`${hiddenHighValue.kings} hidden King(s) available for empty spaces`);
+                    }
+                    
+                    // Calculate difficulty
+                    const hiddenCards = (gameState.tableau || []).reduce((sum, pile) => 
+                        sum + (pile ? pile.filter(c => c && !c.faceUp).length : 0), 0);
+                    const stockUsed = gameState.stock ? (24 - gameState.stock.length) : 0;
+                    
+                    const complexityScore = (
+                        hiddenCards * 0.1 +
+                        foundationGap * 0.2 +
+                        stockUsed * 0.05
+                    );
+                    
+                    if (complexityScore < 2) difficulty = 'easy';
+                    else if (complexityScore < 4) difficulty = 'medium';
+                    else if (complexityScore < 6) difficulty = 'hard';
+                    else difficulty = 'expert';
+                    
+                    return {
+                        insights,
+                        difficulty,
+                        strategicValue,
+                        foundationGap,
+                        longSequences,
+                        complexityScore
+                    };
+                } catch (error) {
+                    console.warn('Error in strategic analysis:', error);
+                    return {
+                        insights: ['Strategic analysis temporarily unavailable'],
+                        difficulty: 'medium',
+                        strategicValue: 0,
+                        foundationGap: 0,
+                        longSequences: 0,
+                        complexityScore: 3
+                    };
                 }
-                
-                // Analyze hidden card potential
-                const hiddenHighValue = this.countHiddenHighValueCards(gameState);
-                if (hiddenHighValue.aces > 0) {
-                    insights.push(`${hiddenHighValue.aces} hidden Ace(s) - prioritize revealing them`);
-                }
-                if (hiddenHighValue.kings > 0 && gameState.tableau.filter(pile => pile.length === 0).length > 0) {
-                    insights.push(`${hiddenHighValue.kings} hidden King(s) available for empty spaces`);
-                }
-                
-                // Calculate difficulty
-                const complexityScore = (
-                    gameState.tableau.reduce((sum, pile) => sum + pile.filter(c => !c.faceUp).length, 0) * 0.1 +
-                    foundationGap * 0.2 +
-                    (24 - gameState.stock.length) * 0.05
-                );
-                
-                if (complexityScore < 2) difficulty = 'easy';
-                else if (complexityScore < 4) difficulty = 'medium';
-                else if (complexityScore < 6) difficulty = 'hard';
-                else difficulty = 'expert';
-                
-                return {
-                    insights,
-                    difficulty,
-                    strategicValue,
-                    foundationGap,
-                    longSequences,
-                    complexityScore
-                };
             }
             
             performLearningAnalysis(gameState) {
-                const insights = [];
-                let confidenceBoost = 0;
-                
-                // Check against successful game patterns
-                const currentStateHash = this.hashGameState(gameState);
-                let similarWinningGames = 0;
-                
-                this.gameMemory.winningGames.forEach(game => {
-                    const similarity = this.calculateStateSimilarity(currentStateHash, this.hashGameState(game.gameState));
-                    if (similarity > 0.7) {
-                        similarWinningGames++;
+                try {
+                    const insights = [];
+                    let confidenceBoost = 0;
+                    
+                    if (!gameState) {
+                        return {
+                            insights: ['Learning analysis unavailable - no game state'],
+                            confidenceBoost: 0,
+                            similarWinningGames: 0,
+                            historicallySuccessfulMoves: 0,
+                            totalLearningData: this.gameMemory.winningGames.length
+                        };
                     }
-                });
-                
-                if (similarWinningGames > 0) {
-                    insights.push(`Similar to ${similarWinningGames} previously won game(s)`);
-                    confidenceBoost += 0.2;
-                }
-                
-                // Check move success patterns
-                const availableMoves = this.game.ai.findAllPossibleMoves();
-                let historicallySuccessfulMoves = 0;
-                
-                availableMoves.forEach(move => {
-                    const pattern = `${move.type}-${move.card?.value}-${move.card?.suit}`;
-                    const outcome = this.gameMemory.moveOutcomes.get(pattern);
-                    if (outcome && outcome.successRate > 0.6) {
-                        historicallySuccessfulMoves++;
+                    
+                    // Check against successful game patterns
+                    const currentStateHash = this.hashGameState(gameState);
+                    let similarWinningGames = 0;
+                    
+                    this.gameMemory.winningGames.forEach(game => {
+                        try {
+                            const gameStateToHash = game.gameState || game;
+                            const similarity = this.calculateStateSimilarity(currentStateHash, this.hashGameState(gameStateToHash));
+                            if (similarity > 0.7) {
+                                similarWinningGames++;
+                            }
+                        } catch (hashError) {
+                            // Skip this game if comparison fails
+                        }
+                    });
+                    
+                    if (similarWinningGames > 0) {
+                        insights.push(`Similar to ${similarWinningGames} previously won game(s)`);
+                        confidenceBoost += 0.2;
                     }
-                });
-                
-                if (historicallySuccessfulMoves > 0) {
-                    insights.push(`${historicallySuccessfulMoves} historically successful move(s) available`);
-                    confidenceBoost += 0.1;
+                    
+                    // Check move success patterns
+                    let historicallySuccessfulMoves = 0;
+                    
+                    try {
+                        const availableMoves = this.game.ai.findAllPossibleMoves();
+                        availableMoves.forEach(move => {
+                            const pattern = `${move.type}-${move.card?.value}-${move.card?.suit}`;
+                            const outcome = this.gameMemory.moveOutcomes.get(pattern);
+                            if (outcome && outcome.successRate > 0.6) {
+                                historicallySuccessfulMoves++;
+                            }
+                        });
+                    } catch (moveError) {
+                        console.warn('Error analyzing available moves:', moveError);
+                    }
+                    
+                    if (historicallySuccessfulMoves > 0) {
+                        insights.push(`${historicallySuccessfulMoves} historically successful move(s) available`);
+                        confidenceBoost += 0.1;
+                    }
+                    
+                    return {
+                        insights,
+                        confidenceBoost,
+                        similarWinningGames,
+                        historicallySuccessfulMoves,
+                        totalLearningData: this.gameMemory.winningGames.length
+                    };
+                } catch (error) {
+                    console.warn('Error in learning analysis:', error);
+                    return {
+                        insights: ['Learning analysis temporarily unavailable'],
+                        confidenceBoost: 0,
+                        similarWinningGames: 0,
+                        historicallySuccessfulMoves: 0,
+                        totalLearningData: this.gameMemory.winningGames.length
+                    };
                 }
-                
-                return {
-                    insights,
-                    confidenceBoost,
-                    similarWinningGames,
-                    historicallySuccessfulMoves,
-                    totalLearningData: this.gameMemory.winningGames.length
-                };
             }
             
             calculateWinProbability(gameState, strategicAnalysis) {
@@ -4637,44 +5599,95 @@
             countHiddenHighValueCards(gameState) {
                 let aces = 0, kings = 0, faces = 0;
                 
-                gameState.tableau.forEach(pile => {
-                    pile.forEach(card => {
-                        if (!card.faceUp) {
-                            if (card.value === 1) aces++;
-                            else if (card.value === 13) kings++;
-                            else if (card.value >= 11) faces++;
+                try {
+                    if (!gameState || !gameState.tableau) {
+                        return { aces: 0, kings: 0, faces: 0 };
+                    }
+                    
+                    gameState.tableau.forEach(pile => {
+                        if (pile && Array.isArray(pile)) {
+                            pile.forEach(card => {
+                                if (card && !card.faceUp) {
+                                    if (card.value === 1) aces++;
+                                    else if (card.value === 13) kings++;
+                                    else if (card.value >= 11) faces++;
+                                }
+                            });
                         }
                     });
-                });
+                } catch (error) {
+                    console.warn('Error counting hidden high value cards:', error);
+                }
                 
                 return { aces, kings, faces };
             }
             
             cloneGameState(gameState) {
-             // Only include the deck arrays, foundations, and gameStats—omit 'game' and other managers
-                 return {
-                     stock: gameState.stock.map(card => ({ id: card.id, suit: card.suit, value: card.value, faceUp: card.faceUp })),
-                     waste: gameState.waste.map(card => ({ id: card.id, suit: card.suit, value: card.value, faceUp: card.faceUp })),
-                      tableau: gameState.tableau.map(pile =>
-                       pile.map(card => ({ id: card.id, suit: card.suit, value: card.value, faceUp: card.faceUp }))
-                     ),
-                     foundations: Object.fromEntries(
-                      Object.entries(gameState.foundations).map(([suit, pile]) =>
-                       [suit, pile.map(card => ({ id: card.id, suit: card.suit, value: card.value, faceUp: card.faceUp }))]
-                    )
-                ),
-                gameStats: { moves: gameState.gameStats.moves, time: gameState.gameStats.time, score: gameState.gameStats.score }
-             };
+                try {
+                    if (!gameState) {
+                        console.warn('Cannot clone null/undefined game state');
+                        return this.createDefaultGameState();
+                    }
+                    
+                    // Only include the deck arrays, foundations, and gameStats—omit 'game' and other managers
+                    return {
+                        stock: (gameState.stock || []).map(card => ({ 
+                            id: card.id, suit: card.suit, value: card.value, faceUp: card.faceUp 
+                        })),
+                        waste: (gameState.waste || []).map(card => ({ 
+                            id: card.id, suit: card.suit, value: card.value, faceUp: card.faceUp 
+                        })),
+                        tableau: (gameState.tableau || []).map(pile =>
+                            (pile || []).map(card => ({ 
+                                id: card.id, suit: card.suit, value: card.value, faceUp: card.faceUp 
+                            }))
+                        ),
+                        foundations: gameState.foundations ? Object.fromEntries(
+                            Object.entries(gameState.foundations).map(([suit, pile]) =>
+                                [suit, (pile || []).map(card => ({ 
+                                    id: card.id, suit: card.suit, value: card.value, faceUp: card.faceUp 
+                                }))]
+                            )
+                        ) : { '♠': [], '♥': [], '♦': [], '♣': [] },
+                        gameStats: gameState.gameStats ? {
+                            moves: gameState.gameStats.moves || 0,
+                            time: gameState.gameStats.time || 0,
+                            score: gameState.gameStats.score || 0
+                        } : { moves: 0, time: 0, score: 0 }
+                    };
+                } catch (error) {
+                    console.warn('Error cloning game state:', error);
+                    return this.createDefaultGameState();
+                }
+            }
+            
+            createDefaultGameState() {
+                return {
+                    stock: [],
+                    waste: [],
+                    tableau: Array.from({ length: 7 }, () => []),
+                    foundations: { '♠': [], '♥': [], '♦': [], '♣': [] },
+                    gameStats: { moves: 0, time: 0, score: 0 }
+                };
             }
             
             hashGameState(gameState) {
-                const state = {
-                    foundations: Object.entries(gameState.foundations).map(([suit, pile]) => `${suit}:${pile.length}`),
-                    tableau: gameState.tableau.map(pile => pile.length),
-                    stock: gameState.stock.length,
-                    waste: gameState.waste.length
-                };
-                return JSON.stringify(state);
+                try {
+                    if (!gameState) return 'empty';
+                    
+                    const state = {
+                        foundations: gameState.foundations ? 
+                            Object.entries(gameState.foundations).map(([suit, pile]) => `${suit}:${pile ? pile.length : 0}`) : [],
+                        tableau: gameState.tableau ? 
+                            gameState.tableau.map(pile => pile ? pile.length : 0) : [],
+                        stock: gameState.stock ? gameState.stock.length : 0,
+                        waste: gameState.waste ? gameState.waste.length : 0
+                    };
+                    return JSON.stringify(state);
+                } catch (error) {
+                    console.warn('Error hashing game state:', error);
+                    return 'error_' + Date.now();
+                }
             }
             
             calculateStateSimilarity(state1Hash, state2Hash) {
@@ -4683,13 +5696,23 @@
             }
             
             calculateGameDifficulty(gameState) {
-                const hiddenCards = gameState.tableau.reduce((sum, pile) => sum + pile.filter(c => !c.faceUp).length, 0);
-                const foundationProgress = Object.values(gameState.foundations).reduce((sum, pile) => sum + pile.length, 0) / 52;
-                
-                if (hiddenCards <= 5 && foundationProgress > 0.5) return 'easy';
-                if (hiddenCards <= 15 && foundationProgress > 0.2) return 'medium';
-                if (hiddenCards <= 21) return 'hard';
-                return 'expert';
+                try {
+                    if (!gameState) return 'medium';
+                    
+                    const hiddenCards = (gameState.tableau || []).reduce((sum, pile) => 
+                        sum + (pile ? pile.filter(c => c && !c.faceUp).length : 0), 0);
+                    const foundationProgress = gameState.foundations ? 
+                        Object.values(gameState.foundations).reduce((sum, pile) => 
+                            sum + (pile ? pile.length : 0), 0) / 52 : 0;
+                    
+                    if (hiddenCards <= 5 && foundationProgress > 0.5) return 'easy';
+                    if (hiddenCards <= 15 && foundationProgress > 0.2) return 'medium';
+                    if (hiddenCards <= 21) return 'hard';
+                    return 'expert';
+                } catch (error) {
+                    console.warn('Error calculating game difficulty:', error);
+                    return 'medium';
+                }
             }
             
             getFallbackAnalysis(gameState) {
@@ -4702,21 +5725,48 @@
                 };
             }
             
-            // Data persistence
+            // Memory-optimized data persistence
             async saveLearningData() {
                 try {
+                    // Use memory manager for efficient data structures
                     const learningData = {
+                        version: '3.0', // Updated version for memory optimization
+                        timestamp: Date.now(),
                         gameMemory: {
-                            winningGames: this.gameMemory.winningGames.slice(-50), // Keep last 50
-                            moveOutcomes: Array.from(this.gameMemory.moveOutcomes.entries()),
-                            sequencePatterns: Array.from(this.gameMemory.sequencePatterns.entries())
+                            // Compress winning games for storage efficiency
+                            winningGames: this.gameMemory.winningGames.slice(-30).map(game => {
+                                try {
+                                    const stateToCompress = game.gameState || game;
+                                    return this.game.memory.compressGameState(stateToCompress);
+                                } catch (error) {
+                                    console.warn('Error compressing game state, using empty buffer:', error);
+                                    return new Uint8Array(256);
+                                }
+                            }),
+                            // Store move outcomes efficiently
+                            moveOutcomes: Array.from(this.gameMemory.moveOutcomes.entries()).slice(-500),
+                            sequencePatterns: Array.from(this.gameMemory.sequencePatterns.entries()).slice(-200),
+                            // Include deadlock patterns for improved learning
+                            deadlockPatterns: this.gameMemory.deadlockPatterns || {},
+                            deadlockGames: (this.gameMemory.deadlockGames || []).slice(-20)
                         },
                         neuralWeights: this.neuralWeights,
-                        version: '2.0',
-                        timestamp: Date.now()
+                        // Store memory stats for analysis
+                        optimizationStats: this.game.memory.getMemoryStats()
                     };
                     
+                    // Use efficient storage with memory manager's pattern storage
+                    this.game.memory.patternMap.forEach((entry, key) => {
+                        this.game.storage.set(`pattern_${key}`, {
+                            outcomes: Array.from(entry.outcomes),
+                            count: entry.count,
+                            successRate: entry.successRate
+                        });
+                    });
+                    
                     this.game.storage.set('advanced_ml_learning_data', learningData);
+                    
+                    console.log(`🧠 Saved optimized learning data: ${learningData.gameMemory.winningGames.length} compressed games, ${this.game.memory.patternMap.size} patterns`);
                 } catch (error) {
                     console.warn('Failed to save learning data:', error);
                 }
@@ -4725,29 +5775,537 @@
             async loadLearningData() {
                 try {
                     const saved = this.game.storage.get('advanced_ml_learning_data');
-                    if (saved && saved.version === '2.0') {
-                        this.gameMemory.winningGames = saved.gameMemory.winningGames || [];
-                        this.gameMemory.moveOutcomes = new Map(saved.gameMemory.moveOutcomes || []);
-                        this.gameMemory.sequencePatterns = new Map(saved.gameMemory.sequencePatterns || []);
-                        this.neuralWeights = { ...this.neuralWeights, ...saved.neuralWeights };
-                        
-                        console.log(`🧠 Loaded learning data: ${this.gameMemory.winningGames.length} games, ${this.gameMemory.moveOutcomes.size} patterns`);
+                    if (saved) {
+                        if (saved.version === '3.0') {
+                            // Load compressed data efficiently with error handling
+                            const compressedGames = saved.gameMemory.winningGames || [];
+                            this.gameMemory.winningGames = [];
+                            
+                            compressedGames.forEach((compressed, index) => {
+                                try {
+                                    const gameState = this.game.memory.decompressGameState(compressed);
+                                    if (gameState) {
+                                        this.gameMemory.winningGames.push({
+                                            gameState: gameState,
+                                            won: true,
+                                            timestamp: Date.now() // Approximated for efficiency
+                                        });
+                                    }
+                                } catch (error) {
+                                    console.warn(`Failed to decompress game ${index}:`, error);
+                                }
+                            });
+                            
+                            this.gameMemory.moveOutcomes = new Map(saved.gameMemory.moveOutcomes || []);
+                            this.gameMemory.sequencePatterns = new Map(saved.gameMemory.sequencePatterns || []);
+                            this.gameMemory.deadlockPatterns = saved.gameMemory.deadlockPatterns || {};
+                            this.gameMemory.deadlockGames = saved.gameMemory.deadlockGames || [];
+                            this.neuralWeights = { ...this.neuralWeights, ...saved.neuralWeights };
+                            
+                            // Load pattern data into memory manager with error handling
+                            try {
+                                const patternKeys = Object.keys(localStorage).filter(key => key.startsWith('pattern_'));
+                                patternKeys.forEach(key => {
+                                    try {
+                                        const patternKey = key.replace('pattern_', '');
+                                        const patternData = this.game.storage.get(key);
+                                        if (patternData && patternData.outcomes) {
+                                            this.game.memory.patternMap.set(patternKey, {
+                                                outcomes: new Float32Array(patternData.outcomes),
+                                                count: patternData.count || 0,
+                                                successRate: patternData.successRate || 0
+                                            });
+                                        }
+                                    } catch (patternError) {
+                                        console.warn(`Failed to load pattern ${key}:`, patternError);
+                                    }
+                                });
+                            } catch (error) {
+                                console.warn('Failed to load pattern data:', error);
+                            }
+                            
+                            console.log(`🧠 Loaded optimized learning data: ${this.gameMemory.winningGames.length} games, ${this.game.memory.patternMap.size} patterns, ${Object.keys(this.gameMemory.deadlockPatterns).length} deadlock patterns`);
+                        } else if (saved.version === '2.0') {
+                            // Legacy data migration
+                            this.gameMemory.winningGames = saved.gameMemory.winningGames || [];
+                            this.gameMemory.moveOutcomes = new Map(saved.gameMemory.moveOutcomes || []);
+                            this.gameMemory.sequencePatterns = new Map(saved.gameMemory.sequencePatterns || []);
+                            this.neuralWeights = { ...this.neuralWeights, ...saved.neuralWeights };
+                            
+                            console.log(`🧠 Migrated legacy learning data: ${this.gameMemory.winningGames.length} games`);
+                            // Save in new format
+                            setTimeout(() => this.saveLearningData(), 1000);
+                        }
                     }
                 } catch (error) {
                     console.warn('Failed to load learning data:', error);
+                    // Clear potentially corrupted data
+                    try {
+                        localStorage.removeItem('advanced_ml_learning_data');
+                        console.log('🧠 Cleared corrupted learning data, starting fresh');
+                    } catch (clearError) {
+                        console.warn('Failed to clear corrupted data:', clearError);
+                    }
                 }
             }
             
             dispose() {
+                // Save learning data before cleanup
                 this.saveLearningData();
+                
+                // Clear game memory to free up space
+                this.gameMemory.winningGames.length = 0;
+                this.gameMemory.losingGames = [];
+                this.gameMemory.deadlockGames = [];
+                this.gameMemory.moveOutcomes.clear();
+                this.gameMemory.sequencePatterns.clear();
+                this.gameMemory.positionEvaluations.clear();
+                
+                // Clear complete board tracking
+                this.completeBoard.allCards.clear();
+                this.completeBoard.hiddenCards.clear();
+                this.completeBoard.stockOrder.length = 0;
+                this.completeBoard.futureStockCards.length = 0;
+                
+                // Clear web AI cache
+                this.webAICache.clear();
+                
                 this.isDisposed = true;
                 this.isInitialized = false;
                 console.log('🧠 Advanced ML resources cleaned up and learning data saved');
             }
         }
 
-        // Initialize the game with better error handling
+        // Memory Management System
+        class MemoryManager {
+            constructor() {
+                this.pools = {
+                    gameStates: [],
+                    moveEvaluations: [],
+                    cardObjects: [],
+                    analysisResults: [],
+                    historicalData: []
+                };
+                
+                this.maxPoolSize = 100;
+                this.memoryStats = {
+                    allocations: 0,
+                    deallocations: 0,
+                    poolHits: 0,
+                    poolMisses: 0
+                };
+                
+                // Efficient data structures
+                this.compactStateCache = new Map(); // LRU cache for game states
+                this.patternMap = new Map(); // Efficient pattern storage
+                this.moveHistory = new CircularBuffer(1000); // Memory-efficient history
+                this.weakObjectMap = new WeakMap(); // Auto-cleanup object associations
+                
+                this.initializeMemoryMonitoring();
+            }
+            
+            // Object Pool Management
+            acquireGameState() {
+                this.memoryStats.allocations++;
+                
+                if (this.pools.gameStates.length > 0) {
+                    this.memoryStats.poolHits++;
+                    const state = this.pools.gameStates.pop();
+                    this.resetGameState(state);
+                    return state;
+                } else {
+                    this.memoryStats.poolMisses++;
+                    return this.createGameState();
+                }
+            }
+            
+            releaseGameState(state) {
+                if (this.pools.gameStates.length < this.maxPoolSize) {
+                    this.pools.gameStates.push(state);
+                }
+                this.memoryStats.deallocations++;
+            }
+            
+            acquireMoveEvaluation() {
+                this.memoryStats.allocations++;
+                
+                if (this.pools.moveEvaluations.length > 0) {
+                    this.memoryStats.poolHits++;
+                    const evaluation = this.pools.moveEvaluations.pop();
+                    this.resetMoveEvaluation(evaluation);
+                    return evaluation;
+                } else {
+                    this.memoryStats.poolMisses++;
+                    return this.createMoveEvaluation();
+                }
+            }
+            
+            releaseMoveEvaluation(evaluation) {
+                if (this.pools.moveEvaluations.length < this.maxPoolSize) {
+                    this.pools.moveEvaluations.push(evaluation);
+                }
+                this.memoryStats.deallocations++;
+            }
+            
+            acquireCardObject() {
+                this.memoryStats.allocations++;
+                
+                if (this.pools.cardObjects.length > 0) {
+                    this.memoryStats.poolHits++;
+                    return this.pools.cardObjects.pop();
+                } else {
+                    this.memoryStats.poolMisses++;
+                    return { id: '', suit: '', rank: '', value: 0, faceUp: false };
+                }
+            }
+            
+            releaseCardObject(card) {
+                if (this.pools.cardObjects.length < this.maxPoolSize) {
+                    this.pools.cardObjects.push(card);
+                }
+                this.memoryStats.deallocations++;
+            }
+            
+            // Factory methods
+            createGameState() {
+                return {
+                    stock: [],
+                    waste: [],
+                    tableau: Array.from({ length: 7 }, () => []),
+                    foundations: { '♠': [], '♥': [], '♦': [], '♣': [] },
+                    gameStats: { moves: 0, time: 0, score: 0 },
+                    metadata: new Map() // Efficient metadata storage
+                };
+            }
+            
+            createMoveEvaluation() {
+                return {
+                    move: null,
+                    aiScore: 0,
+                    confidence: 0,
+                    strategicReasoning: [],
+                    riskAssessment: { risk: 0, reason: '' },
+                    historicalValue: 0,
+                    futurePlanning: 0,
+                    metadata: new Map()
+                };
+            }
+            
+            // Reset methods for object reuse
+            resetGameState(state) {
+                state.stock.length = 0;
+                state.waste.length = 0;
+                state.tableau.forEach(pile => pile.length = 0);
+                Object.values(state.foundations).forEach(pile => pile.length = 0);
+                state.gameStats.moves = 0;
+                state.gameStats.time = 0;
+                state.gameStats.score = 0;
+                state.metadata.clear();
+            }
+            
+            resetMoveEvaluation(evaluation) {
+                evaluation.move = null;
+                evaluation.aiScore = 0;
+                evaluation.confidence = 0;
+                evaluation.strategicReasoning.length = 0;
+                evaluation.riskAssessment.risk = 0;
+                evaluation.riskAssessment.reason = '';
+                evaluation.historicalValue = 0;
+                evaluation.futurePlanning = 0;
+                evaluation.metadata.clear();
+            }
+            
+            // Compact State Representation with error handling
+            compressGameState(gameState) {
+                try {
+                    if (!gameState) {
+                        console.warn('Cannot compress null/undefined game state');
+                        return new Uint8Array(256); // Return empty buffer
+                    }
+                    
+                    // Create a compact, memory-efficient representation
+                    const compressed = new Uint8Array(256); // Fixed-size buffer
+                    let offset = 0;
+                    
+                    // Encode stock count (1 byte)
+                    compressed[offset++] = Math.min(255, gameState.stock ? gameState.stock.length : 0);
+                    
+                    // Encode waste count (1 byte)
+                    compressed[offset++] = Math.min(255, gameState.waste ? gameState.waste.length : 0);
+                    
+                    // Encode tableau state (7 bytes for pile sizes + cards info)
+                    for (let i = 0; i < 7; i++) {
+                        const pileLength = (gameState.tableau && gameState.tableau[i]) ? gameState.tableau[i].length : 0;
+                        compressed[offset++] = Math.min(255, pileLength);
+                    }
+                    
+                    // Encode foundation state (4 bytes)
+                    const suits = ['♠', '♥', '♦', '♣'];
+                    suits.forEach((suit, i) => {
+                        const foundationLength = (gameState.foundations && gameState.foundations[suit]) ? 
+                            gameState.foundations[suit].length : 0;
+                        compressed[offset + i] = Math.min(255, foundationLength);
+                    });
+                    offset += 4;
+                    
+                    // Store game stats in remaining space
+                    const view = new DataView(compressed.buffer);
+                    const stats = gameState.gameStats || { moves: 0, time: 0, score: 0 };
+                    view.setUint32(offset, stats.moves || 0, true);
+                    view.setUint32(offset + 4, stats.time || 0, true);
+                    view.setInt32(offset + 8, stats.score || 0, true);
+                    
+                    return compressed;
+                } catch (error) {
+                    console.warn('Error compressing game state:', error);
+                    return new Uint8Array(256); // Return empty buffer on error
+                }
+            }
+            
+            decompressGameState(compressed) {
+                try {
+                    // Validate input
+                    if (!compressed) {
+                        console.warn('Cannot decompress null/undefined data');
+                        return this.acquireGameState();
+                    }
+                    
+                    // Ensure we have a proper Uint8Array
+                    let validCompressed;
+                    if (compressed instanceof Uint8Array) {
+                        validCompressed = compressed;
+                    } else if (compressed.buffer && compressed.buffer instanceof ArrayBuffer) {
+                        validCompressed = new Uint8Array(compressed.buffer);
+                    } else if (Array.isArray(compressed)) {
+                        validCompressed = new Uint8Array(compressed);
+                    } else {
+                        console.warn('Invalid compressed data format, creating default state');
+                        return this.acquireGameState();
+                    }
+                    
+                    // Ensure minimum size
+                    if (validCompressed.length < 20) {
+                        console.warn('Compressed data too small, creating default state');
+                        return this.acquireGameState();
+                    }
+                    
+                    const state = this.acquireGameState();
+                    let offset = 0;
+                    
+                    // Decode basic structure (size info only for efficiency)
+                    const stockSize = validCompressed[offset++];
+                    const wasteSize = validCompressed[offset++];
+                    
+                    // Skip detailed reconstruction for now - can be expanded as needed
+                    offset += 7; // tableau sizes
+                    offset += 4; // foundation sizes
+                    
+                    // Safely create DataView
+                    if (validCompressed.buffer && validCompressed.buffer instanceof ArrayBuffer) {
+                        const view = new DataView(validCompressed.buffer, validCompressed.byteOffset);
+                        state.gameStats.moves = view.getUint32(offset, true);
+                        state.gameStats.time = view.getUint32(offset + 4, true);
+                        state.gameStats.score = view.getInt32(offset + 8, true);
+                    } else {
+                        // Fallback for corrupted data
+                        state.gameStats.moves = 0;
+                        state.gameStats.time = 0;
+                        state.gameStats.score = 0;
+                    }
+                    
+                    return state;
+                } catch (error) {
+                    console.warn('Error decompressing game state:', error);
+                    return this.acquireGameState(); // Return default state
+                }
+            }
+            
+            // LRU Cache for frequent state lookups
+            cacheGameState(key, state) {
+                if (this.compactStateCache.size >= 200) {
+                    // Remove oldest entry
+                    const firstKey = this.compactStateCache.keys().next().value;
+                    this.compactStateCache.delete(firstKey);
+                }
+                
+                this.compactStateCache.set(key, this.compressGameState(state));
+            }
+            
+            getCachedGameState(key) {
+                if (this.compactStateCache.has(key)) {
+                    // Move to end (LRU behavior)
+                    const compressed = this.compactStateCache.get(key);
+                    this.compactStateCache.delete(key);
+                    this.compactStateCache.set(key, compressed);
+                    return this.decompressGameState(compressed);
+                }
+                return null;
+            }
+            
+            // Memory monitoring and cleanup
+            initializeMemoryMonitoring() {
+                // Monitor memory usage periodically
+                setInterval(() => {
+                    this.performMemoryCleanup();
+                    this.logMemoryStats();
+                }, 30000); // Every 30 seconds
+            }
+            
+            performMemoryCleanup() {
+                // Limit pool sizes if memory usage is high
+                Object.keys(this.pools).forEach(poolName => {
+                    const pool = this.pools[poolName];
+                    if (pool.length > this.maxPoolSize) {
+                        pool.splice(this.maxPoolSize);
+                    }
+                });
+                
+                // Clear old cache entries if cache is too large
+                if (this.compactStateCache.size > 500) {
+                    const entries = Array.from(this.compactStateCache.entries());
+                    const keepEntries = entries.slice(-200); // Keep newest 200
+                    this.compactStateCache.clear();
+                    keepEntries.forEach(([key, value]) => {
+                        this.compactStateCache.set(key, value);
+                    });
+                }
+                
+                // Trigger garbage collection hint (if available)
+                if (window.gc && typeof window.gc === 'function') {
+                    window.gc();
+                }
+            }
+            
+            logMemoryStats() {
+                const stats = this.getMemoryStats();
+                console.log(`🧠 Memory Stats: Pool hit rate: ${stats.hitRate}%, Active objects: ${stats.activeObjects}, Cache size: ${stats.cacheSize}`);
+            }
+            
+            getMemoryStats() {
+                const totalRequests = this.memoryStats.poolHits + this.memoryStats.poolMisses;
+                const hitRate = totalRequests > 0 ? Math.round((this.memoryStats.poolHits / totalRequests) * 100) : 0;
+                
+                return {
+                    hitRate,
+                    activeObjects: this.memoryStats.allocations - this.memoryStats.deallocations,
+                    cacheSize: this.compactStateCache.size,
+                    poolSizes: Object.fromEntries(
+                        Object.entries(this.pools).map(([name, pool]) => [name, pool.length])
+                    )
+                };
+            }
+            
+            // Efficient pattern storage
+            storePattern(pattern, outcome) {
+                const key = this.hashPattern(pattern);
+                if (!this.patternMap.has(key)) {
+                    this.patternMap.set(key, {
+                        pattern: pattern,
+                        outcomes: new Float32Array(10), // Fixed-size array for efficiency
+                        count: 0,
+                        successRate: 0
+                    });
+                }
+                
+                const entry = this.patternMap.get(key);
+                const index = entry.count % 10;
+                entry.outcomes[index] = outcome ? 1 : 0;
+                entry.count++;
+                
+                // Recalculate success rate efficiently
+                let successes = 0;
+                const dataLength = Math.min(entry.count, 10);
+                for (let i = 0; i < dataLength; i++) {
+                    successes += entry.outcomes[i];
+                }
+                entry.successRate = successes / dataLength;
+            }
+            
+            hashPattern(pattern) {
+                // Simple hash function for patterns
+                let hash = 0;
+                const str = JSON.stringify(pattern);
+                for (let i = 0; i < str.length; i++) {
+                    const char = str.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash; // Convert to 32-bit integer
+                }
+                return hash.toString(36);
+            }
+            
+            dispose() {
+                // Clean up all resources
+                Object.values(this.pools).forEach(pool => pool.length = 0);
+                this.compactStateCache.clear();
+                this.patternMap.clear();
+                this.moveHistory.clear();
+                console.log('🧠 Memory Manager disposed');
+            }
+        }
+        
+        // Circular Buffer for memory-efficient history storage
+        class CircularBuffer {
+            constructor(capacity) {
+                this.capacity = capacity;
+                this.buffer = new Array(capacity);
+                this.size = 0;
+                this.start = 0;
+                this.end = 0;
+            }
+            
+            push(item) {
+                this.buffer[this.end] = item;
+                this.end = (this.end + 1) % this.capacity;
+                
+                if (this.size < this.capacity) {
+                    this.size++;
+                } else {
+                    this.start = (this.start + 1) % this.capacity;
+                }
+            }
+            
+            get(index) {
+                if (index >= this.size) return undefined;
+                return this.buffer[(this.start + index) % this.capacity];
+            }
+            
+            getLast(count = 1) {
+                const result = [];
+                for (let i = Math.max(0, this.size - count); i < this.size; i++) {
+                    result.push(this.get(i));
+                }
+                return result;
+            }
+            
+            clear() {
+                this.size = 0;
+                this.start = 0;
+                this.end = 0;
+            }
+            
+            toArray() {
+                const result = [];
+                for (let i = 0; i < this.size; i++) {
+                    result.push(this.get(i));
+                }
+                return result;
+            }
+        }
+
+        // Initialize the game with better error handling and memory management
         let game = null;
+        
+        // Memory cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (game && game.memory) {
+                console.log('🧠 Cleaning up memory manager...');
+                game.memory.dispose();
+            }
+            if (game && game.ml) {
+                console.log('🧠 Cleaning up ML system...');
+                game.ml.dispose();
+            }
+        });
         
         function safeGameCall(methodPath, ...args) {
             try {
@@ -4803,6 +6361,12 @@
                 
                 game = new KlondikeSolitaire();
                 window.game = game;
+                
+                // Load achievements data
+                game.achievements.loadAchievements();
+                
+                // Apply the current theme
+                game.ui.applyTheme();
                 
                 console.log('✅ Klondike Solitaire initialized successfully');
                 

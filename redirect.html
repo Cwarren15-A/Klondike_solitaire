@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Klondike Solitaire - Redirecting...</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #1e5128, #2d5016);
+            color: white;
+            text-align: center;
+        }
+        .redirect-container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        a {
+            color: #4ade80;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+    <script>
+        // Redirect to GitHub Pages for better memory persistence
+        setTimeout(() => {
+            window.location.href = 'https://cwarren15-a.github.io/Klondike_solitaire/';
+        }, 3000);
+    </script>
+</head>
+<body>
+    <div class="redirect-container">
+        <h1>🃏 Klondike Solitaire</h1>
+        <div class="spinner"></div>
+        <p>Redirecting to the live version for better performance and memory persistence...</p>
+        <p><small>If you're not redirected automatically, <a href="https://cwarren15-a.github.io/Klondike_solitaire/">click here</a></small></p>
+        
+        <div style="margin-top: 2rem; font-size: 0.9em; opacity: 0.8;">
+            <p><strong>Why the redirect?</strong></p>
+            <p>The GitHub Pages version provides:</p>
+            <ul style="text-align: left; display: inline-block;">
+                <li>Better memory persistence for AI learning</li>
+                <li>Optimized performance</li>
+                <li>Latest features and bug fixes</li>
+                <li>Cross-device game state sync</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html> 

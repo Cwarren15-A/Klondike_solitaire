@@ -1,0 +1,48 @@
+{
+  "version": "4.0",
+  "exported": "2024-12-19T00:00:00.000Z",
+  "metadata": {
+    "totalGamesPlayed": 0,
+    "totalGamesWon": 0,
+    "winRate": 0,
+    "lastUpdated": 1734567600000,
+    "analyticsId": "kl_initial_000000000_000000000"
+  },
+  "analytics": {
+    "metadata": {
+      "totalGamesPlayed": 0,
+      "totalGamesWon": 0,
+      "winRate": 0,
+      "lastUpdated": 1734567600000
+    },
+    "recentPerformance": {
+      "recentWinRate": 0,
+      "improvementTrend": "insufficient-data",
+      "gamesAnalyzed": 0
+    }
+  },
+  "anonymizedPatterns": {
+    "moveEffectiveness": {},
+    "totalGamesAnalyzed": 0,
+    "winRateTrends": [],
+    "strategicInsights": []
+  },
+  "aggregatedStats": {
+    "totalAnalyzedGames": 0,
+    "overallWinRate": 0,
+    "averageGameLength": 0,
+    "difficultyBreakdown": {},
+    "adaptiveWeights": {
+      "foundationPriority": 1.0,
+      "revealingBonus": 1.0,
+      "sequenceBuilding": 1.0,
+      "stockDrawPenalty": 1.0
+    }
+  },
+  "notes": {
+    "purpose": "This file stores anonymized learning data from Klondike Solitaire games",
+    "privacy": "No personal information is stored - only game patterns and performance metrics",
+    "updates": "This file can be manually updated by uploading generated learning exports to GitHub",
+    "usage": "The AI system loads this data on startup to improve game recommendations"
+  }
+} 

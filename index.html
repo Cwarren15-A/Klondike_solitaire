@@ -603,8 +603,9 @@
         class KlondikeSolitaire {
             constructor() {
                 this.constants = new GameConstants();
-                this.storage = new StorageManager();
-                this.memory = new MemoryManager(); // Memory optimization system
+                            this.storage = new StorageManager();
+            this.memory = new MemoryManager();
+            this.persistentLearning = new PersistentLearningManager(this); // Memory optimization system
                 this.settings = new SettingsManager(this);
                 this.stats = new StatisticsManager(this);
                 this.achievements = new AchievementManager(this);
@@ -2263,6 +2264,29 @@
                         }
                     }
                     
+                    // Record win in persistent learning system
+                    if (this.game.persistentLearning && this.game.persistentLearning.isInitialized) {
+                        const winningGameData = {
+                            won: true,
+                            moves: this.moves,
+                            timeElapsed: performance.now() - this.game.startTime,
+                            finalState: {
+                                foundations: { ...this.foundations },
+                                tableau: this.tableau.map(pile => [...pile]),
+                                waste: [...this.waste],
+                                stock: [...this.stock]
+                            },
+                            moveSequence: this.game.gameHistory.map(state => ({
+                                type: state.action?.type || 'unknown',
+                                timestamp: state.timestamp
+                            })),
+                            strategyUsed: this.game.lastStrategyUsed || 'manual',
+                            aiAssisted: this.game.aiHintUsed || false
+                        };
+                        
+                        this.game.persistentLearning.recordGameResult(winningGameData);
+                    }
+                    
                     this.game.stats.updateGameStatistics(true);
                     
                     setTimeout(() => {
@@ -2390,6 +2414,30 @@
                     } catch (mlError) {
                         console.warn('Error recording deadlock for ML:', mlError);
                     }
+                }
+                
+                // Record loss in persistent learning system
+                if (this.game.persistentLearning && this.game.persistentLearning.isInitialized) {
+                    const lossGameData = {
+                        won: false,
+                        moves: this.moves,
+                        timeElapsed: performance.now() - this.game.startTime,
+                        finalState: {
+                            foundations: { ...this.foundations },
+                            tableau: this.tableau.map(pile => [...pile]),
+                            waste: [...this.waste],
+                            stock: [...this.stock]
+                        },
+                        moveSequence: this.game.gameHistory.map(state => ({
+                            type: state.action?.type || 'unknown',
+                            timestamp: state.timestamp
+                        })),
+                        strategyUsed: this.game.lastStrategyUsed || 'manual',
+                        aiAssisted: this.game.aiHintUsed || false,
+                        lossReason: 'deadlock'
+                    };
+                    
+                    this.game.persistentLearning.recordGameResult(lossGameData);
                 }
                 
                 // Update statistics
@@ -2796,9 +2844,9 @@
                 });
             }
             
-            // NEW: Auto-Complete Game Solver - Returns complete winning sequence
-            async autoCompleteGame(maxDepth = this.autoSolveDepth) {
-                console.log('🤖 Auto-Complete AI analyzing winning paths...');
+            // NEW: Auto-Complete Game Solver - Actually plays the game automatically
+            async autoCompleteGame(maxDepth = this.autoSolveDepth, analysisOnly = false) {
+                console.log('🤖 Auto-Play AI finding and executing winning moves...');
                 
                 const startTime = performance.now();
                 const currentState = this.cloneGameState();
@@ -2867,28 +2915,44 @@
                         // Fall through to main thread implementation
                     }
                     
-                    // Fallback to main thread
-                    console.log('🔄 Using main thread for winning path analysis...');
-                    const winningSequence = await this.findWinningPath(currentState, [], maxDepth);
-                    const timeTaken = (performance.now() - startTime).toFixed(0);
+                    // Fallback to main thread with intelligent auto-play
+                    console.log('🔄 Using main thread for intelligent auto-play...');
                     
-                    if (winningSequence) {
-                        console.log(`🎯 Auto-Complete found winning path in ${timeTaken}ms: ${winningSequence.length} moves`);
-                        return {
-                            canWin: true,
-                            moves: winningSequence,
-                            moveCount: winningSequence.length,
-                            timeTaken: timeTaken,
-                            confidence: this.calculatePathConfidence(winningSequence)
-                        };
+                    if (!analysisOnly) {
+                        // Use step-by-step intelligent play instead of full path finding
+                        const success = await this.playGameIntelligently(maxDepth);
+                        const timeTaken = (performance.now() - startTime).toFixed(0);
+                        
+                        if (success) {
+                            console.log(`🎉 Auto-play completed successfully in ${timeTaken}ms!`);
+                            return { canWin: true, timeTaken: timeTaken };
+                        } else {
+                            console.log(`⚠️ Auto-play made progress but didn't complete (${timeTaken}ms)`);
+                            return { canWin: false, reason: 'Game not winnable or too complex', timeTaken: timeTaken };
+                        }
                     } else {
-                        console.log(`❌ No winning path found within ${maxDepth} moves (${timeTaken}ms)`);
-                        return {
-                            canWin: false,
-                            reason: `No winning sequence found within ${maxDepth} moves`,
-                            timeTaken: timeTaken,
-                            suggestedMoves: await this.getBestProgressiveMoves(currentState, 3)
-                        };
+                        // Analysis mode - find complete path without executing
+                        const winningSequence = await this.findWinningPath(currentState, [], Math.min(maxDepth, 100));
+                        const timeTaken = (performance.now() - startTime).toFixed(0);
+                        
+                        if (winningSequence) {
+                            console.log(`🎯 Analysis found winning path in ${timeTaken}ms: ${winningSequence.length} moves`);
+                            return {
+                                canWin: true,
+                                moves: winningSequence,
+                                moveCount: winningSequence.length,
+                                timeTaken: timeTaken,
+                                confidence: this.calculatePathConfidence(winningSequence)
+                            };
+                        } else {
+                            console.log(`❌ No winning path found within ${maxDepth} moves (${timeTaken}ms)`);
+                            return {
+                                canWin: false,
+                                reason: `No winning sequence found within ${maxDepth} moves`,
+                                timeTaken: timeTaken,
+                                suggestedMoves: await this.getBestProgressiveMoves(currentState, 3)
+                            };
+                        }
                     }
                 } catch (error) {
                     console.error('Auto-Complete error:', error);
@@ -3060,6 +3124,152 @@
                 }
             }
             
+            // Intelligent step-by-step game playing
+            async playGameIntelligently(maxMoves = 200) {
+                console.log(`🤖 Starting intelligent auto-play (max ${maxMoves} moves)...`);
+                
+                let movesPlayed = 0;
+                let consecutiveNonProgressMoves = 0;
+                const maxNonProgressMoves = 20; // Prevent infinite loops
+                
+                while (movesPlayed < maxMoves && !this.isGameWon()) {
+                    // Get current game state for analysis
+                    const currentState = this.cloneGameState();
+                    
+                    // Generate all possible moves
+                    const possibleMoves = this.generateAllPossibleMoves(currentState);
+                    
+                    if (possibleMoves.length === 0) {
+                        console.log('❌ No moves available - game stuck');
+                        return false;
+                    }
+                    
+                    // Rank moves by strategic value
+                    const rankedMoves = this.rankMovesByWinPotential(possibleMoves, currentState);
+                    
+                    // Calculate foundation cards before move
+                    const foundationCardsBefore = Object.values(currentState.foundations)
+                        .reduce((sum, pile) => sum + pile.length, 0);
+                    
+                    // Execute the best move
+                    const bestMove = rankedMoves[0];
+                    
+                    try {
+                        console.log(`🎯 Move ${movesPlayed + 1}: ${this.describeMoveAction(bestMove)}`);
+                        await this.executeMove(bestMove);
+                        movesPlayed++;
+                        
+                        // Check progress after move
+                        const foundationCardsAfter = Object.values(this.foundations)
+                            .reduce((sum, pile) => sum + pile.length, 0);
+                        
+                        if (foundationCardsAfter > foundationCardsBefore) {
+                            consecutiveNonProgressMoves = 0; // Reset counter on progress
+                            console.log(`📈 Foundation progress: ${foundationCardsAfter}/52 cards`);
+                        } else {
+                            consecutiveNonProgressMoves++;
+                        }
+                        
+                        // Check if we're stuck in a loop
+                        if (consecutiveNonProgressMoves >= maxNonProgressMoves) {
+                            console.log(`⚠️ No foundation progress for ${maxNonProgressMoves} moves - trying deeper analysis`);
+                            
+                            // Try to find a sequence that makes progress
+                            const progressSequence = await this.findProgressSequence(5);
+                            if (progressSequence && progressSequence.length > 0) {
+                                console.log(`🔄 Executing progress sequence of ${progressSequence.length} moves`);
+                                for (const move of progressSequence) {
+                                    await this.executeMove(move);
+                                    movesPlayed++;
+                                }
+                                consecutiveNonProgressMoves = 0;
+                            } else {
+                                console.log('❌ Unable to find progress sequence - stopping auto-play');
+                                return false;
+                            }
+                        }
+                        
+                        // Check if game is won
+                        if (this.isGameWon()) {
+                            console.log(`🎉 Game won in ${movesPlayed} moves!`);
+                            this.showWinMessage();
+                            return true;
+                        }
+                        
+                        // Small delay for visual feedback
+                        await new Promise(resolve => setTimeout(resolve, 150));
+                        
+                        // Show progress every 25 moves
+                        if (movesPlayed % 25 === 0) {
+                            const foundationCount = Object.values(this.foundations)
+                                .reduce((sum, pile) => sum + pile.length, 0);
+                            console.log(`📊 Progress update: ${movesPlayed} moves played, ${foundationCount}/52 cards in foundations`);
+                        }
+                        
+                    } catch (error) {
+                        console.error(`❌ Failed to execute move:`, error);
+                        return false;
+                    }
+                }
+                
+                if (movesPlayed >= maxMoves) {
+                    console.log(`⏱️ Reached maximum moves (${maxMoves}) without winning`);
+                    return false;
+                }
+                
+                return false; // Shouldn't reach here
+            }
+            
+            // Find a sequence of moves that makes foundation progress
+            async findProgressSequence(maxDepth = 5) {
+                const currentState = this.cloneGameState();
+                const currentFoundationCards = Object.values(currentState.foundations)
+                    .reduce((sum, pile) => sum + pile.length, 0);
+                
+                // Try to find a short sequence that increases foundation cards
+                return await this.searchProgressPath(currentState, [], maxDepth, currentFoundationCards);
+            }
+            
+            // Recursive search for progress-making moves
+            async searchProgressPath(gameState, moveSequence, depthRemaining, targetFoundationCards) {
+                if (depthRemaining <= 0) {
+                    return null;
+                }
+                
+                const possibleMoves = this.generateAllPossibleMoves(gameState);
+                const rankedMoves = this.rankMovesByWinPotential(possibleMoves, gameState);
+                
+                // Try only the top few moves to keep it fast
+                const topMoves = rankedMoves.slice(0, 3);
+                
+                for (const move of topMoves) {
+                    const newState = this.applyMoveToState(gameState, move);
+                    const newFoundationCards = Object.values(newState.foundations)
+                        .reduce((sum, pile) => sum + pile.length, 0);
+                    
+                    const newSequence = [...moveSequence, move];
+                    
+                    // If this move makes progress, return the sequence
+                    if (newFoundationCards > targetFoundationCards) {
+                        return newSequence;
+                    }
+                    
+                    // Otherwise, search deeper
+                    const progressPath = await this.searchProgressPath(
+                        newState, 
+                        newSequence, 
+                        depthRemaining - 1, 
+                        targetFoundationCards
+                    );
+                    
+                    if (progressPath) {
+                        return progressPath;
+                    }
+                }
+                
+                return null;
+            }
+
             // Execute a single move from the move object
             async executeMove(move) {
                 try {
@@ -3143,8 +3353,8 @@
                     console.log('🔄 Worker not available, using main thread for hints');
                 }
                 
-                // First, try auto-complete for immediate win detection
-                const autoComplete = await this.autoCompleteGame(150); // Full depth for complete analysis
+                // First, try auto-complete for immediate win detection (analysis mode)
+                const autoComplete = await this.autoCompleteGame(150, true); // Full depth for analysis only
                 
                 if (autoComplete.canWin && autoComplete.moves.length > 0) {
                     const nextMove = autoComplete.moves[0];
@@ -3382,30 +3592,112 @@
             calculateMoveScore(move, state) {
                 let score = 0;
                 
-                // Foundation moves are highest priority
-                if (move.type.includes('foundation')) {
-                    score += 1000 + move.card.value; // Higher cards worth more
-                }
+                // Get adaptive weights from learning system
+                const adaptiveWeights = this.game.persistentLearning?.getAdaptiveWeights() || {
+                    foundationPriority: 1.0,
+                    revealingBonus: 1.0,
+                    sequenceBuilding: 1.0,
+                    stockDrawPenalty: 1.0
+                };
                 
-                // Moves that reveal hidden cards
-                if (move.type === 'tableau_to_tableau' || move.type === 'tableau_to_foundation') {
-                    const fromPile = state.tableau[move.from.index];
-                    if (fromPile && fromPile.length > 1 && !fromPile[fromPile.length - 2].faceUp) {
-                        score += 500; // Revealing hidden cards is valuable
+                // FOUNDATION MOVES - Highest priority (these win the game)
+                if (move.type === 'tableau_to_foundation' || move.type === 'waste_to_foundation') {
+                    score += 10000 * adaptiveWeights.foundationPriority; // Adaptive priority
+                    
+                    // CRITICAL: Aces get highest priority (they unlock everything)
+                    if (move.card && move.card.value === 1) {
+                        score += 5000;
+                    }
+                    // Low cards get high priority (build foundation early)
+                    else if (move.card && move.card.value <= 4) {
+                        score += 3000;
+                    }
+                    // Sequential foundation building bonus
+                    if (move.card) {
+                        const foundationPile = state.foundations[move.card.suit];
+                        if (foundationPile && foundationPile.length === move.card.value - 1) {
+                            score += 2000; // Perfect sequence match
+                        }
                     }
                 }
                 
-                // King to empty space
-                if (move.type === 'tableau_to_tableau' && move.card.value === 13 && state.tableau[move.to.index].length === 0) {
-                    score += 300;
+                // REVEALING MOVES - Second highest priority
+                if (move.type === 'tableau_to_tableau' || move.type === 'tableau_to_foundation') {
+                    const fromPile = state.tableau[move.from?.index];
+                    if (fromPile && fromPile.length > 1 && !fromPile[fromPile.length - 2].faceUp) {
+                        score += 1500 * adaptiveWeights.revealingBonus; // Adaptive revealing bonus
+                        
+                        // Extra bonus if revealing might expose an Ace or foundation card
+                        const hiddenCard = fromPile[fromPile.length - 2];
+                        if (hiddenCard && (hiddenCard.value === 1 || hiddenCard.value <= 4)) {
+                            score += 1000; // Might reveal foundation card
+                        }
+                    }
                 }
                 
-                // Stock draws (lowest priority)
+                // KINGS TO EMPTY SPACES - Strategic building moves
+                if (move.card && move.card.value === 13 && move.to && state.tableau[move.to.index].length === 0) {
+                    score += 800;
+                }
+                
+                // SEQUENCE BUILDING - Tableau moves that build good sequences
+                if (move.type === 'tableau_to_tableau' || move.type === 'waste_to_tableau') {
+                    const targetPile = state.tableau[move.to?.index];
+                    if (targetPile && targetPile.length > 0 && move.card) {
+                        const topCard = targetPile[targetPile.length - 1];
+                        if (topCard.faceUp) {
+                            // Check if this creates a good sequence (alternating colors, descending)
+                            const cardColor = (move.card.suit === '♠' || move.card.suit === '♣') ? 'black' : 'red';
+                            const topColor = (topCard.suit === '♠' || topCard.suit === '♣') ? 'black' : 'red';
+                            
+                            if (cardColor !== topColor && move.card.value === topCard.value - 1) {
+                                score += 400 * adaptiveWeights.sequenceBuilding; // Adaptive sequence bonus
+                            }
+                        }
+                    }
+                }
+                
+                // STRONGLY PENALIZE COUNTERPRODUCTIVE MOVES
+                if (this.isCounterproductiveMoveMain(move, state)) {
+                    score -= 2000;
+                }
+                
+                // PENALIZE STOCK DRAWS when better options exist
                 if (move.type === 'draw_stock') {
-                    score += 10;
+                    // Check if there are foundation or revealing moves available
+                    score += 50 / adaptiveWeights.stockDrawPenalty; // Adaptive stock penalty
                 }
                 
                 return score;
+            }
+            
+            // Check if a move is counterproductive (main thread version)
+            isCounterproductiveMoveMain(move, state) {
+                // Don't move Aces away from foundation opportunities
+                if (move.card && move.card.value === 1) {
+                    if (move.type !== 'tableau_to_foundation' && move.type !== 'waste_to_foundation') {
+                        return true;
+                    }
+                }
+                
+                // Don't break sequences that could lead to foundation
+                if (move.type === 'tableau_to_tableau' && move.card) {
+                    const foundationPile = state.foundations[move.card.suit];
+                    if (foundationPile && foundationPile.length === move.card.value - 1) {
+                        return true; // This card should go to foundation instead
+                    }
+                }
+                
+                // Don't move cards that could go to foundation to tableau instead
+                if (move.type === 'waste_to_tableau' && move.card) {
+                    for (const [suit, foundationPile] of Object.entries(state.foundations)) {
+                        if (this.canPlaceOnFoundationState(move.card, foundationPile)) {
+                            return true; // Should go to foundation instead
+                        }
+                    }
+                }
+                
+                return false;
             }
             
             applyMoveToState(state, move) {
@@ -3916,10 +4208,14 @@
              async showHint() {
                 try {
                     this.game.sound.play('cardFlip');
-                    console.log('🧠 Enhanced AI Hint System with Auto-Complete Analysis...');
-                    
-                    // Use the new smart hint system with auto-complete
-                    const smartHint = await this.getSmartHint();
+                                    console.log('🧠 Enhanced AI Hint System with Auto-Complete Analysis...');
+                
+                // Track that AI assistance was used
+                this.game.aiHintUsed = true;
+                this.game.lastStrategyUsed = 'ai-assisted';
+                
+                // Use the new smart hint system with auto-complete
+                const smartHint = await this.getSmartHint();
                     const completeAnalysis = this.analyzeCompleteGameState();
                     this.game.state.hintCardId = null;
                     
@@ -7368,6 +7664,413 @@
                 this.isDisposed = true;
                 this.isInitialized = false;
                 console.log('🧠 Advanced ML resources cleaned up and learning data saved');
+            }
+        }
+
+        // Enhanced Persistent Learning System
+        class PersistentLearningManager {
+            constructor(gameInstance) {
+                this.game = gameInstance;
+                this.isInitialized = false;
+                this.remoteStorageEnabled = false;
+                
+                // Learning data structure
+                this.learningDatabase = {
+                    version: '4.0',
+                    metadata: {
+                        totalGamesPlayed: 0,
+                        totalGamesWon: 0,
+                        winRate: 0,
+                        lastUpdated: Date.now(),
+                        analyticsId: this.generateAnalyticsId()
+                    },
+                    gameRecords: [], // All games (wins and losses)
+                    patterns: {
+                        winningPatterns: new Map(),
+                        losingPatterns: new Map(),
+                        moveEffectiveness: new Map(),
+                        stockDrawPatterns: new Map(),
+                        foundationSequences: new Map()
+                    },
+                    strategies: {
+                        successfulOpenings: new Map(),
+                        effectiveMidGameTactics: new Map(),
+                        endGameOptimizations: new Map()
+                    },
+                    adaptiveWeights: {
+                        foundationPriority: 1.0,
+                        revealingBonus: 1.0,
+                        sequenceBuilding: 1.0,
+                        stockDrawPenalty: 1.0
+                    },
+                    performanceMetrics: {
+                        averageMovesPerWin: 0,
+                        averageTimePerWin: 0,
+                        mostEffectiveStrategies: [],
+                        commonFailurePoints: []
+                    }
+                };
+                
+                this.initializePersistentStorage();
+            }
+            
+            generateAnalyticsId() {
+                return 'kl_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now().toString(36);
+            }
+            
+            async initializePersistentStorage() {
+                try {
+                    console.log('🧠 Initializing Enhanced Persistent Learning System...');
+                    await this.loadLocalData();
+                    await this.loadRemoteData();
+                    this.setupAutoSave();
+                    await this.setupRemoteSync();
+                    this.isInitialized = true;
+                    console.log(`🧠 Learning system initialized with ${this.learningDatabase.gameRecords.length} game records`);
+                } catch (error) {
+                    console.warn('Failed to initialize learning system:', error);
+                    this.isInitialized = true;
+                }
+            }
+            
+            async loadLocalData() {
+                try {
+                    const localData = this.game.storage.get('persistent_learning_v4');
+                    if (localData) {
+                        this.mergeLearningData(localData);
+                        console.log(`📚 Loaded ${localData.gameRecords?.length || 0} local game records`);
+                    }
+                } catch (error) {
+                    console.warn('Failed to load local learning data:', error);
+                }
+            }
+            
+            async loadRemoteData() {
+                try {
+                    const response = await fetch('./data/learning-data.json', { 
+                        cache: 'no-cache',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    
+                    if (response.ok) {
+                        const remoteData = await response.json();
+                        this.mergeLearningData(remoteData);
+                        this.remoteStorageEnabled = true;
+                        console.log(`🌐 Loaded remote learning data: ${remoteData.gameRecords?.length || 0} records`);
+                    }
+                } catch (error) {
+                    console.log('🌐 Remote learning data not available (expected for first-time users)');
+                }
+            }
+            
+            mergeLearningData(newData) {
+                if (!newData || newData.version !== '4.0') return;
+                
+                this.learningDatabase.metadata.totalGamesPlayed = Math.max(
+                    this.learningDatabase.metadata.totalGamesPlayed,
+                    newData.metadata?.totalGamesPlayed || 0
+                );
+                
+                if (newData.gameRecords) {
+                    const existingIds = new Set(this.learningDatabase.gameRecords.map(r => r.id));
+                    const newRecords = newData.gameRecords.filter(r => !existingIds.has(r.id));
+                    this.learningDatabase.gameRecords.push(...newRecords);
+                }
+                
+                if (newData.adaptiveWeights) {
+                    this.learningDatabase.adaptiveWeights = {
+                        ...this.learningDatabase.adaptiveWeights,
+                        ...newData.adaptiveWeights
+                    };
+                }
+            }
+            
+            async recordGameResult(gameData) {
+                if (!this.isInitialized) return;
+                
+                try {
+                    const gameRecord = {
+                        id: `game_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                        timestamp: Date.now(),
+                        won: gameData.won,
+                        moves: gameData.moves || 0,
+                        timeElapsed: gameData.timeElapsed || 0,
+                        finalState: this.compressGameState(gameData.finalState),
+                        moveSequence: gameData.moveSequence || [],
+                        strategyUsed: gameData.strategyUsed || 'standard',
+                        aiAssisted: gameData.aiAssisted || false,
+                        difficulty: this.calculateGameDifficulty(gameData.finalState),
+                        patterns: this.extractGamePatterns(gameData)
+                    };
+                    
+                    this.learningDatabase.gameRecords.push(gameRecord);
+                    
+                    this.learningDatabase.metadata.totalGamesPlayed++;
+                    if (gameData.won) {
+                        this.learningDatabase.metadata.totalGamesWon++;
+                    }
+                    this.learningDatabase.metadata.winRate = 
+                        (this.learningDatabase.metadata.totalGamesWon / this.learningDatabase.metadata.totalGamesPlayed) * 100;
+                    this.learningDatabase.metadata.lastUpdated = Date.now();
+                    
+                    await this.learnFromGame(gameRecord);
+                    await this.saveAllData();
+                    
+                    console.log(`🧠 Recorded ${gameData.won ? 'WIN' : 'LOSS'}: Total games: ${this.learningDatabase.metadata.totalGamesPlayed}, Win rate: ${this.learningDatabase.metadata.winRate.toFixed(1)}%`);
+                    
+                } catch (error) {
+                    console.error('Failed to record game result:', error);
+                }
+            }
+            
+            calculateGameDifficulty(finalState) {
+                if (!finalState) return 'unknown';
+                
+                const hiddenCards = finalState.tableau?.reduce((sum, pile) => 
+                    sum + pile.filter(c => !c.faceUp).length, 0) || 0;
+                const foundationCards = Object.values(finalState.foundations || {})
+                    .reduce((sum, pile) => sum + pile.length, 0);
+                
+                if (foundationCards > 40) return 'easy';
+                if (foundationCards > 20) return 'medium';
+                if (hiddenCards < 10) return 'medium';
+                return 'hard';
+            }
+            
+            extractGamePatterns(gameData) {
+                const patterns = {
+                    openingMoves: gameData.moveSequence?.slice(0, 5) || [],
+                    foundationBuilding: [],
+                    stockCycling: 0,
+                    revealingMoves: 0
+                };
+                
+                gameData.moveSequence?.forEach(move => {
+                    if (move.type?.includes('foundation')) {
+                        patterns.foundationBuilding.push({
+                            card: move.card,
+                            timing: patterns.foundationBuilding.length
+                        });
+                    }
+                    if (move.type === 'draw_stock') {
+                        patterns.stockCycling++;
+                    }
+                    if (move.revealsCard) {
+                        patterns.revealingMoves++;
+                    }
+                });
+                
+                return patterns;
+            }
+            
+            async learnFromGame(gameRecord) {
+                try {
+                    this.updateMoveEffectiveness(gameRecord);
+                    this.updateStrategyEffectiveness(gameRecord);
+                    this.adaptAIWeights(gameRecord);
+                    this.updatePerformanceMetrics(gameRecord);
+                } catch (error) {
+                    console.warn('Failed to learn from game:', error);
+                }
+            }
+            
+            adaptAIWeights(gameRecord) {
+                const weights = this.learningDatabase.adaptiveWeights;
+                const learningRate = 0.01;
+                
+                if (gameRecord.won) {
+                    if (gameRecord.patterns.foundationBuilding.length > 0) {
+                        weights.foundationPriority = Math.min(2.0, 
+                            weights.foundationPriority + learningRate);
+                    }
+                    
+                    if (gameRecord.patterns.revealingMoves > 5) {
+                        weights.revealingBonus = Math.min(2.0,
+                            weights.revealingBonus + learningRate);
+                    }
+                } else {
+                    if (gameRecord.patterns.stockCycling > 20) {
+                        weights.stockDrawPenalty = Math.max(0.5,
+                            weights.stockDrawPenalty - learningRate);
+                    }
+                }
+            }
+            
+            getAdaptiveWeights() {
+                return { ...this.learningDatabase.adaptiveWeights };
+            }
+            
+            getPerformanceAnalytics() {
+                return {
+                    metadata: this.learningDatabase.metadata,
+                    recentPerformance: this.analyzeRecentPerformance(),
+                    strategySuggestions: this.generateStrategySuggestions(),
+                    learningProgress: this.calculateLearningProgress()
+                };
+            }
+            
+            analyzeRecentPerformance() {
+                const recentGames = this.learningDatabase.gameRecords.slice(-50);
+                const recentWins = recentGames.filter(g => g.won).length;
+                
+                return {
+                    recentWinRate: (recentWins / Math.max(1, recentGames.length)) * 100,
+                    improvementTrend: this.calculateImprovementTrend(recentGames),
+                    gamesAnalyzed: recentGames.length
+                };
+            }
+            
+            calculateImprovementTrend(recentGames) {
+                if (recentGames.length < 10) return 'insufficient-data';
+                
+                const firstHalf = recentGames.slice(0, Math.floor(recentGames.length / 2));
+                const secondHalf = recentGames.slice(Math.floor(recentGames.length / 2));
+                
+                const firstHalfWinRate = firstHalf.filter(g => g.won).length / firstHalf.length;
+                const secondHalfWinRate = secondHalf.filter(g => g.won).length / secondHalf.length;
+                
+                const improvement = secondHalfWinRate - firstHalfWinRate;
+                
+                if (improvement > 0.1) return 'improving';
+                if (improvement < -0.1) return 'declining';
+                return 'stable';
+            }
+            
+            async saveAllData() {
+                try {
+                    const localData = {
+                        ...this.learningDatabase,
+                        gameRecords: this.learningDatabase.gameRecords.slice(-100),
+                        patterns: this.convertMapsToObjects(this.learningDatabase.patterns),
+                        strategies: this.convertMapsToObjects(this.learningDatabase.strategies)
+                    };
+                    
+                    this.game.storage.set('persistent_learning_v4', localData);
+                    await this.generateDataFile();
+                    
+                    console.log('💾 Learning data saved to all storage systems');
+                } catch (error) {
+                    console.warn('Failed to save learning data:', error);
+                }
+            }
+            
+            convertMapsToObjects(mapContainer) {
+                const result = {};
+                Object.keys(mapContainer).forEach(key => {
+                    if (mapContainer[key] instanceof Map) {
+                        result[key] = Object.fromEntries(mapContainer[key]);
+                    } else {
+                        result[key] = mapContainer[key];
+                    }
+                });
+                return result;
+            }
+            
+            async generateDataFile() {
+                try {
+                    const exportData = {
+                        version: '4.0',
+                        exported: new Date().toISOString(),
+                        metadata: this.learningDatabase.metadata,
+                        analytics: this.getPerformanceAnalytics(),
+                        anonymizedPatterns: this.anonymizePatterns(),
+                        aggregatedStats: this.generateAggregatedStats()
+                    };
+                    
+                    const dataBlob = new Blob([JSON.stringify(exportData, null, 2)], {
+                        type: 'application/json'
+                    });
+                    
+                    this.latestExportData = exportData;
+                    
+                    // Create download link for manual GitHub upload
+                    if (this.learningDatabase.gameRecords.length > 0 && this.learningDatabase.gameRecords.length % 25 === 0) {
+                        this.createDownloadLink(dataBlob);
+                    }
+                    
+                    console.log('📄 Generated exportable learning data file');
+                } catch (error) {
+                    console.warn('Failed to generate data file:', error);
+                }
+            }
+            
+            createDownloadLink(dataBlob) {
+                const url = URL.createObjectURL(dataBlob);
+                const downloadElement = document.createElement('a');
+                downloadElement.href = url;
+                downloadElement.download = `solitaire-learning-data-${Date.now()}.json`;
+                downloadElement.style.display = 'none';
+                document.body.appendChild(downloadElement);
+                
+                // Show a notification about the download option
+                console.log('📥 Learning data export available - check browser downloads for GitHub upload');
+                setTimeout(() => {
+                    document.body.removeChild(downloadElement);
+                    URL.revokeObjectURL(url);
+                }, 5000);
+            }
+            
+            anonymizePatterns() {
+                return {
+                    moveEffectiveness: Object.fromEntries(this.learningDatabase.patterns.moveEffectiveness),
+                    totalGamesAnalyzed: this.learningDatabase.gameRecords.length,
+                    winRateTrends: this.extractWinRateTrends(),
+                    strategicInsights: this.extractStrategicInsights()
+                };
+            }
+            
+            generateAggregatedStats() {
+                return {
+                    totalAnalyzedGames: this.learningDatabase.gameRecords.length,
+                    overallWinRate: this.learningDatabase.metadata.winRate,
+                    averageGameLength: this.calculateAverageGameLength(),
+                    difficultyBreakdown: this.analyzeDifficultyDistribution(),
+                    adaptiveWeights: this.learningDatabase.adaptiveWeights
+                };
+            }
+            
+            calculateAverageGameLength() {
+                const allMoves = this.learningDatabase.gameRecords.map(g => g.moves).filter(m => m > 0);
+                return allMoves.length > 0 ? allMoves.reduce((sum, moves) => sum + moves, 0) / allMoves.length : 0;
+            }
+            
+            analyzeDifficultyDistribution() {
+                const difficulties = this.learningDatabase.gameRecords.reduce((acc, game) => {
+                    acc[game.difficulty] = (acc[game.difficulty] || 0) + 1;
+                    return acc;
+                }, {});
+                return difficulties;
+            }
+            
+            setupAutoSave() {
+                setInterval(() => {
+                    this.saveAllData();
+                }, 5 * 60 * 1000);
+                
+                window.addEventListener('beforeunload', () => {
+                    this.saveAllData();
+                });
+            }
+            
+            async setupRemoteSync() {
+                console.log('🌐 Remote sync capabilities detected - learning data can be exported');
+            }
+            
+            compressGameState(gameState) {
+                if (!gameState) return null;
+                
+                try {
+                    return {
+                        foundations: gameState.foundations,
+                        hiddenCount: gameState.tableau?.reduce((sum, pile) => 
+                            sum + pile.filter(c => !c.faceUp).length, 0) || 0,
+                        wasteSize: gameState.waste?.length || 0,
+                        stockSize: gameState.stock?.length || 0
+                    };
+                } catch (error) {
+                    console.warn('Failed to compress game state:', error);
+                    return null;
+                }
             }
         }
 

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Klondike Solitaire - AI Enhanced</title>
+    <!-- Cache buster: 2024-12-19-15:30 -->
     <!-- Enhanced graphics deployed - cache refresh required -->
     <meta name="description" content="Play Klondike Solitaire with AI-powered hints, analysis, and adaptive difficulty. Advanced machine learning provides intelligent gameplay assistance.">
     
@@ -7253,6 +7254,11 @@
         class PerformanceRenderer extends RenderEngine {
             constructor(gameInstance) {
                 super(gameInstance);
+                
+                // TEMPORARY: Disable PerformanceRenderer to fix infinite retry loop
+                console.log('🚫 PerformanceRenderer: Temporarily disabled to prevent initialization issues');
+                this.disabled = true;
+                return;
                 
                 // Performance tracking
                 this.lastFrameTime = 0;

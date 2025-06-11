@@ -319,16 +319,13 @@ class SolitaireAIWorker {
             }
         }
 
-        // Stock draw move with AI recommendation
+        // Stock draw move - avoid recursion by not calling analyzeStock here
         if (state.stock.length > 0 || state.waste.length > 0) {
-            const stockAnalysis = this.analyzeStock(state);
             moves.push({
                 type: 'draw_stock',
                 from: { source: 'stock' },
                 to: { source: 'waste' },
-                priority: stockAnalysis.shouldDraw ? 15 : 5,
-                drawsNeeded: stockAnalysis.drawsNeeded || 1,
-                stockRecommendation: stockAnalysis
+                priority: 10
             });
         }
 
@@ -462,12 +459,10 @@ class SolitaireAIWorker {
         const upcomingCards = this.simulateStockDraws(state, 10);
         const nextUsefulCard = upcomingCards.find(item => item.useful);
 
-        const availableMoves = this.generateAllPossibleMoves(state);
-        const tableauMoves = availableMoves.filter(move => 
-            move.type === 'tableau_to_foundation' || move.type === 'tableau_to_tableau'
-        );
+        // Count available tableau moves without recursion
+        const tableauMoveCount = this.countTableauMoves(state);
 
-        if (tableauMoves.length === 0) {
+        if (tableauMoveCount === 0) {
             if (nextUsefulCard) {
                 return {
                     shouldDraw: true,
@@ -484,7 +479,7 @@ class SolitaireAIWorker {
             };
         }
 
-        if (tableauMoves.length < 2 && nextUsefulCard && nextUsefulCard.drawNumber <= 3) {
+        if (tableauMoveCount < 2 && nextUsefulCard && nextUsefulCard.drawNumber <= 3) {
             return {
                 shouldDraw: true,
                 drawsNeeded: nextUsefulCard.drawNumber,
@@ -497,7 +492,7 @@ class SolitaireAIWorker {
             return {
                 shouldDraw: false,
                 drawsNeeded: nextUsefulCard.drawNumber,
-                reason: `Focus on ${tableauMoves.length} tableau moves first. (Useful card in ${nextUsefulCard.drawNumber} draws)`,
+                reason: `Focus on ${tableauMoveCount} tableau moves first. (Useful card in ${nextUsefulCard.drawNumber} draws)`,
                 priority: 'low'
             };
         }
@@ -505,7 +500,7 @@ class SolitaireAIWorker {
         return {
             shouldDraw: false,
             drawsNeeded: 0,
-            reason: `Focus on ${tableauMoves.length} available tableau moves first`,
+            reason: `Focus on ${tableauMoveCount} available tableau moves first`,
             priority: 'low'
         };
     }
@@ -683,6 +678,55 @@ class SolitaireAIWorker {
             default:
                 return 'Unknown move';
         }
+    }
+
+    // Count tableau moves without calling generateAllPossibleMoves (avoids recursion)
+    countTableauMoves(state) {
+        let count = 0;
+
+        // Check tableau to foundation moves
+        for (let i = 0; i < state.tableau.length; i++) {
+            const pile = state.tableau[i];
+            if (pile.length > 0) {
+                const topCard = pile[pile.length - 1];
+                if (topCard.faceUp) {
+                    // Check if can go to any foundation
+                    for (const [suit, foundationPile] of Object.entries(state.foundations)) {
+                        if (this.canPlaceOnFoundation(topCard, foundationPile)) {
+                            count++;
+                        }
+                    }
+                    
+                    // Check if can go to any tableau pile
+                    for (let j = 0; j < state.tableau.length; j++) {
+                        if (i !== j && this.canPlaceOnTableau(topCard, state.tableau[j])) {
+                            count++;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check waste to foundation and tableau moves
+        if (state.waste.length > 0) {
+            const topCard = state.waste[state.waste.length - 1];
+            
+            // Check foundation moves
+            for (const [suit, foundationPile] of Object.entries(state.foundations)) {
+                if (this.canPlaceOnFoundation(topCard, foundationPile)) {
+                    count++;
+                }
+            }
+            
+            // Check tableau moves
+            for (let i = 0; i < state.tableau.length; i++) {
+                if (this.canPlaceOnTableau(topCard, state.tableau[i])) {
+                    count++;
+                }
+            }
+        }
+
+        return count;
     }
 }
 

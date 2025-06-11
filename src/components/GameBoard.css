@@ -100,32 +100,237 @@
 }
 
 /* Game Area Layout */
-.game-area {
+.game-board-container {
   display: flex;
   flex-direction: column;
-  gap: 40px;
   align-items: center;
-  perspective: 1000px;
-  transform-style: preserve-3d;
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(135deg, #1e5128, #2d5016);
+  gap: 20px;
 }
 
+.game-area {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.game-board {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Stock and Waste Area */
 .stock-waste-area {
   display: flex;
   gap: 20px;
-  transform: translateZ(10px);
+  margin-bottom: 20px;
 }
 
+.stock, .waste {
+  width: 140px;
+  height: 190px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.stock:hover, .waste:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Foundations */
 .foundations {
   display: flex;
-  gap: 15px;
-  transform: translateZ(5px);
+  gap: 20px;
+  justify-content: flex-end;
+  margin-bottom: 20px;
 }
 
+.foundation {
+  width: 140px;
+  height: 190px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.foundation:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Tableau */
 .tableau {
   display: flex;
-  gap: 12px;
+  gap: 20px;
   justify-content: center;
-  transform: translateZ(0px);
+  min-height: 400px;
+}
+
+.tableau-pile {
+  width: 140px;
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 20px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.tableau-pile:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Game Controls */
+.game-controls {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.game-controls button {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.game-controls button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.game-controls button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Card Stacking */
+.tableau-pile .card {
+  margin-top: -160px; /* Overlap cards */
+}
+
+.tableau-pile .card:first-child {
+  margin-top: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .game-board {
+    padding: 15px;
+  }
+
+  .stock, .waste, .foundation, .tableau-pile {
+    width: 120px;
+    height: 163px;
+  }
+
+  .tableau-pile .card {
+    margin-top: -140px;
+  }
+}
+
+@media (max-width: 768px) {
+  .game-board-container {
+    padding: 10px;
+  }
+
+  .stock, .waste, .foundation, .tableau-pile {
+    width: 100px;
+    height: 136px;
+  }
+
+  .tableau-pile .card {
+    margin-top: -120px;
+  }
+
+  .game-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+/* Animations */
+@keyframes dealCard {
+  from {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.card {
+  animation: dealCard 0.5s ease-out;
+}
+
+/* 3D Effects */
+.game-board {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.card {
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover Effects */
+.card:hover {
+  z-index: 10;
+}
+
+.tableau-pile:hover .card {
+  z-index: 5;
+}
+
+/* Selection Effects */
+.card.selected {
+  z-index: 20;
+}
+
+/* Hint Effects */
+.card.hinted {
+  z-index: 15;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(0, 255, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0); }
 }
 
 /* Victory Screen */
@@ -244,11 +449,6 @@
   justify-content: space-between;
   margin-bottom: var(--spacing-xl);
   gap: var(--spacing-lg);
-}
-
-.stock-waste-area {
-  display: flex;
-  gap: var(--spacing-md);
 }
 
 .foundations-area {

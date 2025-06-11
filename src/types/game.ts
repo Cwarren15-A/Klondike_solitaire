@@ -1,44 +1,27 @@
 // Game Types for Modern TypeScript Implementation
 
 export interface Card {
-  id: string;
-  suit: '♠' | '♥' | '♦' | '♣';
-  rank: 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K';
-  value: number;
+  suit: 'hearts' | 'diamonds' | 'clubs' | 'spades';
+  rank: number; // 1-13 (Ace through King)
   faceUp: boolean;
-  location: 'stock' | 'waste' | 'foundation' | 'tableau';
-  position: number;
+  id: string;
 }
 
 export interface GameState {
   stock: Card[];
   waste: Card[];
-  foundations: Record<string, Card[]>;
+  foundations: Card[][];
   tableau: Card[][];
-  selectedCard: Card | null;
-  moves: number;
   score: number;
-  time: number;
-  isWon: boolean;
-  canUndo: boolean;
+  moves: number;
+  timeElapsed: number;
+  gameStatus: 'playing' | 'won' | 'lost';
   gameStats: {
-    time: number;
-    moves: number;
-    score: number;
+    winStreak: number;
+    bestTime: number;
+    averageTime: number;
+    totalGames: number;
   };
-  gameHistory: Array<{
-    stock: Card[];
-    waste: Card[];
-    foundations: Record<string, Card[]>;
-    tableau: Card[][];
-    gameStats: {
-      time: number;
-      moves: number;
-      score: number;
-    };
-  }>;
-  drawMode: number;
-  settings: GameSettings;
 }
 
 export interface GameStats {
@@ -57,15 +40,10 @@ export interface GameStateSnapshot {
 }
 
 export interface Move {
-  type: 'stock' | 'waste' | 'foundation' | 'tableau' | 'waste-to-tableau';
-  cardId: string;
-  sourceType?: 'stock' | 'waste' | 'foundation' | 'tableau';
-  sourceIndex?: number;
-  targetIndex?: number;
-  fromLocation?: 'stock' | 'waste' | 'foundation' | 'tableau';
-  toLocation?: 'stock' | 'waste' | 'foundation' | 'tableau';
-  fromPosition?: number;
-  toPosition?: number;
+  from: 'stock' | 'waste' | 'foundation' | 'tableau';
+  to: 'foundation' | 'tableau';
+  cardIndex: number;
+  pileIndex: number;
 }
 
 export interface DragState {

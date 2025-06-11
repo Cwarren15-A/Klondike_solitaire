@@ -74,12 +74,14 @@ export default GameBoard;
 // For now, this is just a placeholder template.
 // Your current HTML implementation is working perfectly!
 
-import React from 'react';
-import { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useGameStore } from '../stores/gameStore';
-import { Card } from '../types/game';
+import { Card, GameState, Move } from '../types/game';
 import WebGPUCanvas from './WebGPUCanvas';
 import { MaterialEditor } from './MaterialEditor';
+import MLVisualization from './MLVisualization';
+import { AIService } from '../services/AIService';
+import { GameStateService } from '../services/GameStateService';
 import './GameBoard.css';
 import '../styles/WebGPU.css';
 
@@ -97,12 +99,48 @@ const GameBoard: React.FC<GameBoardProps> = ({ className = '' }) => {
 
   const webgpuRef = useRef<any>(null);
   const [showMaterialEditor, setShowMaterialEditor] = useState(false);
+  const [showMLVisualization, setShowMLVisualization] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
 
-  const handleStockClick = () => {
-    makeMove({
-      type: 'stock',
-      cardId: 'stock'
-    });
+  // Initialize services
+  const aiService = new AIService();
+  const gameStateService = new GameStateService(aiService);
+
+  useEffect(() => {
+    // Initialize AI service
+    aiService.initialize().catch(console.error);
+
+    // Cleanup on unmount
+    return () => {
+      aiService.cleanup();
+    };
+  }, []);
+
+  const handleStockClick = async () => {
+    const move: Move = {
+      from: 'stock',
+      to: 'waste',
+      cardIndex: 0,
+      pileIndex: 0
+    };
+
+    const success = await gameStateService.makeMove(move);
+    if (success) {
+      makeMove(move);
+      // Get AI analysis
+      const analysis = await aiService.analyzeGameState(gameState);
+      setAiAnalysis(analysis);
+    }
+  };
+
+  const handleCardMove = async (move: Move) => {
+    const success = await gameStateService.makeMove(move);
+    if (success) {
+      makeMove(move);
+      // Get AI analysis
+      const analysis = await aiService.analyzeGameState(gameState);
+      setAiAnalysis(analysis);
+    }
   };
 
   return (
@@ -114,22 +152,22 @@ const GameBoard: React.FC<GameBoardProps> = ({ className = '' }) => {
           <div className="stock-waste-area">
             <div className="stock" onClick={handleStockClick}>
               {gameState.stock.map((card: Card) => (
-                <div key={card.id} />
+                <div key={card.id} className="card" />
               ))}
             </div>
             <div className="waste">
               {gameState.waste.map((card: Card) => (
-                <div key={card.id} />
+                <div key={card.id} className="card" />
               ))}
             </div>
           </div>
 
           {/* Foundations */}
           <div className="foundations">
-            {Object.entries(gameState.foundations).map(([suit, cards]) => (
-              <div key={suit} className="foundation">
-                {(cards as Card[]).map((card) => (
-                  <div key={card.id} />
+            {gameState.foundations.map((foundation, index) => (
+              <div key={index} className="foundation">
+                {foundation.map((card) => (
+                  <div key={card.id} className="card" />
                 ))}
               </div>
             ))}
@@ -140,7 +178,7 @@ const GameBoard: React.FC<GameBoardProps> = ({ className = '' }) => {
             {gameState.tableau.map((pile: Card[], index: number) => (
               <div key={index} className="tableau-pile">
                 {pile.map((card) => (
-                  <div key={card.id} />
+                  <div key={card.id} className="card" />
                 ))}
               </div>
             ))}
@@ -152,11 +190,25 @@ const GameBoard: React.FC<GameBoardProps> = ({ className = '' }) => {
       <div className="game-controls">
         <button onClick={newGame}>New Game</button>
         <button onClick={undoMove}>Undo</button>
+        <button onClick={() => setShowMaterialEditor(!showMaterialEditor)}>
+          Material Editor
+        </button>
+        <button onClick={() => setShowMLVisualization(!showMLVisualization)}>
+          AI Analysis
+        </button>
       </div>
 
       {/* Material Editor */}
       {showMaterialEditor && (
         <MaterialEditor onSave={() => setShowMaterialEditor(false)} />
+      )}
+
+      {/* ML Visualization */}
+      {showMLVisualization && aiAnalysis && (
+        <MLVisualization
+          gameState={gameState}
+          analysis={aiAnalysis}
+        />
       )}
     </div>
   );

@@ -6,40 +6,32 @@ import './Card.css';
 interface CardProps {
   card: CardType;
   onClick?: () => void;
-  onDoubleClick?: () => void;
   isSelected?: boolean;
   isHinted?: boolean;
-  isDragging?: boolean;
-  style?: React.CSSProperties;
-  className?: string;
   realistic3D?: boolean;
 }
 
-export const Card: React.FC<CardProps> = ({
+const Card: React.FC<CardProps> = ({
   card,
   onClick,
-  onDoubleClick,
   isSelected = false,
   isHinted = false,
-  isDragging = false,
-  style,
-  className = '',
-  realistic3D = true
+  realistic3D = true,
 }) => {
   const isRed = card.suit === 'hearts' || card.suit === 'diamonds';
-  
-  const getCardValue = () => {
-    switch (card.rank) {
+
+  const getCardValue = (rank: number): string => {
+    switch (rank) {
       case 1: return 'A';
       case 11: return 'J';
       case 12: return 'Q';
       case 13: return 'K';
-      default: return card.rank.toString();
+      default: return rank.toString();
     }
   };
 
-  const getSuitSymbol = () => {
-    switch (card.suit) {
+  const getSuitSymbol = (suit: string): string => {
+    switch (suit) {
       case 'hearts': return '♥';
       case 'diamonds': return '♦';
       case 'clubs': return '♣';
@@ -49,94 +41,79 @@ export const Card: React.FC<CardProps> = ({
   };
 
   const cardVariants = {
-    initial: { 
+    initial: {
       scale: 1,
-      rotateY: card.faceUp ? 0 : 180,
-      y: 0
+      rotateY: 0,
+      y: 0,
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     },
-    hover: { 
+    hover: {
       scale: 1.05,
-      rotateY: card.faceUp ? 0 : 180,
-      y: -10,
+      rotateY: 5,
+      y: -5,
+      boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
       transition: {
         duration: 0.2,
-        type: 'spring',
-        stiffness: 300,
-        damping: 20
-      }
+      },
     },
-    tap: { 
+    tap: {
       scale: 0.95,
-      rotateY: card.faceUp ? 0 : 180,
-      y: 0
+      transition: {
+        duration: 0.1,
+      },
     },
-    drag: { 
+    drag: {
       scale: 1.1,
-      rotateY: card.faceUp ? 0 : 180,
-      y: -20,
-      boxShadow: '0 10px 20px rgba(0, 0, 0, 0.3)'
+      rotateY: 10,
+      y: -10,
+      boxShadow: '0 12px 24px rgba(0,0,0,0.3)',
     },
-    selected: { 
+    selected: {
       scale: 1.1,
-      rotateY: card.faceUp ? 0 : 180,
-      y: -15,
-      boxShadow: '0 0 20px rgba(255, 215, 0, 0.5)'
+      y: -10,
+      boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
     },
     hinted: {
       scale: 1.05,
-      rotateY: card.faceUp ? 0 : 180,
       y: -5,
-      boxShadow: '0 0 15px rgba(0, 255, 0, 0.4)'
-    }
+      boxShadow: '0 0 20px rgba(255,215,0,0.5)',
+    },
   };
-
-  const currentVariant = isSelected ? 'selected' : 
-                        isHinted ? 'hinted' : 
-                        isDragging ? 'drag' : 'initial';
 
   return (
     <motion.div
-      className={`card ${className} ${isSelected ? 'selected' : ''} ${isHinted ? 'hinted' : ''} ${realistic3D ? 'realistic-3d' : ''}`}
+      className={`card ${isRed ? 'red' : 'black'} ${realistic3D ? 'realistic-3d' : ''} ${isSelected ? 'selected' : ''} ${isHinted ? 'hinted' : ''}`}
       onClick={onClick}
-      onDoubleClick={onDoubleClick}
-      style={style}
       variants={cardVariants}
       initial="initial"
-      animate={currentVariant}
       whileHover="hover"
       whileTap="tap"
-      drag={isDragging}
+      animate={isSelected ? 'selected' : isHinted ? 'hinted' : 'initial'}
+      drag={card.faceUp}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
-      transition={{ 
-        duration: 0.2,
-        type: 'spring',
-        stiffness: 300,
-        damping: 20
-      }}
+      whileDrag="drag"
     >
       {card.faceUp ? (
-        <div className={`card-face ${isRed ? 'red' : 'black'}`}>
+        <div className="card-face">
           <div className="card-corner top-left">
-            <div className="card-value">{getCardValue()}</div>
-            <div className="card-suit">{getSuitSymbol()}</div>
+            <div className="card-value">{getCardValue(card.rank)}</div>
+            <div className="card-suit">{getSuitSymbol(card.suit)}</div>
           </div>
           <div className="card-center">
-            <div className="card-suit large">{getSuitSymbol()}</div>
+            <div className="card-suit large">{getSuitSymbol(card.suit)}</div>
           </div>
           <div className="card-corner bottom-right">
-            <div className="card-value">{getCardValue()}</div>
-            <div className="card-suit">{getSuitSymbol()}</div>
+            <div className="card-value">{getCardValue(card.rank)}</div>
+            <div className="card-suit">{getSuitSymbol(card.suit)}</div>
           </div>
         </div>
       ) : (
         <div className="card-back">
-          <div className="card-pattern">
-            <div className="pattern-top">{getSuitSymbol()}</div>
-            <div className="pattern-center">{getSuitSymbol()}</div>
-            <div className="pattern-bottom">{getSuitSymbol()}</div>
-          </div>
+          <div className="card-back-pattern"></div>
         </div>
       )}
     </motion.div>
   );
-}; 
+};
+
+export default Card; 

@@ -76,12 +76,13 @@ export default GameBoard;
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useGameStore } from '../stores/gameStore';
-import { Card, GameState, Move } from '../types/game';
+import { Card as CardType, GameState, Move } from '../types/game';
 import WebGPUCanvas from './WebGPUCanvas';
 import { MaterialEditor } from './MaterialEditor';
 import MLVisualization from './MLVisualization';
 import { AIService } from '../services/AIService';
 import { GameStateService } from '../services/GameStateService';
+import { Card } from './Card';
 import './GameBoard.css';
 import '../styles/WebGPU.css';
 
@@ -101,6 +102,7 @@ const GameBoard: React.FC<GameBoardProps> = ({ className = '' }) => {
   const [showMaterialEditor, setShowMaterialEditor] = useState(false);
   const [showMLVisualization, setShowMLVisualization] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
 
   // Initialize services
   const aiService = new AIService();
@@ -133,6 +135,23 @@ const GameBoard: React.FC<GameBoardProps> = ({ className = '' }) => {
     }
   };
 
+  const handleCardClick = (card: CardType, location: 'stock' | 'waste' | 'foundation' | 'tableau', index: number) => {
+    if (selectedCard) {
+      // If a card is already selected, try to move it
+      const move: Move = {
+        from: selectedCard.location,
+        to: location,
+        cardIndex: selectedCard.index,
+        pileIndex: index
+      };
+      handleCardMove(move);
+      setSelectedCard(null);
+    } else {
+      // Select the card
+      setSelectedCard({ ...card, location, index });
+    }
+  };
+
   const handleCardMove = async (move: Move) => {
     const success = await gameStateService.makeMove(move);
     if (success) {
@@ -151,23 +170,41 @@ const GameBoard: React.FC<GameBoardProps> = ({ className = '' }) => {
           {/* Stock and Waste */}
           <div className="stock-waste-area">
             <div className="stock" onClick={handleStockClick}>
-              {gameState.stock.map((card: Card) => (
-                <div key={card.id} className="card" />
+              {gameState.stock.map((card: CardType, index: number) => (
+                <Card
+                  key={card.id}
+                  card={card}
+                  onClick={() => handleCardClick(card, 'stock', index)}
+                  isSelected={selectedCard?.id === card.id}
+                  realistic3D={true}
+                />
               ))}
             </div>
             <div className="waste">
-              {gameState.waste.map((card: Card) => (
-                <div key={card.id} className="card" />
+              {gameState.waste.map((card: CardType, index: number) => (
+                <Card
+                  key={card.id}
+                  card={card}
+                  onClick={() => handleCardClick(card, 'waste', index)}
+                  isSelected={selectedCard?.id === card.id}
+                  realistic3D={true}
+                />
               ))}
             </div>
           </div>
 
           {/* Foundations */}
           <div className="foundations">
-            {gameState.foundations.map((foundation, index) => (
-              <div key={index} className="foundation">
-                {foundation.map((card) => (
-                  <div key={card.id} className="card" />
+            {gameState.foundations.map((foundation, pileIndex) => (
+              <div key={pileIndex} className="foundation">
+                {foundation.map((card: CardType, index: number) => (
+                  <Card
+                    key={card.id}
+                    card={card}
+                    onClick={() => handleCardClick(card, 'foundation', pileIndex)}
+                    isSelected={selectedCard?.id === card.id}
+                    realistic3D={true}
+                  />
                 ))}
               </div>
             ))}
@@ -175,10 +212,16 @@ const GameBoard: React.FC<GameBoardProps> = ({ className = '' }) => {
 
           {/* Tableau */}
           <div className="tableau">
-            {gameState.tableau.map((pile: Card[], index: number) => (
-              <div key={index} className="tableau-pile">
-                {pile.map((card) => (
-                  <div key={card.id} className="card" />
+            {gameState.tableau.map((pile: CardType[], pileIndex: number) => (
+              <div key={pileIndex} className="tableau-pile">
+                {pile.map((card: CardType, index: number) => (
+                  <Card
+                    key={card.id}
+                    card={card}
+                    onClick={() => handleCardClick(card, 'tableau', pileIndex)}
+                    isSelected={selectedCard?.id === card.id}
+                    realistic3D={true}
+                  />
                 ))}
               </div>
             ))}

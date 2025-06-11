@@ -1,10 +1,12 @@
 // Game Types for Modern TypeScript Implementation
 
 export interface Card {
-  suit: 'hearts' | 'diamonds' | 'clubs' | 'spades';
-  rank: number; // 1-13 (Ace through King)
-  faceUp: boolean;
   id: string;
+  suit: string;
+  rank: number;
+  faceUp: boolean;
+  location?: 'stock' | 'waste' | 'foundation' | 'tableau';
+  index?: number;
 }
 
 export interface GameState {
@@ -12,9 +14,11 @@ export interface GameState {
   waste: Card[];
   foundations: Card[][];
   tableau: Card[][];
+  moves: Move[];
   score: number;
-  moves: number;
   timeElapsed: number;
+  gameOver: boolean;
+  gameWon: boolean;
   gameStatus: 'playing' | 'won' | 'lost';
   gameStats: {
     winStreak: number;
@@ -41,7 +45,7 @@ export interface GameStateSnapshot {
 
 export interface Move {
   from: 'stock' | 'waste' | 'foundation' | 'tableau';
-  to: 'foundation' | 'tableau';
+  to: 'stock' | 'waste' | 'foundation' | 'tableau';
   cardIndex: number;
   pileIndex: number;
 }

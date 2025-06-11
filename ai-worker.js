@@ -1,13 +1,48 @@
 // AI Worker for Solitaire - Phase 2 Enhanced with Non-blocking Operations
 class SolitaireAIWorker {
     constructor() {
-        this.isReady = true;
-        this.requestHandlers = new Map();
         console.log('🤖 Phase 2 AI Worker initialized');
+        
+        // Enhanced performance tracking
+        this.performanceMetrics = {
+            analysisCount: 0,
+            totalAnalysisTime: 0,
+            averageAnalysisTime: 0,
+            pathFindingCount: 0,
+            totalPathFindingTime: 0,
+            averagePathFindingTime: 0,
+            errorCount: 0,
+            lastError: null
+        };
+        
+        // Cache for repeated calculations
+        this.analysisCache = new Map();
+        this.maxCacheSize = 1000;
+        
+        // Constants for better performance
+        this.SUITS = ['♠', '♥', '♦', '♣'];
+        this.RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+        this.RED_SUITS = new Set(['♥', '♦']);
+        this.BLACK_SUITS = new Set(['♠', '♣']);
     }
 
     analyzePosition(gameState) {
+        const startTime = performance.now();
+        
         try {
+            // Validate input
+            if (!this.validateGameState(gameState)) {
+                throw new Error('Invalid game state provided to worker');
+            }
+            
+            // Check cache first
+            const stateHash = this.hashGameState(gameState);
+            if (this.analysisCache.has(stateHash)) {
+                const cached = this.analysisCache.get(stateHash);
+                cached.fromCache = true;
+                return cached;
+            }
+            
             // Clone the game state to avoid any reference issues
             const state = this.cloneGameState(gameState);
             
@@ -17,37 +52,165 @@ class SolitaireAIWorker {
                 winProbability: this.calculateWinProbability(state),
                 bestMove: null,
                 stockRecommendation: this.analyzeStock(state),
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                fromCache: false,
+                analysisTime: 0
             };
 
             // Find best move
             if (analysis.possibleMoves.length > 0) {
                 analysis.bestMove = this.rankMovesByPriority(analysis.possibleMoves, state)[0];
             }
+            
+            // Cache the result
+            this.cacheAnalysis(stateHash, analysis);
+            
+            // Update performance metrics
+            const analysisTime = performance.now() - startTime;
+            this.updatePerformanceMetrics('analysis', analysisTime);
+            analysis.analysisTime = Math.round(analysisTime);
 
             return analysis;
         } catch (error) {
+            this.performanceMetrics.errorCount++;
+            this.performanceMetrics.lastError = error.message;
             console.error('AI Worker analysis error:', error);
-            return { error: error.message, timestamp: Date.now() };
+            return { 
+                error: error.message, 
+                timestamp: Date.now(),
+                analysisTime: Math.round(performance.now() - startTime)
+            };
+        }
+    }
+    
+    validateGameState(gameState) {
+        if (!gameState || typeof gameState !== 'object') {
+            return false;
+        }
+        
+        // Check required properties
+        const required = ['stock', 'waste', 'tableau', 'foundations'];
+        for (const prop of required) {
+            if (!(prop in gameState)) {
+                console.warn(`Missing required property: ${prop}`);
+                return false;
+            }
+        }
+        
+        // Validate tableau structure
+        if (!Array.isArray(gameState.tableau) || gameState.tableau.length !== 7) {
+            console.warn('Invalid tableau structure');
+            return false;
+        }
+        
+        // Validate foundations structure
+        if (!gameState.foundations || typeof gameState.foundations !== 'object') {
+            console.warn('Invalid foundations structure');
+            return false;
+        }
+        
+        for (const suit of this.SUITS) {
+            if (!Array.isArray(gameState.foundations[suit])) {
+                console.warn(`Invalid foundation for suit ${suit}`);
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    hashGameState(gameState) {
+        try {
+            // Create a simple hash of the game state for caching
+            const tableauSizes = gameState.tableau.map(pile => pile.length);
+            const foundationSizes = this.SUITS.map(suit => gameState.foundations[suit].length);
+            const wasteSize = gameState.waste.length;
+            const stockSize = gameState.stock.length;
+            
+            return `T:${tableauSizes.join(',')}|F:${foundationSizes.join(',')}|W:${wasteSize}|S:${stockSize}`;
+        } catch (error) {
+            return `error_${Date.now()}`;
+        }
+    }
+    
+    cacheAnalysis(hash, analysis) {
+        // Manage cache size
+        if (this.analysisCache.size >= this.maxCacheSize) {
+            // Remove oldest entries (simple FIFO)
+            const firstKey = this.analysisCache.keys().next().value;
+            this.analysisCache.delete(firstKey);
+        }
+        
+        // Store a copy without circular references
+        const cacheableAnalysis = {
+            possibleMoves: analysis.possibleMoves.slice(0, 10), // Limit moves for cache efficiency
+            winProbability: analysis.winProbability,
+            bestMove: analysis.bestMove,
+            stockRecommendation: analysis.stockRecommendation,
+            timestamp: analysis.timestamp
+        };
+        
+        this.analysisCache.set(hash, cacheableAnalysis);
+    }
+    
+    updatePerformanceMetrics(type, time) {
+        if (type === 'analysis') {
+            this.performanceMetrics.analysisCount++;
+            this.performanceMetrics.totalAnalysisTime += time;
+            this.performanceMetrics.averageAnalysisTime = 
+                this.performanceMetrics.totalAnalysisTime / this.performanceMetrics.analysisCount;
+        } else if (type === 'pathfinding') {
+            this.performanceMetrics.pathFindingCount++;
+            this.performanceMetrics.totalPathFindingTime += time;
+            this.performanceMetrics.averagePathFindingTime = 
+                this.performanceMetrics.totalPathFindingTime / this.performanceMetrics.pathFindingCount;
         }
     }
 
     async findWinningPath(gameState, maxDepth = 150) {
+        const startTime = performance.now();
+        
         try {
-            const startTime = performance.now();
+            // Validate input
+            if (!this.validateGameState(gameState)) {
+                throw new Error('Invalid game state provided for path finding');
+            }
+            
+            // Check if already won
+            if (this.isGameWon(gameState)) {
+                return {
+                    canWin: true,
+                    moves: [],
+                    moveCount: 0,
+                    timeTaken: Math.round(performance.now() - startTime),
+                    confidence: 100,
+                    fromCache: false
+                };
+            }
+            
             const result = await this.searchWinningPath(gameState, [], maxDepth);
             const timeTaken = performance.now() - startTime;
+            
+            // Update performance metrics
+            this.updatePerformanceMetrics('pathfinding', timeTaken);
 
             return {
                 canWin: result !== null,
                 moves: result || [],
                 moveCount: result ? result.length : 0,
                 timeTaken: Math.round(timeTaken),
-                confidence: result ? this.calculatePathConfidence(result) : 0
+                confidence: result ? this.calculatePathConfidence(result) : 0,
+                fromCache: false
             };
         } catch (error) {
+            this.performanceMetrics.errorCount++;
+            this.performanceMetrics.lastError = error.message;
             console.error('Winning path search error:', error);
-            return { canWin: false, error: error.message };
+            return { 
+                canWin: false, 
+                error: error.message,
+                timeTaken: Math.round(performance.now() - startTime)
+            };
         }
     }
 
@@ -930,10 +1093,49 @@ class SolitaireAIWorker {
 
         return count;
     }
+
+    getPerformanceReport() {
+        return {
+            metrics: { ...this.performanceMetrics },
+            cacheStats: {
+                size: this.analysisCache.size,
+                maxSize: this.maxCacheSize,
+                hitRate: this.performanceMetrics.analysisCount > 0 ? 
+                    (this.analysisCache.size / this.performanceMetrics.analysisCount * 100).toFixed(1) + '%' : '0%'
+            },
+            status: this.performanceMetrics.errorCount > 10 ? 'degraded' : 'healthy',
+            uptime: Date.now() - (this.startTime || Date.now())
+        };
+    }
+    
+    clearCache() {
+        this.analysisCache.clear();
+        return { success: true, message: 'Analysis cache cleared' };
+    }
+    
+    optimizePerformance() {
+        // Clear old cache entries
+        if (this.analysisCache.size > this.maxCacheSize * 0.8) {
+            const keysToDelete = Array.from(this.analysisCache.keys()).slice(0, Math.floor(this.maxCacheSize * 0.3));
+            keysToDelete.forEach(key => this.analysisCache.delete(key));
+        }
+        
+        // Reset error count if it's getting high
+        if (this.performanceMetrics.errorCount > 50) {
+            this.performanceMetrics.errorCount = Math.floor(this.performanceMetrics.errorCount / 2);
+        }
+        
+        return { 
+            success: true, 
+            message: 'Performance optimization completed',
+            cacheSize: this.analysisCache.size
+        };
+    }
 }
 
 // Worker message handling
 const aiWorker = new SolitaireAIWorker();
+aiWorker.startTime = Date.now(); // Track startup time
 
 self.onmessage = async function(event) {
     const { type, data, requestId } = event.data;
@@ -966,6 +1168,18 @@ self.onmessage = async function(event) {
                 };
                 break;
                 
+            case 'getPerformanceReport':
+                result = aiWorker.getPerformanceReport();
+                break;
+                
+            case 'clearCache':
+                result = aiWorker.clearCache();
+                break;
+                
+            case 'optimizePerformance':
+                result = aiWorker.optimizePerformance();
+                break;
+                
             default:
                 result = { error: 'Unknown request type: ' + type };
         }
@@ -978,12 +1192,14 @@ self.onmessage = async function(event) {
         });
         
     } catch (error) {
+        console.error('Worker error processing request:', error);
         self.postMessage({
             type: 'response',
             requestId,
             requestType: type,
             success: false,
-            error: error.message
+            error: error.message,
+            stack: error.stack
         });
     }
 }; 

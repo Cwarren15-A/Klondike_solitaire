@@ -7937,6 +7937,56 @@
                 }
             }
             
+            // Serialize gameState for worker communication (remove non-serializable objects)
+            serializeGameStateForWorker(gameState) {
+                try {
+                    if (!gameState) return null;
+                    
+                    // Create a clean copy without non-serializable objects
+                    const cleanState = {
+                        stock: gameState.stock || [],
+                        waste: gameState.waste || [],
+                        tableau: gameState.tableau || Array.from({ length: 7 }, () => []),
+                        foundations: gameState.foundations || { '♠': [], '♥': [], '♦': [], '♣': [] },
+                        gameStats: {
+                            moves: gameState.gameStats?.moves || 0,
+                            time: gameState.gameStats?.time || 0,
+                            score: gameState.gameStats?.score || 0
+                        }
+                    };
+                    
+                    // Ensure all cards are properly serializable
+                    cleanState.stock = this.cleanCardArray(cleanState.stock);
+                    cleanState.waste = this.cleanCardArray(cleanState.waste);
+                    cleanState.tableau = cleanState.tableau.map(pile => this.cleanCardArray(pile));
+                    
+                    Object.keys(cleanState.foundations).forEach(suit => {
+                        cleanState.foundations[suit] = this.cleanCardArray(cleanState.foundations[suit]);
+                    });
+                    
+                    return cleanState;
+                } catch (error) {
+                    console.warn('Error serializing game state for worker:', error);
+                    return null;
+                }
+            }
+            
+            cleanCardArray(cards) {
+                if (!Array.isArray(cards)) return [];
+                
+                return cards.map(card => {
+                    if (!card) return null;
+                    
+                    return {
+                        id: card.id || `${card.rank || card.value}${card.suit}`,
+                        suit: card.suit,
+                        rank: card.rank,
+                        value: card.value,
+                        faceUp: Boolean(card.faceUp)
+                    };
+                }).filter(card => card !== null);
+            }
+
             async analyzePositionAsync(gameState) {
                 return new Promise((resolve, reject) => {
                     if (!this.isInitialized || !this.worker) {
@@ -7945,8 +7995,9 @@
                         return;
                     }
                     
-                    // Validate gameState
-                    if (!gameState || typeof gameState !== 'object') {
+                    // Validate and serialize gameState
+                    const cleanGameState = this.serializeGameStateForWorker(gameState);
+                    if (!cleanGameState) {
                         resolve(this.analyzePositionMainThread(gameState));
                         return;
                     }
@@ -7965,7 +8016,7 @@
                     // Send to worker
                     this.worker.postMessage({
                         type: 'analyzePosition',
-                        data: { gameState: gameState },
+                        data: { gameState: cleanGameState },
                         requestId: requestId
                     });
                 });
@@ -7978,8 +8029,9 @@
                         return;
                     }
                     
-                    // Validate gameState
-                    if (!gameState || typeof gameState !== 'object') {
+                    // Validate and serialize gameState
+                    const cleanGameState = this.serializeGameStateForWorker(gameState);
+                    if (!cleanGameState) {
                         resolve({ canWin: false, error: 'Invalid game state' });
                         return;
                     }
@@ -7997,7 +8049,7 @@
                     
                     this.worker.postMessage({
                         type: 'findWinningPath',
-                        data: { gameState: gameState, maxDepth: maxDepth },
+                        data: { gameState: cleanGameState, maxDepth: maxDepth },
                         requestId: requestId
                     });
                 });
@@ -8060,6 +8112,75 @@
                 }
             }
             
+            async getWorkerPerformanceReport() {
+                if (!this.isInitialized || !this.worker) {
+                    return { error: 'Worker not available' };
+                }
+                
+                return new Promise((resolve) => {
+                    const requestId = ++this.requestId;
+                    this.pendingRequests.set(requestId, { resolve, reject: () => {}, timeout: null });
+                    
+                    const timeout = setTimeout(() => {
+                        this.pendingRequests.delete(requestId);
+                        resolve({ error: 'Performance report timeout' });
+                    }, 2000);
+                    
+                    this.pendingRequests.get(requestId).timeout = timeout;
+                    
+                    this.worker.postMessage({
+                        type: 'getPerformanceReport',
+                        requestId: requestId
+                    });
+                });
+            }
+            
+            async clearWorkerCache() {
+                if (!this.isInitialized || !this.worker) {
+                    return { error: 'Worker not available' };
+                }
+                
+                return new Promise((resolve) => {
+                    const requestId = ++this.requestId;
+                    this.pendingRequests.set(requestId, { resolve, reject: () => {}, timeout: null });
+                    
+                    const timeout = setTimeout(() => {
+                        this.pendingRequests.delete(requestId);
+                        resolve({ error: 'Clear cache timeout' });
+                    }, 2000);
+                    
+                    this.pendingRequests.get(requestId).timeout = timeout;
+                    
+                    this.worker.postMessage({
+                        type: 'clearCache',
+                        requestId: requestId
+                    });
+                });
+            }
+            
+            async optimizeWorkerPerformance() {
+                if (!this.isInitialized || !this.worker) {
+                    return { error: 'Worker not available' };
+                }
+                
+                return new Promise((resolve) => {
+                    const requestId = ++this.requestId;
+                    this.pendingRequests.set(requestId, { resolve, reject: () => {}, timeout: null });
+                    
+                    const timeout = setTimeout(() => {
+                        this.pendingRequests.delete(requestId);
+                        resolve({ error: 'Optimize performance timeout' });
+                    }, 2000);
+                    
+                    this.pendingRequests.get(requestId).timeout = timeout;
+                    
+                    this.worker.postMessage({
+                        type: 'optimizePerformance',
+                        requestId: requestId
+                    });
+                });
+            }
+
             fallbackToMainThread() {
                 this.isInitialized = false;
                 this.worker = null;
@@ -10798,7 +10919,7 @@
 
         // ===== VERSION MANAGEMENT =====
         
-        const CURRENT_VERSION = "2024.12.19.17.00";
+        const CURRENT_VERSION = "2024.12.19.18.00";
         
         function checkVersion() {
             const lastVersion = localStorage.getItem('klondike_version');
@@ -11045,6 +11166,48 @@
         }
 
         if (document.readyState === 'loading') {
+            // Global AI Worker Performance Monitor (accessible from console)
+            window.monitorAIWorker = async function() {
+                if (window.game && window.game.aiWorkerManager) {
+                    try {
+                        const report = await window.game.aiWorkerManager.getWorkerPerformanceReport();
+                        console.log('🤖 AI Worker Performance Report:', report);
+                        
+                        if (report.metrics) {
+                            console.log(`📊 Analysis: ${report.metrics.analysisCount} calls, avg ${report.metrics.averageAnalysisTime?.toFixed(1)}ms`);
+                            console.log(`🔍 Path Finding: ${report.metrics.pathFindingCount} calls, avg ${report.metrics.averagePathFindingTime?.toFixed(1)}ms`);
+                            console.log(`❌ Errors: ${report.metrics.errorCount}`);
+                            console.log(`💾 Cache: ${report.cacheStats.size}/${report.cacheStats.maxSize} (${report.cacheStats.hitRate} hit rate)`);
+                            console.log(`🟢 Status: ${report.status}`);
+                        }
+                        
+                        return report;
+                    } catch (error) {
+                        console.error('Failed to get AI worker performance report:', error);
+                        return { error: error.message };
+                    }
+                } else {
+                    console.warn('AI Worker Manager not available');
+                    return { error: 'AI Worker Manager not available' };
+                }
+            };
+            
+            window.optimizeAIWorker = async function() {
+                if (window.game && window.game.aiWorkerManager) {
+                    try {
+                        const result = await window.game.aiWorkerManager.optimizeWorkerPerformance();
+                        console.log('🔧 AI Worker Optimization Result:', result);
+                        return result;
+                    } catch (error) {
+                        console.error('Failed to optimize AI worker:', error);
+                        return { error: error.message };
+                    }
+                } else {
+                    console.warn('AI Worker Manager not available');
+                    return { error: 'AI Worker Manager not available' };
+                }
+            };
+
             document.addEventListener('DOMContentLoaded', initializeGame);
         } else {
             initializeGame();

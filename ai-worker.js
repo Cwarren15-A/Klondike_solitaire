@@ -61,14 +61,30 @@ class SolitaireAIWorker {
             return null;
         }
 
-        // Generate and rank possible moves
+        // Generate and rank possible moves with enhanced prioritization
         const possibleMoves = this.generateAllPossibleMoves(gameState);
-        const rankedMoves = this.rankMovesByPriority(possibleMoves, gameState);
+        const rankedMoves = this.rankMovesByStrategicValue(possibleMoves, gameState);
 
-        // Try each move
-        for (const move of rankedMoves.slice(0, 8)) { // Limit branching factor
+        // Adaptive branching factor based on depth
+        const maxBranches = depthRemaining > 100 ? 5 : depthRemaining > 50 ? 8 : 12;
+
+        // Try each move with enhanced pruning
+        for (let i = 0; i < Math.min(rankedMoves.length, maxBranches); i++) {
+            const move = rankedMoves[i];
+            
+            // Skip obviously bad moves at deep levels
+            if (depthRemaining > 75 && this.isProbablyBadMove(move, gameState)) {
+                continue;
+            }
+
             const newState = this.applyMoveToState(gameState, move);
             const newSequence = [...moveSequence, move];
+
+            // Early win detection - check if this puts us significantly closer
+            const progressScore = this.calculateProgressScore(newState, gameState);
+            if (progressScore < -10 && depthRemaining > 50) {
+                continue; // Skip moves that make things significantly worse
+            }
 
             // Recursive search
             const winningPath = await this.searchWinningPath(newState, newSequence, depthRemaining - 1);
@@ -76,13 +92,123 @@ class SolitaireAIWorker {
                 return winningPath;
             }
 
-            // Yield control periodically to prevent blocking
-            if (moveSequence.length % 5 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 1));
+            // Yield control more frequently for responsiveness
+            if (i % 3 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 0));
             }
         }
 
         return null;
+    }
+
+    // Enhanced move ranking with strategic lookahead
+    rankMovesByStrategicValue(moves, gameState) {
+        return moves.map(move => {
+            let strategicValue = move.priority || 0;
+            
+            // Foundation moves get massive priority
+            if (move.type === 'tableau_to_foundation' || move.type === 'waste_to_foundation') {
+                strategicValue += 1000;
+                
+                // Extra bonus for low foundation cards (build foundation early)
+                if (move.card && move.card.value <= 4) {
+                    strategicValue += 200;
+                }
+            }
+            
+            // Moves that reveal hidden cards
+            if (this.revealsHiddenCard(move, gameState)) {
+                strategicValue += 300;
+            }
+            
+            // Kings to empty spaces
+            if (move.card && move.card.value === 13 && this.isEmptySpaceMove(move, gameState)) {
+                strategicValue += 250;
+            }
+            
+            // Penalize stock cycling without tableau progress
+            if (move.type === 'draw_stock') {
+                const tableauMoves = moves.filter(m => m.type !== 'draw_stock').length;
+                if (tableauMoves > 0) {
+                    strategicValue -= 100; // Prefer tableau moves when available
+                }
+            }
+            
+            return { ...move, strategicValue };
+        }).sort((a, b) => b.strategicValue - a.strategicValue);
+    }
+
+    revealsHiddenCard(move, gameState) {
+        if (move.type === 'tableau_to_foundation' || move.type === 'tableau_to_tableau') {
+            const pile = gameState.tableau[move.from?.index];
+            return pile && pile.length > 1 && !pile[pile.length - 2].faceUp;
+        }
+        return false;
+    }
+
+    isEmptySpaceMove(move, gameState) {
+        if (move.type === 'tableau_to_tableau' || move.type === 'waste_to_tableau') {
+            const targetPile = gameState.tableau[move.to?.index];
+            return targetPile && targetPile.length === 0;
+        }
+        return false;
+    }
+
+    isProbablyBadMove(move, gameState) {
+        // Avoid moving aces away from foundation areas
+        if (move.card && move.card.value === 1 && move.type === 'tableau_to_tableau') {
+            return true;
+        }
+        
+        // Avoid breaking good sequences unless necessary
+        if (move.type === 'tableau_to_tableau' && this.breaksGoodSequence(move, gameState)) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    breaksGoodSequence(move, gameState) {
+        // Simple check for breaking good sequences
+        const pile = gameState.tableau[move.from?.index];
+        if (pile && pile.length >= 3) {
+            const topCards = pile.slice(-3);
+            if (this.isGoodSequence(topCards)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    isGoodSequence(cards) {
+        if (cards.length < 2) return false;
+        
+        for (let i = 1; i < cards.length; i++) {
+            const curr = cards[i];
+            const prev = cards[i-1];
+            
+            if (!curr.faceUp || !prev.faceUp) return false;
+            if (curr.value !== prev.value - 1) return false;
+            
+            const currColor = (curr.suit === '♠' || curr.suit === '♣') ? 'black' : 'red';
+            const prevColor = (prev.suit === '♠' || prev.suit === '♣') ? 'black' : 'red';
+            if (currColor === prevColor) return false;
+        }
+        
+        return true;
+    }
+
+    calculateProgressScore(newState, oldState) {
+        const oldFoundationCards = Object.values(oldState.foundations).reduce((sum, pile) => sum + pile.length, 0);
+        const newFoundationCards = Object.values(newState.foundations).reduce((sum, pile) => sum + pile.length, 0);
+        
+        const oldHiddenCards = oldState.tableau.reduce((sum, pile) => sum + pile.filter(c => !c.faceUp).length, 0);
+        const newHiddenCards = newState.tableau.reduce((sum, pile) => sum + pile.filter(c => !c.faceUp).length, 0);
+        
+        const foundationProgress = (newFoundationCards - oldFoundationCards) * 10;
+        const hiddenCardProgress = (oldHiddenCards - newHiddenCards) * 5;
+        
+        return foundationProgress + hiddenCardProgress;
     }
 
     cloneGameState(state) {
@@ -429,6 +555,135 @@ class SolitaireAIWorker {
 
         return false;
     }
+
+    // Generate a strategic plan looking ahead several moves
+    async generateStrategicPlan(gameState, lookAheadDepth = 5) {
+        const plan = {
+            immediateMove: null,
+            futureSequence: [],
+            reasoning: [],
+            stockStrategy: null,
+            analysis: ''
+        };
+
+        try {
+            // Find best immediate move
+            const analysis = this.analyzePosition(gameState);
+            plan.immediateMove = analysis.bestMove;
+            plan.stockStrategy = analysis.stockRecommendation;
+
+            if (plan.immediateMove) {
+                // Simulate the immediate move and look ahead
+                const afterFirstMove = this.applyMoveToState(gameState, plan.immediateMove);
+                
+                // Look for follow-up opportunities
+                const futureAnalysis = this.analyzePosition(afterFirstMove);
+                
+                if (futureAnalysis.bestMove) {
+                    plan.futureSequence.push(futureAnalysis.bestMove);
+                    
+                    // Look one more move ahead if it's promising
+                    if (futureAnalysis.bestMove.type === 'tableau_to_foundation' || 
+                        this.revealsHiddenCard(futureAnalysis.bestMove, afterFirstMove)) {
+                        const afterSecondMove = this.applyMoveToState(afterFirstMove, futureAnalysis.bestMove);
+                        const thirdAnalysis = this.analyzePosition(afterSecondMove);
+                        if (thirdAnalysis.bestMove) {
+                            plan.futureSequence.push(thirdAnalysis.bestMove);
+                        }
+                    }
+                }
+
+                // Generate strategic reasoning
+                plan.reasoning = this.generateStrategicReasoning(plan.immediateMove, plan.futureSequence, gameState);
+                plan.analysis = this.generateAnalysisText(plan, gameState);
+            }
+
+        } catch (error) {
+            console.error('Strategic plan generation error:', error);
+            plan.analysis = 'Unable to generate strategic plan';
+        }
+
+        return plan;
+    }
+
+    generateStrategicReasoning(immediateMove, futureSequence, gameState) {
+        const reasoning = [];
+
+        if (immediateMove.type === 'tableau_to_foundation' || immediateMove.type === 'waste_to_foundation') {
+            reasoning.push('Foundation building is the primary path to victory');
+            if (immediateMove.card && immediateMove.card.value <= 4) {
+                reasoning.push('Early foundation cards create more opportunities');
+            }
+        }
+
+        if (this.revealsHiddenCard(immediateMove, gameState)) {
+            reasoning.push('This move reveals a hidden card, expanding options');
+        }
+
+        if (immediateMove.card && immediateMove.card.value === 13) {
+            reasoning.push('Kings to empty spaces create new building opportunities');
+        }
+
+        if (futureSequence.length > 0) {
+            const foundationMoves = futureSequence.filter(m => 
+                m.type === 'tableau_to_foundation' || m.type === 'waste_to_foundation'
+            ).length;
+            
+            if (foundationMoves > 0) {
+                reasoning.push(`This sequence enables ${foundationMoves} foundation move${foundationMoves > 1 ? 's' : ''}`);
+            }
+        }
+
+        if (immediateMove.type === 'draw_stock') {
+            const upcomingCards = this.simulateStockDraws(gameState, 5);
+            const nextUseful = upcomingCards.find(item => item.useful);
+            if (nextUseful) {
+                reasoning.push(`Drawing reveals ${nextUseful.card.value}${nextUseful.card.suit} which can be played immediately`);
+            }
+        }
+
+        return reasoning;
+    }
+
+    generateAnalysisText(plan, gameState) {
+        let text = '';
+
+        if (plan.immediateMove) {
+            const moveDescription = this.describeMoveForAnalysis(plan.immediateMove);
+            text += `Best move: ${moveDescription}. `;
+
+            if (plan.reasoning.length > 0) {
+                text += `Strategy: ${plan.reasoning[0]}. `;
+            }
+
+            if (plan.futureSequence.length > 0) {
+                text += `This sets up ${plan.futureSequence.length} follow-up move${plan.futureSequence.length > 1 ? 's' : ''}. `;
+            }
+
+            if (plan.stockStrategy && plan.stockStrategy.shouldDraw && plan.stockStrategy.drawsNeeded > 0) {
+                text += `Stock strategy: Draw ${plan.stockStrategy.drawsNeeded} time${plan.stockStrategy.drawsNeeded > 1 ? 's' : ''} when needed.`;
+            }
+        }
+
+        return text || 'Continue with available moves to progress the game.';
+    }
+
+    describeMoveForAnalysis(move) {
+        if (!move) return 'No move available';
+        
+        switch (move.type) {
+            case 'tableau_to_foundation':
+                return `Place ${move.card.value}${move.card.suit} on foundation`;
+            case 'waste_to_foundation':
+                return `Move ${move.card.value}${move.card.suit} from waste to foundation`;
+            case 'tableau_to_tableau':
+                return `Move ${move.card.value}${move.card.suit} to tableau`;
+            case 'draw_stock':
+                return 'Draw from stock pile';
+            default:
+                return 'Unknown move';
+        }
+    }
 }
 
 // Worker message handling
@@ -455,10 +710,13 @@ self.onmessage = async function(event) {
                 
             case 'getHint':
                 const analysis = aiWorker.analyzePosition(data.gameState);
+                const strategicPlan = await aiWorker.generateStrategicPlan(data.gameState, 5);
                 result = {
                     bestMove: analysis.bestMove,
                     winProbability: analysis.winProbability,
-                    stockRecommendation: analysis.stockRecommendation
+                    stockRecommendation: analysis.stockRecommendation,
+                    strategicPlan: strategicPlan,
+                    multiMoveAnalysis: strategicPlan.analysis
                 };
                 break;
                 

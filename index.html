@@ -2786,13 +2786,13 @@
                         requestId
                     });
                     
-                    // Timeout after 30 seconds
+                    // Timeout after 60 seconds for complex analysis
                     setTimeout(() => {
                         if (this.pendingRequests.has(requestId)) {
                             this.pendingRequests.delete(requestId);
                             reject(new Error('Worker request timeout'));
                         }
-                    }, 30000);
+                    }, 60000);
                 });
             }
             
@@ -2928,6 +2928,8 @@
                                 priority: 'medium',
                                 winProbability: workerHint.winProbability,
                                 stockRecommendation: workerHint.stockRecommendation,
+                                strategicPlan: workerHint.strategicPlan,
+                                multiMoveAnalysis: workerHint.multiMoveAnalysis,
                                 showFullAnalysis: true // Flag to show full breakdown
                             };
                         } else {
@@ -3832,13 +3834,25 @@
                         // Alternative moves and worker insights
                         let alternativeMoves = '';
                         if (isWorkerHint && smartHint.winProbability !== undefined) {
-                            // Show worker-specific insights
+                            // Show worker-specific insights with strategic planning
+                            let strategicInfo = '';
+                            if (smartHint.strategicPlan && smartHint.strategicPlan.futureSequence.length > 0) {
+                                const futureSequence = smartHint.strategicPlan.futureSequence.slice(0, 2);
+                                strategicInfo = `<br><small><strong>Follow-up Plan:</strong> ${futureSequence.map(move => this.describeMoveAction(move)).join(' → ')}</small>`;
+                            }
+                            
+                            let multiMoveInfo = '';
+                            if (smartHint.multiMoveAnalysis) {
+                                multiMoveInfo = `<br><small><strong>Strategic Analysis:</strong> ${smartHint.multiMoveAnalysis}</small>`;
+                            }
+                            
                             alternativeMoves = `
                                 <div style="margin-top: 10px; padding: 8px; background: rgba(72, 222, 128, 0.1); border-radius: 6px; border: 1px solid #22c55e;">
-                                    <strong>🤖 Web Worker Analysis:</strong><br>
+                                    <strong>🤖 Web Worker Strategic Analysis:</strong><br>
                                     <small><strong>Win Probability:</strong> ${Math.round(smartHint.winProbability)}%</small><br>
-                                    <small><strong>Processing:</strong> Background thread (non-blocking)</small><br>
-                                    <small><strong>Analysis Speed:</strong> Optimized for responsiveness</small>
+                                    <small><strong>Processing:</strong> Background thread with look-ahead</small>
+                                    ${strategicInfo}
+                                    ${multiMoveInfo}
                                 </div>
                             `;
                         } else {
@@ -4113,18 +4127,40 @@
                 // Check if we can draw from stock (stock has cards) or reset waste to stock (stock empty but waste has cards)
                 if (this.game.state.stock.length > 0) {
                     let stockDescription = 'Draw card(s) from stock';
+                    let drawsNeeded = 1;
                     
                     // Get AI stock recommendation if available
                     try {
+                        // Try multiple sources for stock analysis
+                        let stockAnalysis = null;
+                        
                         if (this.game.aiHint && this.game.aiHint.analyzeStock) {
-                            const stockAnalysis = this.game.aiHint.analyzeStock();
+                            stockAnalysis = this.game.aiHint.analyzeStock();
+                        } else if (this.analyzeStock) {
+                            // Direct call to this class's analyzeStock if available
+                            stockAnalysis = this.analyzeStock();
+                        }
+                        
+                        if (stockAnalysis && stockAnalysis.recommendation) {
                             const rec = stockAnalysis.recommendation;
-                            if (rec && rec.shouldDraw && rec.drawsNeeded > 0) {
+                            if (rec.shouldDraw && rec.drawsNeeded > 0) {
+                                drawsNeeded = rec.drawsNeeded;
                                 stockDescription = `Draw ${rec.drawsNeeded} time${rec.drawsNeeded > 1 ? 's' : ''} from stock`;
+                            } else if (rec.drawsNeeded > 0) {
+                                // Even if not recommended to draw, show the count
+                                stockDescription = `Draw from stock (next useful card in ${rec.drawsNeeded} draws)`;
                             }
                         }
                     } catch (error) {
-                        // Fallback to generic description if AI analysis fails
+                        // Fallback: try to analyze stock directly if AI hint system isn't available
+                        try {
+                            const simpleAnalysis = this.quickStockAnalysis();
+                            if (simpleAnalysis.drawsNeeded > 1) {
+                                stockDescription = `Draw ${simpleAnalysis.drawsNeeded} time${simpleAnalysis.drawsNeeded > 1 ? 's' : ''} from stock`;
+                            }
+                        } catch (e) {
+                            // Final fallback to generic description
+                        }
                     }
                     
                     moves.push({
@@ -4132,7 +4168,8 @@
                         cardId: null,
                         card: null,
                         priority: 1, // Low priority, but still a valid move
-                        description: stockDescription
+                        description: stockDescription,
+                        drawsNeeded: drawsNeeded
                     });
                 } else if (this.game.state.waste.length > 0) {
                     moves.push({
@@ -4145,6 +4182,21 @@
                 }
                 
                 return moves;
+            }
+
+            // Quick stock analysis for when full AI system isn't available
+            quickStockAnalysis() {
+                const stockCards = this.game.state.stock.length;
+                const drawMode = this.game.state.drawMode || 3;
+                
+                // Simple heuristic: if only a few cards in stock, suggest drawing them all
+                if (stockCards <= 3) {
+                    return { drawsNeeded: 1, reason: 'Few cards remaining' };
+                } else if (stockCards <= 6) {
+                    return { drawsNeeded: 2, reason: 'Moderate cards remaining' };
+                } else {
+                    return { drawsNeeded: 1, reason: 'Many cards remaining' };
+                }
             }
             
             prioritizeMoves(moves) {

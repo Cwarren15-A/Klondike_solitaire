@@ -65,25 +65,41 @@ class SolitaireAIWorker {
         const possibleMoves = this.generateAllPossibleMoves(gameState);
         const rankedMoves = this.rankMovesByStrategicValue(possibleMoves, gameState);
 
-        // Adaptive branching factor based on depth
-        const maxBranches = depthRemaining > 100 ? 5 : depthRemaining > 50 ? 8 : 12;
+        // Smart branching based on game state and depth
+        const gameProgress = this.calculateGameProgress(gameState);
+        const maxBranches = this.calculateOptimalBranching(depthRemaining, gameProgress, rankedMoves);
 
-        // Try each move with enhanced pruning
-        for (let i = 0; i < Math.min(rankedMoves.length, maxBranches); i++) {
-            const move = rankedMoves[i];
+        // Early game: Focus on foundation building and revealing
+        // Late game: Allow more branching for complex sequences
+        let movesToTry = rankedMoves.slice(0, maxBranches);
+        
+        // CRITICAL: Always try foundation moves first, regardless of branching limits
+        const foundationMoves = rankedMoves.filter(m => 
+            m.type === 'tableau_to_foundation' || m.type === 'waste_to_foundation'
+        );
+        if (foundationMoves.length > 0) {
+            // Ensure foundation moves are tried first
+            movesToTry = [...foundationMoves, ...rankedMoves.filter(m => 
+                m.type !== 'tableau_to_foundation' && m.type !== 'waste_to_foundation'
+            )].slice(0, maxBranches);
+        }
+
+        // Try each move with intelligent pruning
+        for (let i = 0; i < movesToTry.length; i++) {
+            const move = movesToTry[i];
             
-            // Skip obviously bad moves at deep levels
-            if (depthRemaining > 75 && this.isProbablyBadMove(move, gameState)) {
+            // Enhanced move filtering
+            if (this.shouldSkipMove(move, gameState, depthRemaining, gameProgress)) {
                 continue;
             }
 
             const newState = this.applyMoveToState(gameState, move);
             const newSequence = [...moveSequence, move];
 
-            // Early win detection - check if this puts us significantly closer
+            // Progress evaluation with game phase awareness
             const progressScore = this.calculateProgressScore(newState, gameState);
-            if (progressScore < -10 && depthRemaining > 50) {
-                continue; // Skip moves that make things significantly worse
+            if (this.isProgressTooSlow(progressScore, depthRemaining, gameProgress)) {
+                continue;
             }
 
             // Recursive search
@@ -92,8 +108,8 @@ class SolitaireAIWorker {
                 return winningPath;
             }
 
-            // Yield control more frequently for responsiveness
-            if (i % 3 === 0) {
+            // Adaptive yielding based on complexity
+            if (i % (foundationMoves.length > 0 ? 2 : 4) === 0) {
                 await new Promise(resolve => setTimeout(resolve, 0));
             }
         }
@@ -106,36 +122,147 @@ class SolitaireAIWorker {
         return moves.map(move => {
             let strategicValue = move.priority || 0;
             
-            // Foundation moves get massive priority
+            // FOUNDATION MOVES - Highest priority (these win the game)
             if (move.type === 'tableau_to_foundation' || move.type === 'waste_to_foundation') {
-                strategicValue += 1000;
+                strategicValue += 10000; // Much higher base priority
                 
-                // Extra bonus for low foundation cards (build foundation early)
-                if (move.card && move.card.value <= 4) {
-                    strategicValue += 200;
+                // CRITICAL: Aces get highest priority (they unlock everything)
+                if (move.card && move.card.value === 1) {
+                    strategicValue += 5000;
+                }
+                // Low cards get high priority (build foundation early)
+                else if (move.card && move.card.value <= 4) {
+                    strategicValue += 3000;
+                }
+                // Sequential foundation building bonus
+                if (move.card) {
+                    const foundationPile = gameState.foundations[move.card.suit];
+                    if (foundationPile && foundationPile.length === move.card.value - 1) {
+                        strategicValue += 2000; // Perfect sequence match
+                    }
                 }
             }
             
-            // Moves that reveal hidden cards
+            // REVEALING MOVES - Second highest priority
             if (this.revealsHiddenCard(move, gameState)) {
-                strategicValue += 300;
+                strategicValue += 1500;
+                
+                // Extra bonus if revealing might expose an Ace or foundation card
+                const pile = this.getPileFromMove(move, gameState);
+                if (pile && pile.length > 1) {
+                    const hiddenCard = pile[pile.length - 2];
+                    if (hiddenCard && (hiddenCard.value === 1 || hiddenCard.value <= 4)) {
+                        strategicValue += 1000; // Might reveal foundation card
+                    }
+                }
             }
             
-            // Kings to empty spaces
+            // KINGS TO EMPTY SPACES - Strategic building moves
             if (move.card && move.card.value === 13 && this.isEmptySpaceMove(move, gameState)) {
-                strategicValue += 250;
+                strategicValue += 800;
+                
+                // Bonus if King has a good sequence underneath
+                const sourcePile = this.getPileFromMove(move, gameState);
+                if (sourcePile && this.hasGoodSequenceUnder(sourcePile, move.card)) {
+                    strategicValue += 500;
+                }
             }
             
-            // Penalize stock cycling without tableau progress
+            // SEQUENCE BUILDING - Tableau moves that build good sequences
+            if (move.type === 'tableau_to_tableau' || move.type === 'waste_to_tableau') {
+                const targetPile = gameState.tableau[move.to?.index];
+                if (targetPile && targetPile.length > 0) {
+                    // Building on existing sequences
+                    if (this.extendsGoodSequence(move.card, targetPile)) {
+                        strategicValue += 400;
+                    }
+                }
+            }
+            
+            // STRONGLY PENALIZE COUNTERPRODUCTIVE MOVES
+            if (this.isCounterproductiveMove(move, gameState)) {
+                strategicValue -= 2000;
+            }
+            
+            // PENALIZE STOCK DRAWS when better options exist
             if (move.type === 'draw_stock') {
-                const tableauMoves = moves.filter(m => m.type !== 'draw_stock').length;
-                if (tableauMoves > 0) {
-                    strategicValue -= 100; // Prefer tableau moves when available
+                const foundationMoves = moves.filter(m => 
+                    m.type === 'tableau_to_foundation' || m.type === 'waste_to_foundation'
+                ).length;
+                const revealingMoves = moves.filter(m => this.revealsHiddenCard(m, gameState)).length;
+                
+                if (foundationMoves > 0) {
+                    strategicValue -= 5000; // Foundation moves always better
+                }
+                else if (revealingMoves > 0) {
+                    strategicValue -= 1000; // Revealing moves usually better
+                }
+                else {
+                    strategicValue += 50; // OK if no other good options
                 }
             }
             
             return { ...move, strategicValue };
         }).sort((a, b) => b.strategicValue - a.strategicValue);
+    }
+
+    // Helper methods for enhanced move evaluation
+    getPileFromMove(move, gameState) {
+        if (move.type === 'tableau_to_foundation' || move.type === 'tableau_to_tableau') {
+            return gameState.tableau[move.from?.index];
+        }
+        return null;
+    }
+
+    hasGoodSequenceUnder(pile, kingCard) {
+        if (!pile || pile.length < 2) return false;
+        
+        for (let i = pile.length - 1; i >= 0; i--) {
+            if (pile[i].id === kingCard.id) {
+                // Check if there's a sequence under this King
+                return i > 0 && pile[i-1].faceUp && pile[i-1].value === 12; // Queen under King
+            }
+        }
+        return false;
+    }
+
+    extendsGoodSequence(card, targetPile) {
+        if (!targetPile || targetPile.length === 0) return false;
+        
+        const topCard = targetPile[targetPile.length - 1];
+        if (!topCard.faceUp) return false;
+        
+        // Check if this creates a good sequence (alternating colors, descending)
+        const cardColor = (card.suit === '♠' || card.suit === '♣') ? 'black' : 'red';
+        const topColor = (topCard.suit === '♠' || topCard.suit === '♣') ? 'black' : 'red';
+        
+        return cardColor !== topColor && card.value === topCard.value - 1;
+    }
+
+    isCounterproductiveMove(move, gameState) {
+        // Don't move Aces away from foundation opportunities
+        if (move.card && move.card.value === 1 && move.type !== 'tableau_to_foundation' && move.type !== 'waste_to_foundation') {
+            return true;
+        }
+        
+        // Don't break good foundation sequences
+        if (move.type === 'tableau_to_tableau' && move.card) {
+            const foundationPile = gameState.foundations[move.card.suit];
+            if (foundationPile && foundationPile.length === move.card.value - 1) {
+                return true; // This card should go to foundation instead
+            }
+        }
+        
+        // Don't move cards that could go to foundation to tableau instead
+        if (move.type === 'waste_to_tableau' && move.card) {
+            for (const [suit, foundationPile] of Object.entries(gameState.foundations)) {
+                if (this.canPlaceOnFoundation(move.card, foundationPile)) {
+                    return true; // Should go to foundation instead
+                }
+            }
+        }
+        
+        return false;
     }
 
     revealsHiddenCard(move, gameState) {
@@ -209,6 +336,80 @@ class SolitaireAIWorker {
         const hiddenCardProgress = (oldHiddenCards - newHiddenCards) * 5;
         
         return foundationProgress + hiddenCardProgress;
+    }
+
+    calculateGameProgress(gameState) {
+        const foundationCards = Object.values(gameState.foundations).reduce((sum, pile) => sum + pile.length, 0);
+        const hiddenCards = gameState.tableau.reduce((sum, pile) => sum + pile.filter(c => !c.faceUp).length, 0);
+        const totalCards = 52;
+        
+        // Progress is foundation progress (0-1) minus penalty for hidden cards
+        const foundationProgress = foundationCards / totalCards;
+        const hiddenPenalty = hiddenCards / 28; // Max 28 hidden cards
+        
+        return Math.max(0, foundationProgress - (hiddenPenalty * 0.3));
+    }
+
+    calculateOptimalBranching(depthRemaining, gameProgress, rankedMoves) {
+        // Early game (low progress): Focus narrowly on key moves
+        if (gameProgress < 0.2) {
+            return depthRemaining > 100 ? 3 : depthRemaining > 50 ? 5 : 8;
+        }
+        // Mid game (medium progress): Moderate branching
+        else if (gameProgress < 0.6) {
+            return depthRemaining > 100 ? 4 : depthRemaining > 50 ? 7 : 10;
+        }
+        // Late game (high progress): Allow more complex sequences
+        else {
+            return depthRemaining > 100 ? 6 : depthRemaining > 50 ? 10 : 15;
+        }
+    }
+
+    shouldSkipMove(move, gameState, depthRemaining, gameProgress) {
+        // Never skip foundation moves
+        if (move.type === 'tableau_to_foundation' || move.type === 'waste_to_foundation') {
+            return false;
+        }
+
+        // Skip obviously bad moves at any depth
+        if (this.isProbablyBadMove(move, gameState)) {
+            return true;
+        }
+
+        // Skip counterproductive moves
+        if (this.isCounterproductiveMove(move, gameState)) {
+            return true;
+        }
+
+        // In early game, skip stock draws if better options exist
+        if (gameProgress < 0.3 && move.type === 'draw_stock') {
+            // Check if there are revealing moves or foundation opportunities
+            const hasRevealingMoves = this.revealsHiddenCard(move, gameState);
+            const hasFoundationMoves = Object.values(gameState.foundations).some(pile => 
+                pile.length < 13 // Foundation has room for cards
+            );
+            
+            if (hasRevealingMoves || hasFoundationMoves) {
+                return true; // Skip stock draw in favor of more productive moves
+            }
+        }
+
+        return false;
+    }
+
+    isProgressTooSlow(progressScore, depthRemaining, gameProgress) {
+        // Be more strict about progress in early game
+        if (gameProgress < 0.3) {
+            return progressScore < -5 && depthRemaining > 75;
+        }
+        // Mid game: Allow some lateral moves for positioning
+        else if (gameProgress < 0.7) {
+            return progressScore < -10 && depthRemaining > 50;
+        }
+        // Late game: Allow complex sequences even if temporary progress is negative
+        else {
+            return progressScore < -20 && depthRemaining > 25;
+        }
     }
 
     cloneGameState(state) {

@@ -522,7 +522,7 @@
                 <button class="btn-yellow" id="undoBtn" onclick="safeGameCall('undo')" title="Undo last move (U)" aria-label="Undo last move">↶ Undo</button>
                 <button class="btn-orange" id="redoBtn" onclick="safeGameCall('redo')" title="Redo last undone move (R)" aria-label="Redo last undone move">↷ Redo</button>
                 <button class="btn-purple" onclick="safeGameCall('ai.showHint')" title="Show AI hint (H)" aria-label="Show AI move hint">🧠 AI Hint</button>
-                <button class="btn-gold" onclick="safeGameCall('ai.autoCompleteGame')" title="Auto-complete game with AI" aria-label="Auto-complete game">🤖 Auto-Solve</button>
+                                        <button class="btn-gold" onclick="safeGameCall('ai.autoCompleteGame')" title="AI automatically plays the game to completion" aria-label="Auto-play game">🤖 Auto-Play</button>
                 <button class="btn-orange" onclick="safeGameCall('ui.showMLAnalysis')" title="Show ML analysis" aria-label="Show machine learning analysis">📊 AI Analysis</button>
                 <button class="btn-green" onclick="safeGameCall('storage.quickSave')" title="Quick save (S)" aria-label="Quick save game">💾 Save</button>
             </div>
@@ -2804,39 +2804,67 @@
                 const currentState = this.cloneGameState();
                 
                 try {
-                    // Try to use Web Worker first
+                    // Try to use Web Worker first with progressive approach
                     if (this.workerSupported) {
                         console.log('🚀 Using Web Worker for winning path analysis...');
-                        try {
-                            const result = await this.requestFromWorker('findWinningPath', {
-                                gameState: currentState,
-                                maxDepth: maxDepth
-                            });
+                        
+                        // Progressive search strategy to avoid timeouts
+                        let searchDepth = maxDepth;
+                        let attempts = 0;
+                        const maxAttempts = 3;
+                        
+                        while (attempts < maxAttempts) {
+                            const timeout = attempts === 0 ? 120000 : 60000; // 2min first, then 1min
+                            console.log(`🔍 Attempt ${attempts + 1}: Searching ${searchDepth} moves deep (timeout: ${timeout/1000}s)`);
                             
-                            const timeTaken = (performance.now() - startTime).toFixed(0);
-                            
-                            if (result.canWin) {
-                                console.log(`🎯 Auto-Complete found winning path in ${result.timeTaken}ms: ${result.moveCount} moves`);
-                                return {
-                                    canWin: true,
-                                    moves: result.moves,
-                                    moveCount: result.moveCount,
-                                    timeTaken: timeTaken,
-                                    confidence: result.confidence
-                                };
-                            } else {
-                                console.log(`❌ No winning path found within ${maxDepth} moves (${result.timeTaken}ms)`);
-                                return {
-                                    canWin: false,
-                                    reason: `No winning sequence found within ${maxDepth} moves`,
-                                    timeTaken: timeTaken,
-                                    suggestedMoves: await this.getBestProgressiveMoves(currentState, 3)
-                                };
+                            try {
+                                const result = await this.requestFromWorker('findWinningPath', {
+                                    gameState: currentState,
+                                    maxDepth: searchDepth
+                                }, timeout);
+                                
+                                const timeTaken = (performance.now() - startTime).toFixed(0);
+                                
+                                if (result.canWin) {
+                                    console.log(`🎯 Auto-Complete found winning path in ${result.timeTaken}ms: ${result.moveCount} moves (depth: ${searchDepth})`);
+                                    
+                                    // Auto-execute the winning moves
+                                    this.autoExecuteMoves(result.moves);
+                                    
+                                    return {
+                                        canWin: true,
+                                        moves: result.moves,
+                                        moveCount: result.moveCount,
+                                        timeTaken: timeTaken,
+                                        confidence: result.confidence
+                                    };
+                                } else {
+                                    console.log(`🔍 No path found at depth ${searchDepth}, trying different strategy...`);
+                                    
+                                    // Adjust search strategy for next attempt
+                                    if (attempts === 0) {
+                                        searchDepth = Math.max(75, Math.floor(searchDepth * 0.6)); // Reduce depth
+                                    } else {
+                                        searchDepth = Math.min(300, Math.floor(searchDepth * 1.4)); // Increase depth
+                                    }
+                                    attempts++;
+                                    continue;
+                                }
+                            } catch (workerError) {
+                                if (workerError.message.includes('timeout')) {
+                                    console.log(`⏱️ Worker timeout at depth ${searchDepth}, adjusting strategy...`);
+                                    searchDepth = Math.max(50, Math.floor(searchDepth * 0.5)); // Halve depth
+                                    attempts++;
+                                    continue;
+                                } else {
+                                    console.warn('Worker failed with non-timeout error:', workerError);
+                                    break; // Exit loop for non-timeout errors
+                                }
                             }
-                        } catch (workerError) {
-                            console.warn('Worker failed, falling back to main thread:', workerError);
-                            // Fall through to main thread implementation
                         }
+                        
+                        console.warn('Worker exhausted all attempts, falling back to main thread');
+                        // Fall through to main thread implementation
                     }
                     
                     // Fallback to main thread
@@ -2868,7 +2896,7 @@
                 }
             }
             
-            // Recursive pathfinding with pruning and memoization
+            // Enhanced recursive pathfinding with intelligent pruning
             async findWinningPath(gameState, moveSequence, depthRemaining) {
                 // Check if game is won
                 if (this.isGameWon(gameState)) {
@@ -2882,14 +2910,60 @@
                 
                 // Generate all possible moves from current state
                 const possibleMoves = this.generateAllPossibleMoves(gameState);
+                if (possibleMoves.length === 0) {
+                    return null; // Dead end
+                }
+                
+                // Calculate game progress for intelligent branching
+                const foundationCards = Object.values(gameState.foundations).reduce((sum, pile) => sum + pile.length, 0);
+                const gameProgress = foundationCards / 52;
                 
                 // Sort moves by strategic value (most promising first)
                 const rankedMoves = this.rankMovesByWinPotential(possibleMoves, gameState);
                 
-                // Try each move recursively
-                for (const move of rankedMoves) {
+                // Intelligent branching: fewer branches in early game, more in late game
+                const maxBranches = gameProgress < 0.3 ? 4 : gameProgress < 0.6 ? 6 : 8;
+                const movesToTry = rankedMoves.slice(0, maxBranches);
+                
+                // Always prioritize foundation moves regardless of branching limit
+                const foundationMoves = rankedMoves.filter(m => 
+                    m.type === 'tableau_to_foundation' || m.type === 'waste_to_foundation'
+                );
+                
+                if (foundationMoves.length > 0) {
+                    // Try foundation moves first
+                    for (const move of foundationMoves) {
+                        const newState = this.applyMoveToState(gameState, move);
+                        const newSequence = [...moveSequence, move];
+                        
+                        const winningPath = await this.findWinningPath(newState, newSequence, depthRemaining - 1);
+                        if (winningPath) {
+                            return winningPath;
+                        }
+                    }
+                }
+                
+                // Try other strategic moves
+                const otherMoves = movesToTry.filter(m => 
+                    m.type !== 'tableau_to_foundation' && m.type !== 'waste_to_foundation'
+                );
+                
+                for (let i = 0; i < otherMoves.length; i++) {
+                    const move = otherMoves[i];
+                    
+                    // Skip obviously counterproductive moves
+                    if (this.isCounterproductiveMove(move, gameState, gameProgress)) {
+                        continue;
+                    }
+                    
                     const newState = this.applyMoveToState(gameState, move);
                     const newSequence = [...moveSequence, move];
+                    
+                    // Progress check: skip moves that make things significantly worse
+                    const progressScore = this.calculateProgressChange(newState, gameState);
+                    if (progressScore < -5 && depthRemaining > 50) {
+                        continue;
+                    }
                     
                     // Recursive search
                     const winningPath = await this.findWinningPath(newState, newSequence, depthRemaining - 1);
@@ -2897,8 +2971,8 @@
                         return winningPath;
                     }
                     
-                    // Yield control to prevent UI freezing
-                    if (moveSequence.length % 10 === 0) {
+                    // Yield control more frequently for foundation-heavy games
+                    if (i % (foundationMoves.length > 0 ? 2 : 4) === 0) {
                         await new Promise(resolve => setTimeout(resolve, 1));
                     }
                 }
@@ -2906,6 +2980,128 @@
                 return null; // No winning path found
             }
             
+            // Check if a move is counterproductive given game state
+            isCounterproductiveMove(move, gameState, gameProgress) {
+                // Don't move Aces away from foundation opportunities
+                if (move.card && move.card.value === 1) {
+                    if (move.type !== 'tableau_to_foundation' && move.type !== 'waste_to_foundation') {
+                        return true;
+                    }
+                }
+                
+                // In early game, avoid stock draws when foundation moves available
+                if (gameProgress < 0.3 && move.type === 'draw_stock') {
+                    const foundationCards = Object.values(gameState.foundations).reduce((sum, pile) => sum + pile.length, 0);
+                    if (foundationCards < 8) { // Very early game
+                        return true;
+                    }
+                }
+                
+                // Don't break sequences that could lead to foundation
+                if (move.type === 'tableau_to_tableau' && move.card) {
+                    const foundationPile = gameState.foundations[move.card.suit];
+                    if (foundationPile && foundationPile.length === move.card.value - 1) {
+                        return true; // This card should go to foundation instead
+                    }
+                }
+                
+                return false;
+            }
+            
+            // Calculate progress change between game states
+            calculateProgressChange(newState, oldState) {
+                const oldFoundationCards = Object.values(oldState.foundations).reduce((sum, pile) => sum + pile.length, 0);
+                const newFoundationCards = Object.values(newState.foundations).reduce((sum, pile) => sum + pile.length, 0);
+                
+                const oldHiddenCards = oldState.tableau.reduce((sum, pile) => sum + pile.filter(c => !c.faceUp).length, 0);
+                const newHiddenCards = newState.tableau.reduce((sum, pile) => sum + pile.filter(c => !c.faceUp).length, 0);
+                
+                const foundationProgress = (newFoundationCards - oldFoundationCards) * 10;
+                const revealProgress = (oldHiddenCards - newHiddenCards) * 3;
+                
+                return foundationProgress + revealProgress;
+            }
+            
+            // Auto-execute a sequence of moves
+            async autoExecuteMoves(moves) {
+                if (!moves || moves.length === 0) {
+                    console.log('❌ No moves to execute');
+                    return;
+                }
+                
+                console.log(`🤖 Auto-executing ${moves.length} moves...`);
+                
+                for (let i = 0; i < moves.length; i++) {
+                    const move = moves[i];
+                    
+                    try {
+                        // Execute the move
+                        await this.executeMove(move);
+                        
+                        // Show progress
+                        if (i % 10 === 0 || i === moves.length - 1) {
+                            console.log(`📈 Progress: ${i + 1}/${moves.length} moves executed`);
+                        }
+                        
+                        // Small delay to make moves visible
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        // Check if game is won
+                        if (this.isGameWon()) {
+                            console.log('🎉 Game won through auto-execution!');
+                            this.showWinMessage();
+                            break;
+                        }
+                        
+                    } catch (error) {
+                        console.error(`❌ Failed to execute move ${i + 1}:`, move, error);
+                        break;
+                    }
+                }
+            }
+            
+            // Execute a single move from the move object
+            async executeMove(move) {
+                try {
+                    switch (move.type) {
+                        case 'tableau_to_foundation':
+                            this.moveToFoundation(move.card, move.from?.index);
+                            break;
+                            
+                        case 'waste_to_foundation':
+                            this.moveWasteToFoundation(move.card);
+                            break;
+                            
+                        case 'tableau_to_tableau':
+                            this.moveTableauCard(move.from?.index, move.to?.index, move.cardCount || 1);
+                            break;
+                            
+                        case 'waste_to_tableau':
+                            this.moveWasteToTableau(move.to?.index);
+                            break;
+                            
+                        case 'draw_stock':
+                            // Execute multiple draws if specified
+                            const drawCount = move.drawCount || 1;
+                            for (let i = 0; i < drawCount; i++) {
+                                this.drawCard();
+                                await new Promise(resolve => setTimeout(resolve, 50)); // Brief delay between draws
+                            }
+                            break;
+                            
+                        case 'reset_stock':
+                            this.resetStock();
+                            break;
+                            
+                        default:
+                            console.warn('Unknown move type:', move.type);
+                    }
+                } catch (error) {
+                    console.error('Error executing move:', error);
+                    throw error;
+                }
+            }
+
             // Enhanced hint system using auto-complete analysis
             async getSmartHint() {
                 console.log('🧠 Generating AI hint with auto-complete analysis...');

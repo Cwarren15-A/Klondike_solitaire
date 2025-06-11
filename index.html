@@ -2372,6 +2372,23 @@
                     this.handleDeadlock();
                     return;
                 }
+                
+                // Phase 2: Advanced pattern recognition deadlock detection
+                if (this.checkAdvancedDeadlockPatterns()) {
+                    console.log('🧠 Advanced pattern analysis detected deadlock!');
+                    this.handleDeadlock();
+                    return;
+                }
+                
+                // Phase 2: Predictive deadlock warning (early detection)
+                const deadlockRisk = this.assessDeadlockRisk(progressiveMoves, possibleMoves);
+                if (deadlockRisk.level === 'critical' && deadlockRisk.confidence > 0.85) {
+                    console.log(`⚠️ Critical deadlock risk detected: ${deadlockRisk.reason} (confidence: ${(deadlockRisk.confidence * 100).toFixed(1)}%)`);
+                    this.handleDeadlock();
+                    return;
+                } else if (deadlockRisk.level === 'high') {
+                    console.log(`⚠️ High deadlock risk: ${deadlockRisk.reason} (confidence: ${(deadlockRisk.confidence * 100).toFixed(1)}%)`);
+                }
             }
             
             identifyProgressiveMoves(possibleMoves) {
@@ -2663,6 +2680,467 @@
                 return false;
             }
             
+            // Phase 2: Advanced Pattern Recognition System
+            initializeAdvancedPatternRecognition() {
+                if (!this.patternRecognition) {
+                    this.patternRecognition = {
+                        cardBlockingPatterns: new Map(),
+                        sequenceDeadlocks: new Map(),
+                        foundationBottlenecks: new Map(),
+                        stockExhaustionPatterns: new Map(),
+                        multiMoveDeadlocks: new Map(),
+                        historicalDeadlocks: []
+                    };
+                }
+            }
+
+            analyzeCardBlockingPatterns() {
+                // Detect when key cards are blocked by unfavorable sequences
+                const blockingPatterns = [];
+                
+                this.game.state.tableau.forEach((pile, pileIndex) => {
+                    if (pile.length === 0) return;
+                    
+                    // Look for buried aces and low cards
+                    pile.forEach((card, cardIndex) => {
+                        if (!card.faceUp) return;
+                        
+                        // Check if this card is blocking important cards below
+                        const cardsBelow = pile.slice(0, cardIndex);
+                        const hiddenBelow = cardsBelow.filter(c => !c.faceUp);
+                        
+                        if (hiddenBelow.length > 0) {
+                            // Estimate what might be hidden based on what's already visible
+                            const visibleCards = this.getAllVisibleCards();
+                            const missingLowCards = this.findMissingLowValueCards(visibleCards);
+                            
+                            if (missingLowCards.length > 0) {
+                                blockingPatterns.push({
+                                    type: 'potential_low_card_blocking',
+                                    blockingCard: card,
+                                    pileIndex: pileIndex,
+                                    hiddenCount: hiddenBelow.length,
+                                    potentiallyBlocked: missingLowCards,
+                                    severity: this.calculateBlockingSeverity(card, hiddenBelow.length, missingLowCards)
+                                });
+                            }
+                        }
+                    });
+                });
+                
+                return blockingPatterns;
+            }
+
+            findMissingLowValueCards(visibleCards) {
+                const visibleSet = new Set(visibleCards.map(c => `${c.value}${c.suit}`));
+                const missingLowCards = [];
+                
+                ['♠', '♥', '♦', '♣'].forEach(suit => {
+                    for (let value = 1; value <= 4; value++) { // Focus on Aces through 4s
+                        const cardKey = `${value}${suit}`;
+                        if (!visibleSet.has(cardKey)) {
+                            missingLowCards.push({ value, suit });
+                        }
+                    }
+                });
+                
+                return missingLowCards;
+            }
+
+            calculateBlockingSeverity(blockingCard, hiddenCount, potentiallyBlocked) {
+                let severity = 0;
+                
+                // Higher severity for blocking high-value cards when low cards might be hidden
+                if (blockingCard.value >= 10) severity += 2;
+                if (blockingCard.value >= 7) severity += 1;
+                
+                // More hidden cards = higher severity
+                severity += hiddenCount * 0.5;
+                
+                // More potentially blocked low cards = higher severity
+                severity += potentiallyBlocked.length * 1.5;
+                
+                return Math.min(10, severity); // Cap at 10
+            }
+
+            analyzeSequenceDeadlocks() {
+                // Detect when tableau sequences prevent necessary moves
+                const sequenceIssues = [];
+                
+                this.game.state.tableau.forEach((pile, pileIndex) => {
+                    if (pile.length < 2) return;
+                    
+                    const faceUpCards = pile.filter(c => c.faceUp);
+                    if (faceUpCards.length < 2) return;
+                    
+                    // Check for problematic sequences
+                    for (let i = 0; i < faceUpCards.length - 1; i++) {
+                        const currentCard = faceUpCards[i];
+                        const nextCard = faceUpCards[i + 1];
+                        
+                        // Look for sequences that block foundation building
+                        if (this.isFoundationReady(currentCard) && !this.canMoveToFoundation(currentCard)) {
+                            const blockingReason = this.analyzeFoundationBlocking(currentCard, nextCard, faceUpCards.slice(i + 1));
+                            
+                            if (blockingReason) {
+                                sequenceIssues.push({
+                                    type: 'foundation_blocking_sequence',
+                                    blockedCard: currentCard,
+                                    blockingCards: faceUpCards.slice(i + 1),
+                                    pileIndex: pileIndex,
+                                    reason: blockingReason,
+                                    severity: this.calculateSequenceBlockingSeverity(currentCard, faceUpCards.slice(i + 1))
+                                });
+                            }
+                        }
+                    }
+                });
+                
+                return sequenceIssues;
+            }
+
+            isFoundationReady(card) {
+                const foundationPile = this.game.state.foundations[card.suit];
+                if (!foundationPile || foundationPile.length === 0) {
+                    return card.value === 1; // Ace
+                }
+                
+                const topFoundationCard = foundationPile[foundationPile.length - 1];
+                return card.value === topFoundationCard.value + 1;
+            }
+
+            analyzeFoundationBlocking(targetCard, nextCard, blockingSequence) {
+                // Analyze why a foundation-ready card can't be moved
+                if (blockingSequence.length === 0) return null;
+                
+                // Check if the blocking sequence can be moved elsewhere
+                const canMoveSequence = this.canMoveSequenceElsewhere(blockingSequence);
+                
+                if (!canMoveSequence) {
+                    return {
+                        type: 'unmovable_sequence',
+                        description: `${blockingSequence.length} cards blocking foundation move`,
+                        canResolve: false
+                    };
+                }
+                
+                // Check if moving the sequence would help
+                const wouldRevealCards = this.wouldSequenceMoveRevealCards(blockingSequence);
+                
+                return {
+                    type: 'movable_but_complex',
+                    description: `Sequence can be moved but requires ${this.calculateMovesToResolve(blockingSequence)} moves`,
+                    canResolve: true,
+                    wouldRevealCards: wouldRevealCards,
+                    movesRequired: this.calculateMovesToResolve(blockingSequence)
+                };
+            }
+
+            canMoveSequenceElsewhere(sequence) {
+                if (sequence.length === 0) return true;
+                
+                const topCard = sequence[0];
+                
+                // Check each tableau pile
+                for (let i = 0; i < this.game.state.tableau.length; i++) {
+                    const pile = this.game.state.tableau[i];
+                    
+                    if (pile.length === 0) {
+                        // Can move King to empty space
+                        return topCard.value === 13;
+                    } else {
+                        const topPileCard = pile[pile.length - 1];
+                        if (topPileCard.faceUp && this.canPlaceOnTableau(topCard, topPileCard)) {
+                            return true;
+                        }
+                    }
+                }
+                
+                return false;
+            }
+
+            calculateMovesToResolve(blockingSequence) {
+                // Estimate how many moves it would take to resolve this blocking sequence
+                let moves = 1; // At least one move to move the sequence
+                
+                // Add complexity for longer sequences
+                moves += Math.floor(blockingSequence.length / 3);
+                
+                // Add complexity if no obvious destination
+                if (!this.canMoveSequenceElsewhere(blockingSequence)) {
+                    moves += 3; // Need to create space first
+                }
+                
+                return moves;
+            }
+
+            calculateSequenceBlockingSeverity(blockedCard, blockingCards) {
+                let severity = 0;
+                
+                // Higher severity for blocked Aces and low cards
+                if (blockedCard.value === 1) severity += 5; // Ace
+                if (blockedCard.value <= 3) severity += 3; // 2s and 3s
+                if (blockedCard.value <= 5) severity += 1; // 4s and 5s
+                
+                // More blocking cards = higher severity
+                severity += blockingCards.length * 0.5;
+                
+                // Check if blocking cards are high value (harder to move)
+                const highValueBlocking = blockingCards.filter(c => c.value >= 10).length;
+                severity += highValueBlocking * 1.5;
+                
+                return Math.min(10, severity);
+            }
+
+            wouldSequenceMoveRevealCards(sequence) {
+                // This would need to check the actual pile structure
+                // For now, assume any sequence move might reveal cards
+                return sequence.length > 0;
+            }
+
+            getAllVisibleCards() {
+                const visibleCards = [];
+                
+                // Tableau cards
+                this.game.state.tableau.forEach(pile => {
+                    pile.forEach(card => {
+                        if (card.faceUp) {
+                            visibleCards.push(card);
+                        }
+                    });
+                });
+                
+                // Foundation cards
+                Object.values(this.game.state.foundations).forEach(pile => {
+                    visibleCards.push(...pile);
+                });
+                
+                // Waste cards
+                visibleCards.push(...this.game.state.waste);
+                
+                return visibleCards;
+            }
+
+            // Enhanced deadlock detection with Phase 2 pattern recognition
+            checkAdvancedDeadlockPatterns() {
+                this.initializeAdvancedPatternRecognition();
+                
+                const patterns = {
+                    cardBlocking: this.analyzeCardBlockingPatterns(),
+                    sequenceDeadlocks: this.analyzeSequenceDeadlocks(),
+                    foundationBottlenecks: this.analyzeFoundationBottlenecks(),
+                    stockExhaustion: this.analyzeStockExhaustionPatterns()
+                };
+                
+                // Calculate overall deadlock probability based on patterns
+                const deadlockProbability = this.calculateDeadlockProbability(patterns);
+                
+                if (deadlockProbability > 0.8) {
+                    console.log('🧠 Advanced pattern analysis indicates high deadlock probability:', deadlockProbability.toFixed(2));
+                    console.log('🔍 Detected patterns:', patterns);
+                    return true;
+                }
+                
+                // Store patterns for learning
+                this.storePatternAnalysis(patterns, deadlockProbability);
+                
+                return false;
+            }
+
+            analyzeFoundationBottlenecks() {
+                const bottlenecks = [];
+                
+                Object.entries(this.game.state.foundations).forEach(([suit, pile]) => {
+                    const nextNeeded = pile.length + 1;
+                    
+                    if (nextNeeded <= 13) {
+                        // Find where the next needed card is
+                        const location = this.findCardLocation(nextNeeded, suit);
+                        
+                        if (location && location.accessibility === 'blocked') {
+                            bottlenecks.push({
+                                suit: suit,
+                                neededCard: { value: nextNeeded, suit: suit },
+                                location: location,
+                                severity: this.calculateBottleneckSeverity(nextNeeded, location)
+                            });
+                        }
+                    }
+                });
+                
+                return bottlenecks;
+            }
+
+            findCardLocation(value, suit) {
+                // Check tableau
+                for (let pileIndex = 0; pileIndex < this.game.state.tableau.length; pileIndex++) {
+                    const pile = this.game.state.tableau[pileIndex];
+                    for (let cardIndex = 0; cardIndex < pile.length; cardIndex++) {
+                        const card = pile[cardIndex];
+                        if (card.value === value && card.suit === suit) {
+                            return {
+                                type: 'tableau',
+                                pileIndex: pileIndex,
+                                cardIndex: cardIndex,
+                                accessibility: card.faceUp ? 
+                                    (cardIndex === pile.length - 1 ? 'accessible' : 'sequence') : 
+                                    'blocked'
+                            };
+                        }
+                    }
+                }
+                
+                // Check waste
+                for (let i = 0; i < this.game.state.waste.length; i++) {
+                    const card = this.game.state.waste[i];
+                    if (card.value === value && card.suit === suit) {
+                        return {
+                            type: 'waste',
+                            index: i,
+                            accessibility: i === this.game.state.waste.length - 1 ? 'accessible' : 'buried'
+                        };
+                    }
+                }
+                
+                // Check stock (hidden)
+                for (let i = 0; i < this.game.state.stock.length; i++) {
+                    const card = this.game.state.stock[i];
+                    if (card.value === value && card.suit === suit) {
+                        return {
+                            type: 'stock',
+                            index: i,
+                            accessibility: 'stock'
+                        };
+                    }
+                }
+                
+                return null;
+            }
+
+            calculateBottleneckSeverity(cardValue, location) {
+                let severity = 0;
+                
+                // Lower value cards are more critical
+                severity += (6 - Math.min(5, cardValue)) * 2;
+                
+                // Accessibility affects severity
+                switch (location.accessibility) {
+                    case 'blocked': severity += 5; break;
+                    case 'sequence': severity += 3; break;
+                    case 'buried': severity += 4; break;
+                    case 'stock': severity += 2; break;
+                    case 'accessible': severity += 0; break;
+                }
+                
+                return Math.min(10, severity);
+            }
+
+            analyzeStockExhaustionPatterns() {
+                const stockCards = this.game.state.stock.length;
+                const wasteCards = this.game.state.waste.length;
+                const totalStockWaste = stockCards + wasteCards;
+                
+                if (totalStockWaste === 0) {
+                    return {
+                        type: 'stock_exhausted',
+                        severity: 10,
+                        description: 'Stock and waste are empty'
+                    };
+                }
+                
+                // Analyze if remaining stock/waste cards can help
+                const usefulStockCards = this.countUsefulStockCards();
+                const usefulRatio = totalStockWaste > 0 ? usefulStockCards / totalStockWaste : 0;
+                
+                if (usefulRatio < 0.2 && totalStockWaste < 10) {
+                    return {
+                        type: 'low_utility_stock',
+                        severity: 7,
+                        description: `Only ${usefulStockCards} useful cards in ${totalStockWaste} remaining stock/waste`,
+                        usefulRatio: usefulRatio
+                    };
+                }
+                
+                return null;
+            }
+
+            countUsefulStockCards() {
+                let useful = 0;
+                
+                // Check stock cards
+                this.game.state.stock.forEach(card => {
+                    if (this.isCardUseful(card)) useful++;
+                });
+                
+                // Check waste cards
+                this.game.state.waste.forEach(card => {
+                    if (this.isCardUseful(card)) useful++;
+                });
+                
+                return useful;
+            }
+
+            isCardUseful(card) {
+                // Check if card can go to foundation
+                if (this.canMoveToFoundation(card)) return true;
+                
+                // Check if card can be placed on tableau
+                for (let pile of this.game.state.tableau) {
+                    if (pile.length === 0 && card.value === 13) return true; // King to empty
+                    if (pile.length > 0) {
+                        const topCard = pile[pile.length - 1];
+                        if (topCard.faceUp && this.canPlaceOnTableau(card, topCard)) return true;
+                    }
+                }
+                
+                return false;
+            }
+
+            calculateDeadlockProbability(patterns) {
+                let probability = 0;
+                
+                // Card blocking patterns
+                if (patterns.cardBlocking.length > 0) {
+                    const avgBlockingSeverity = patterns.cardBlocking.reduce((sum, p) => sum + p.severity, 0) / patterns.cardBlocking.length;
+                    probability += (avgBlockingSeverity / 10) * 0.3;
+                }
+                
+                // Sequence deadlocks
+                if (patterns.sequenceDeadlocks.length > 0) {
+                    const avgSequenceSeverity = patterns.sequenceDeadlocks.reduce((sum, p) => sum + p.severity, 0) / patterns.sequenceDeadlocks.length;
+                    probability += (avgSequenceSeverity / 10) * 0.25;
+                }
+                
+                // Foundation bottlenecks
+                if (patterns.foundationBottlenecks.length > 0) {
+                    const avgBottleneckSeverity = patterns.foundationBottlenecks.reduce((sum, p) => sum + p.severity, 0) / patterns.foundationBottlenecks.length;
+                    probability += (avgBottleneckSeverity / 10) * 0.25;
+                }
+                
+                // Stock exhaustion
+                if (patterns.stockExhaustion) {
+                    probability += (patterns.stockExhaustion.severity / 10) * 0.2;
+                }
+                
+                return Math.min(1.0, probability);
+            }
+
+            storePatternAnalysis(patterns, probability) {
+                if (!this.patternRecognition) return;
+                
+                this.patternRecognition.historicalDeadlocks.push({
+                    timestamp: Date.now(),
+                    patterns: patterns,
+                    probability: probability,
+                    gameState: this.createGameStateSignature()
+                });
+                
+                // Keep only recent history
+                if (this.patternRecognition.historicalDeadlocks.length > 50) {
+                    this.patternRecognition.historicalDeadlocks.shift();
+                }
+            }
+
             detectGameStateCycling() {
                 // Enhanced version of detectStockCycling that works for all game states
                 if (!this.gameStateCycleHistory) {
@@ -2775,6 +3253,194 @@
                 const stockInfo = `${this.stock.length}`;
                 
                 return `T:${tableauSignature}|W:${wasteSignature}|F:${foundationSignature}|S:${stockInfo}`;
+            }
+
+            // Phase 2: Predictive Deadlock Risk Assessment
+            assessDeadlockRisk(progressiveMoves, allMoves) {
+                const riskFactors = [];
+                let totalRisk = 0;
+                let confidence = 0;
+                
+                // Factor 1: Progressive move ratio
+                const progressiveRatio = progressiveMoves.length / Math.max(1, allMoves.length);
+                if (progressiveRatio < 0.3) {
+                    const risk = (0.3 - progressiveRatio) * 2; // 0-0.6 risk
+                    riskFactors.push({
+                        type: 'low_progressive_ratio',
+                        risk: risk,
+                        description: `Only ${(progressiveRatio * 100).toFixed(1)}% of moves are progressive`
+                    });
+                    totalRisk += risk;
+                }
+                
+                // Factor 2: Foundation progress rate
+                const foundationCards = Object.values(this.game.state.foundations).reduce((sum, pile) => sum + pile.length, 0);
+                const expectedFoundationCards = Math.max(1, this.moves * 0.15); // Expect ~15% of moves to add to foundation
+                if (foundationCards < expectedFoundationCards * 0.6) {
+                    const risk = 0.4;
+                    riskFactors.push({
+                        type: 'slow_foundation_progress',
+                        risk: risk,
+                        description: `Foundation progress (${foundationCards}) below expected (${expectedFoundationCards.toFixed(1)})`
+                    });
+                    totalRisk += risk;
+                }
+                
+                // Factor 3: Hidden card accessibility
+                const hiddenCardRisk = this.assessHiddenCardRisk();
+                if (hiddenCardRisk > 0) {
+                    riskFactors.push({
+                        type: 'hidden_card_blocking',
+                        risk: hiddenCardRisk,
+                        description: 'Critical cards likely buried under high-value cards'
+                    });
+                    totalRisk += hiddenCardRisk;
+                }
+                
+                // Factor 4: Stock utility declining
+                const stockUtilityRisk = this.assessStockUtilityRisk();
+                if (stockUtilityRisk > 0) {
+                    riskFactors.push({
+                        type: 'declining_stock_utility',
+                        risk: stockUtilityRisk,
+                        description: 'Remaining stock cards have low utility'
+                    });
+                    totalRisk += stockUtilityRisk;
+                }
+                
+                // Factor 5: Tableau congestion
+                const congestionRisk = this.assessTableauCongestion();
+                if (congestionRisk > 0) {
+                    riskFactors.push({
+                        type: 'tableau_congestion',
+                        risk: congestionRisk,
+                        description: 'Tableau piles are congested with limited mobility'
+                    });
+                    totalRisk += congestionRisk;
+                }
+                
+                // Calculate confidence based on number of risk factors and game progress
+                confidence = Math.min(1.0, (riskFactors.length * 0.2) + (this.moves / 100));
+                
+                // Determine risk level
+                let level = 'low';
+                let reason = 'Game appears winnable';
+                
+                if (totalRisk > 1.5) {
+                    level = 'critical';
+                    reason = riskFactors.map(f => f.description).join('; ');
+                } else if (totalRisk > 1.0) {
+                    level = 'high';
+                    reason = riskFactors.map(f => f.description).join('; ');
+                } else if (totalRisk > 0.5) {
+                    level = 'medium';
+                    reason = riskFactors.map(f => f.description).join('; ');
+                }
+                
+                return {
+                    level: level,
+                    totalRisk: totalRisk,
+                    confidence: confidence,
+                    reason: reason,
+                    factors: riskFactors
+                };
+            }
+
+            assessHiddenCardRisk() {
+                let risk = 0;
+                const visibleCards = this.getAllVisibleCards();
+                const missingLowCards = this.findMissingLowValueCards(visibleCards);
+                
+                // Check each tableau pile for potential blocking
+                this.game.state.tableau.forEach(pile => {
+                    if (pile.length <= 1) return;
+                    
+                    const hiddenCards = pile.filter(c => !c.faceUp);
+                    const topVisibleCard = pile.find(c => c.faceUp);
+                    
+                    if (hiddenCards.length > 0 && topVisibleCard) {
+                        // High risk if high-value card is on top of many hidden cards
+                        if (topVisibleCard.value >= 10 && hiddenCards.length >= 3) {
+                            risk += 0.3;
+                        }
+                        
+                        // Extra risk if we need low cards and they might be buried
+                        if (missingLowCards.length > 0 && hiddenCards.length >= 2) {
+                            risk += 0.2;
+                        }
+                    }
+                });
+                
+                return Math.min(0.8, risk);
+            }
+
+            assessStockUtilityRisk() {
+                const totalStockWaste = this.game.state.stock.length + this.game.state.waste.length;
+                if (totalStockWaste === 0) return 0.6; // High risk if no stock left
+                
+                const usefulCards = this.countUsefulStockCards();
+                const utilityRatio = usefulCards / totalStockWaste;
+                
+                if (utilityRatio < 0.2 && totalStockWaste < 15) {
+                    return 0.4; // High risk if few useful cards left
+                } else if (utilityRatio < 0.3) {
+                    return 0.2; // Medium risk
+                }
+                
+                return 0;
+            }
+
+            assessTableauCongestion() {
+                let congestionScore = 0;
+                let emptySpaces = 0;
+                
+                this.game.state.tableau.forEach(pile => {
+                    if (pile.length === 0) {
+                        emptySpaces++;
+                    } else {
+                        const faceUpCards = pile.filter(c => c.faceUp);
+                        const topCard = pile[pile.length - 1];
+                        
+                        // Congestion if long sequences with no good moves
+                        if (faceUpCards.length > 4 && topCard.faceUp) {
+                            let canMove = false;
+                            
+                            // Check if top card can move anywhere
+                            if (this.canMoveToFoundation(topCard)) {
+                                canMove = true;
+                            } else {
+                                // Check if can move to other tableau piles
+                                for (let otherPile of this.game.state.tableau) {
+                                    if (otherPile !== pile) {
+                                        if (otherPile.length === 0 && topCard.value === 13) {
+                                            canMove = true;
+                                            break;
+                                        } else if (otherPile.length > 0) {
+                                            const otherTop = otherPile[otherPile.length - 1];
+                                            if (otherTop.faceUp && this.canPlaceOnTableau(topCard, otherTop)) {
+                                                canMove = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (!canMove) {
+                                congestionScore += 0.15;
+                            }
+                        }
+                    }
+                });
+                
+                // Less risk if there are empty spaces
+                if (emptySpaces === 0) {
+                    congestionScore += 0.2;
+                } else if (emptySpaces === 1) {
+                    congestionScore += 0.1;
+                }
+                
+                return Math.min(0.6, congestionScore);
             }
             
             handleDeadlock() {

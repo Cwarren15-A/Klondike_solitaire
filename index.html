@@ -2710,9 +2710,41 @@
                 }
             }
             
+            // Find best move from current analysis (fallback when no winning path)
+            findBestCurrentMove(analysis) {
+                // Generate all possible moves
+                const allMoves = this.generateAllPossibleMoves(this.cloneGameState());
+                
+                if (allMoves.length === 0) {
+                    return null;
+                }
+                
+                // Rank moves by strategic value
+                const rankedMoves = this.rankMovesByWinPotential(allMoves, this.cloneGameState());
+                
+                return rankedMoves[0] || allMoves[0];
+            }
+            
+                         // Get progressive moves when no complete winning path found
+             async getBestProgressiveMoves(state, count = 3) {
+                 const moves = this.generateAllPossibleMoves(state);
+                 const rankedMoves = this.rankMovesByWinPotential(moves, state);
+                 return rankedMoves.slice(0, count);
+             }
+            
             // Utility functions for auto-complete
             cloneGameState() {
-                return JSON.parse(JSON.stringify(this.game.state));
+                // Clone only the essential game state, avoiding circular references
+                const state = this.game.state;
+                return {
+                    tableau: JSON.parse(JSON.stringify(state.tableau)),
+                    foundations: JSON.parse(JSON.stringify(state.foundations)),
+                    stock: JSON.parse(JSON.stringify(state.stock)),
+                    waste: JSON.parse(JSON.stringify(state.waste)),
+                    drawMode: state.drawMode || 3,
+                    moves: state.moves || 0,
+                    score: state.score || 0
+                };
             }
             
             isGameWon(state) {

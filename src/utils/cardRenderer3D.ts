@@ -3,8 +3,6 @@
  * Features: 3D geometry, physics simulation, realistic materials, advanced animations
  */
 
-import { PBRRenderer } from './pbrRenderer';
-
 interface CardPhysics {
   position: Float32Array; // x, y, z
   rotation: Float32Array; // rx, ry, rz (radians)
@@ -51,8 +49,6 @@ interface CardAnimation {
 
 export class Card3DRenderer {
   private device: GPUDevice;
-  private context: GPUCanvasContext;
-  private pbrRenderer: PBRRenderer;
   
   private cards: Map<string, Card3D> = new Map();
   private animations: Map<string, CardAnimation> = new Map();
@@ -62,10 +58,8 @@ export class Card3DRenderer {
   private gravity = -9.81;
   private tableHeight = 0.0;
 
-  constructor(device: GPUDevice, context: GPUCanvasContext, pbrRenderer: PBRRenderer) {
+  constructor(device: GPUDevice) {
     this.device = device;
-    this.context = context;
-    this.pbrRenderer = pbrRenderer;
   }
 
   async init(): Promise<void> {

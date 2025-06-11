@@ -422,4 +422,61 @@
   50% { 
     transform: scale(1.05); 
   }
+}
+
+.ai-feedback {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 15px;
+  border-radius: 8px;
+  max-width: 300px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+}
+
+.ai-feedback h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.1em;
+  color: #4CAF50;
+}
+
+.ai-feedback p {
+  margin: 0;
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.ai-feedback.error {
+  background: rgba(244, 67, 54, 0.9);
+}
+
+.ai-feedback.suggestion {
+  border-left: 4px solid #4CAF50;
+}
+
+.ai-feedback.analysis {
+  border-left: 4px solid #2196F3;
+}
+
+.game-controls button {
+  margin: 0 5px;
+  padding: 8px 16px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.game-controls button:hover {
+  background: #45a049;
+}
+
+.game-controls button:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
 } 

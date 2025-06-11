@@ -13,14 +13,6 @@ interface PBRMaterial {
   ior: number; // Index of refraction
 }
 
-interface Light {
-  position: Float32Array;
-  color: Float32Array;
-  intensity: number;
-  type: 'directional' | 'point' | 'spot';
-  radius?: number; // For area lights
-}
-
 interface IBLEnvironment {
   skybox: GPUTexture;
   irradiance: GPUTexture;
@@ -37,32 +29,15 @@ interface AIAssetConfig {
 
 class PBRRenderer {
   private device: GPUDevice;
-  private context: GPUCanvasContext;
   private format: GPUTextureFormat;
-  
   // Rendering pipelines
   private pbrPipeline?: GPURenderPipeline;
-  private shadowPipeline?: GPURenderPipeline;
-  private postProcessPipeline?: GPURenderPipeline;
-  
   // Buffers and textures
   private uniformBuffer?: GPUBuffer;
-  private lightBuffer?: GPUBuffer;
-  private materialBuffer?: GPUBuffer;
-  private gBuffer?: GPUTexture; // For deferred rendering
-  private shadowMap?: GPUTexture;
-  private hdrBuffer?: GPUTexture;
-  
-  // IBL resources
-  private iblEnvironment?: IBLEnvironment;
-  
   // AI Asset Generation
   private aiAssetGenerator: AIAssetGenerator;
-  
   // Material library
   private materials: Map<string, PBRMaterial> = new Map();
-  private generatedAssets: Map<string, GPUTexture> = new Map();
-
   // Advanced PBR Vertex Shader
   private pbrVertexShader = `
     struct VertexInput {
@@ -99,7 +74,6 @@ class PBRRenderer {
 
   constructor(device: GPUDevice, context: GPUCanvasContext, format: GPUTextureFormat) {
     this.device = device;
-    this.context = context;
     this.format = format;
     this.aiAssetGenerator = new AIAssetGenerator(device);
   }
@@ -158,7 +132,7 @@ class PBRRenderer {
         albedo: new Float32Array(mat.color),
         metallic: mat.metallic,
         roughness: mat.roughness,
-        normal: await this.aiAssetGenerator.generateNormalMap(mat.name),
+        normal: await this.aiAssetGenerator.generateNormalMap(),
         ao: 1.0,
         emission: new Float32Array([0, 0, 0]),
         ior: 1.5
@@ -168,8 +142,8 @@ class PBRRenderer {
   }
 
   // Generate AI-enhanced card assets
-  async generateCardAssets(config: AIAssetConfig): Promise<Map<string, GPUTexture>> {
-    return await this.aiAssetGenerator.generateCardSet(config);
+  async generateCardAssets(): Promise<Map<string, GPUTexture>> {
+    return await this.aiAssetGenerator.generateCardSet();
   }
 
   // Render with PBR
@@ -193,7 +167,7 @@ class AIAssetGenerator {
   }
 
   // Generate AI-enhanced normal maps
-  async generateNormalMap(materialType: string): Promise<GPUTexture> {
+  async generateNormalMap(): Promise<GPUTexture> {
     const texture = this.device.createTexture({
       size: [512, 512, 1],
       format: 'rgba8unorm',
@@ -221,7 +195,7 @@ class AIAssetGenerator {
   }
 
   // Generate complete AI-enhanced card set
-  async generateCardSet(config: AIAssetConfig): Promise<Map<string, GPUTexture>> {
+  async generateCardSet(): Promise<Map<string, GPUTexture>> {
     const assets = new Map<string, GPUTexture>();
     
     const suits = ['spades', 'hearts', 'diamonds', 'clubs'];

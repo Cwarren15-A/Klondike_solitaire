@@ -90,9 +90,7 @@ interface GameBoardProps {
 const GameBoard: React.FC<GameBoardProps> = ({ className = '' }) => {
   const {
     gameState,
-    selectedCard,
     makeMove,
-    selectCard,
     undoMove,
     newGame,
   } = useGameStore();

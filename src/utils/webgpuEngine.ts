@@ -12,16 +12,6 @@ interface WebGPUSupport {
   format?: GPUTextureFormat;
 }
 
-interface ParticleData {
-  position: Float32Array;
-  velocity: Float32Array;
-  life: number;
-  maxLife: number;
-  color: Float32Array;
-  size: number;
-  type: 'victory' | 'card_place' | 'sparkle' | 'glow';
-}
-
 interface RenderableCard {
   id: string;
   position: { x: number; y: number; z: number };
@@ -40,8 +30,6 @@ export class WebGPUEngine {
   private uniformBuffer?: GPUBuffer;
   private particleCount = 0;
   private maxParticles = 10000;
-  private cards: Map<string, RenderableCard> = new Map();
-  private isInitialized = false;
   private fallbackCanvas?: HTMLCanvasElement;
   private fallbackCtx?: CanvasRenderingContext2D;
 
@@ -185,10 +173,7 @@ export class WebGPUEngine {
       }
 
       // Get adapter and device
-      const adapter = await navigator.gpu.requestAdapter({
-        powerPreference: 'high-performance',
-        forceFallbackAdapter: false
-              });
+      const adapter = await navigator.gpu.requestAdapter();
         
         this.gpu.adapter = adapter || undefined;
         
@@ -226,7 +211,6 @@ export class WebGPUEngine {
       this.createBuffers();
 
       this.gpu.supported = true;
-      this.isInitialized = true;
       
       console.log('🚀 WebGPU Engine initialized successfully!');
       return true;

@@ -13,14 +13,32 @@ export interface Card {
 export interface GameState {
   stock: Card[];
   waste: Card[];
-  foundations: {
-    [key: string]: Card[];
-  };
+  foundations: Record<string, Card[]>;
   tableau: Card[][];
-  moves: Move[];
+  selectedCard: Card | null;
+  moves: number;
   score: number;
   time: number;
-  difficulty: 'easy' | 'medium' | 'hard';
+  isWon: boolean;
+  canUndo: boolean;
+  gameStats: {
+    time: number;
+    moves: number;
+    score: number;
+  };
+  gameHistory: Array<{
+    stock: Card[];
+    waste: Card[];
+    foundations: Record<string, Card[]>;
+    tableau: Card[][];
+    gameStats: {
+      time: number;
+      moves: number;
+      score: number;
+    };
+  }>;
+  drawMode: number;
+  settings: GameSettings;
 }
 
 export interface GameStats {
@@ -44,6 +62,10 @@ export interface Move {
   sourceType?: 'stock' | 'waste' | 'foundation' | 'tableau';
   sourceIndex?: number;
   targetIndex?: number;
+  fromLocation?: 'stock' | 'waste' | 'foundation' | 'tableau';
+  toLocation?: 'stock' | 'waste' | 'foundation' | 'tableau';
+  fromPosition?: number;
+  toPosition?: number;
 }
 
 export interface DragState {
@@ -64,9 +86,90 @@ export interface GameSettings {
   adaptiveDifficulty: boolean;
   drawMode: 1 | 3;
   scoringMode: 'standard' | 'vegas' | 'custom';
-  theme: string;
+  theme: 'light' | 'dark' | 'blue' | 'green';
   soundEnabled: boolean;
+  musicEnabled: boolean;
+  volume: number;
   showWinProbability: boolean;
+  enableWebGPU: boolean;
+  enableParticles: boolean;
+  enableShadows: boolean;
+  enablePostProcessing: boolean;
+  enableIBL: boolean;
+  enableSSR: boolean;
+  enableSSAO: boolean;
+  enableBloom: boolean;
+  enableMotionBlur: boolean;
+  enableDepthOfField: boolean;
+  enableChromaticAberration: boolean;
+  enableVignette: boolean;
+  enableGrain: boolean;
+  enableLensFlare: boolean;
+  enableGodRays: boolean;
+  enableVolumetricLighting: boolean;
+  enableCaustics: boolean;
+  enableSubsurfaceScattering: boolean;
+  enableParallaxOcclusionMapping: boolean;
+  enableTessellation: boolean;
+  enableDisplacement: boolean;
+  enableNormalMapping: boolean;
+  enableRoughnessMapping: boolean;
+  enableMetallicMapping: boolean;
+  enableAOMapping: boolean;
+  enableEmissiveMapping: boolean;
+  enableClearcoatMapping: boolean;
+  enableSheenMapping: boolean;
+  enableTransmissionMapping: boolean;
+  enableVolumeMapping: boolean;
+  enableIridescenceMapping: boolean;
+  enableSpecularMapping: boolean;
+  enableSpecularTintMapping: boolean;
+  enableAnisotropyMapping: boolean;
+  enableAnisotropicRotationMapping: boolean;
+  enableBumpMapping: boolean;
+  enableDetailMapping: boolean;
+  enableDetailMaskMapping: boolean;
+  enableDetailNormalMapping: boolean;
+  enableDetailRoughnessMapping: boolean;
+  enableDetailMetallicMapping: boolean;
+  enableDetailAOMapping: boolean;
+  enableDetailEmissiveMapping: boolean;
+  enableDetailClearcoatMapping: boolean;
+  enableDetailSheenMapping: boolean;
+  enableDetailTransmissionMapping: boolean;
+  enableDetailVolumeMapping: boolean;
+  enableDetailIridescenceMapping: boolean;
+  enableDetailSpecularMapping: boolean;
+  enableDetailSpecularTintMapping: boolean;
+  enableDetailAnisotropyMapping: boolean;
+  enableDetailAnisotropicRotationMapping: boolean;
+  enableDetailBumpMapping: boolean;
+  enableDetailDisplacementMapping: boolean;
+  enableDetailParallaxOcclusionMapping: boolean;
+  enableDetailTessellationMapping: boolean;
+  enableDetailSubsurfaceScatteringMapping: boolean;
+  enableDetailCausticsMapping: boolean;
+  enableDetailVolumetricLightingMapping: boolean;
+  enableDetailGodRaysMapping: boolean;
+  enableDetailLensFlareMapping: boolean;
+  enableDetailGrainMapping: boolean;
+  enableDetailVignetteMapping: boolean;
+  enableDetailChromaticAberrationMapping: boolean;
+  enableDetailDepthOfFieldMapping: boolean;
+  enableDetailMotionBlurMapping: boolean;
+  enableDetailBloomMapping: boolean;
+  enableDetailSSAOMapping: boolean;
+  enableDetailSSRMapping: boolean;
+  enableDetailIBLMapping: boolean;
+  enableDetailPostProcessingMapping: boolean;
+  enableDetailShadowsMapping: boolean;
+  enableDetailParticlesMapping: boolean;
+  enableDetailWebGPUMapping: boolean;
+  enableDetailDrawModeMapping: boolean;
+  enableDetailMusicEnabledMapping: boolean;
+  enableDetailSoundEnabledMapping: boolean;
+  enableDetailThemeMapping: boolean;
+  enableDetailSettingsMapping: boolean;
 }
 
 export interface GameStatistics {
@@ -100,6 +203,32 @@ export interface AIAnalysis {
   recommendedMoves: Move[];
   difficulty: string;
   confidence: number;
+  bestMove: Move | null;
+  strategicInsights: string[];
+  recommendation: string;
+  moveRelationships: {
+    sequential: number;
+    strategic: number;
+  };
+  graphMetrics?: {
+    connectivity: number;
+    criticalPaths: number;
+    bottlenecks: number;
+  };
+  polynomialFeatures?: {
+    degrees: { name: string; value: number }[];
+    complexityScore: number;
+    nonLinearPatterns: number;
+  };
+  modelMetrics?: {
+    type: string;
+    parameters: number;
+    layers: number;
+  };
+  performanceMetrics?: {
+    inferenceTime: number;
+    memoryUsage: number;
+  };
 }
 
 export interface GraphAnalysis {

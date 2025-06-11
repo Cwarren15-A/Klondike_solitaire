@@ -1,0 +1,33 @@
+{
+  "name": "Klondike Solitaire",
+  "short_name": "Solitaire",
+  "description": "Advanced Klondike Solitaire with AI assistance",
+  "start_url": "./index-vanilla.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1e5128",
+  "theme_color": "#1e5128",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Game",
+      "short_name": "New Game",
+      "description": "Start a new game",
+      "url": "./index-vanilla.html?action=new",
+      "icons": [{ "src": "./icons/new-game.png", "sizes": "192x192" }]
+    }
+  ]
+} 

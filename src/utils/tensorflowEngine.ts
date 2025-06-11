@@ -220,7 +220,7 @@ export class TensorFlowMLEngine {
     });
 
     // Add foundation cards
-    Object.entries(gameState.foundations).forEach(([suit, cards], suitIndex) => {
+    Object.entries(gameState.foundations).forEach(([, cards], suitIndex) => {
       (cards as Card[]).forEach((card, cardIndex) => {
         nodes.push({
           id: `foundation_${nodeIndex++}`,
@@ -365,18 +365,17 @@ export class TensorFlowMLEngine {
       // Get model metrics
       const modelMetrics = {
         type: 'Graph Transformer + Polynormer',
-        parameters: '2.1M',
-        layers: '12 (3 GT + 2 Poly + 7 Dense)'
+        parameters: 2100000, // 2.1M as a number
+        layers: 12 // 12 layers as a number
       };
       
       // Get performance metrics
       const startTime = performance.now();
       await this.model.predict(tensor);
-      const inferenceTime = `${(performance.now() - startTime).toFixed(0)}ms`;
-      
+      const inferenceTime = performance.now() - startTime;
       const performanceMetrics = {
-        inferenceTime,
-        memoryUsage: '~50MB GPU'
+        inferenceTime: Math.round(inferenceTime), // ms as a number
+        memoryUsage: 50 // ~50MB GPU as a number
       };
       
       // Generate recommendation
@@ -395,7 +394,9 @@ export class TensorFlowMLEngine {
         moveRelationships,
         polynomialFeatures,
         modelMetrics,
-        performanceMetrics
+        performanceMetrics,
+        recommendedMoves: [], // Add empty array for now
+        difficulty: 'medium' // Default difficulty
       };
     } catch (error) {
       console.error('Error in getGameAnalysis:', error);
@@ -561,21 +562,10 @@ export class TensorFlowMLEngine {
     }, 0);
   }
 
-  private mapDifficultyFromProbability(winProbability: number): string {
-    if (winProbability > 0.8) return "Easy";
-    if (winProbability > 0.5) return "Medium";
-    if (winProbability > 0.2) return "Hard";
-    return "Very Hard";
-  }
-
   private calculateConfidence(moveScores: number[]): number {
     if (moveScores.length === 0) return 0.5;
     const variance = moveScores.reduce((sum, score) => sum + Math.pow(score - 0.5, 2), 0) / moveScores.length;
     return Math.max(0.3, Math.min(0.95, 1 - variance));
-  }
-
-  private analyzeMoveQuality(move: Move | null): number {
-    return move ? 0.7 : 0.3;
   }
 
   private getFallbackAnalysis(): AIAnalysis {
@@ -605,13 +595,15 @@ export class TensorFlowMLEngine {
       },
       modelMetrics: {
         type: 'Fallback Model',
-        parameters: '0',
-        layers: '0'
+        parameters: 0,
+        layers: 0
       },
       performanceMetrics: {
-        inferenceTime: 'N/A',
-        memoryUsage: 'N/A'
-      }
+        inferenceTime: 0,
+        memoryUsage: 0
+      },
+      recommendedMoves: [], // Add empty array for now
+      difficulty: 'medium' // Default difficulty
     };
   }
 
@@ -628,28 +620,6 @@ export class TensorFlowMLEngine {
       console.error('Training error:', error);
     } finally {
       this.isTraining = false;
-    }
-  }
-
-  private async loadModel(): Promise<void> {
-    try {
-      // Try to load a saved model
-      const modelUrl = '/models/solitaire-advanced-ml';
-      this.model = await tf.loadLayersModel(modelUrl);
-      console.log('Loaded saved model');
-    } catch (error) {
-      console.log('No saved model found, using new model');
-    }
-  }
-
-  private async saveModel(): Promise<void> {
-    if (!this.model) return;
-    
-    try {
-      await this.model.save('localstorage://solitaire-advanced-ml');
-      console.log('Model saved to local storage');
-    } catch (error) {
-      console.error('Failed to save model:', error);
     }
   }
 

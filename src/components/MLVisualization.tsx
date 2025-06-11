@@ -1,187 +1,146 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { AIAnalysis } from '../types/game';
-import { useGameStore } from '../stores/gameStore';
+import { GameState } from '../types/game';
 import './MLVisualization.css';
 
-export const MLVisualization: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'graph' | 'polynomial' | 'metrics'>('overview');
-  const { mlAnalysis, getMLAnalysis } = useGameStore();
-
-  useEffect(() => {
-    const updateAnalysis = async () => {
-      await getMLAnalysis();
+interface MLVisualizationProps {
+  gameState: GameState;
+  analysis: {
+    graphMetrics: {
+      winProbability: number;
+      moveQuality: number;
+      gameProgress: number;
     };
-    updateAnalysis();
-  }, [getMLAnalysis]);
+    polynomialFeatures: number[];
+    modelMetrics: {
+      accuracy: number;
+      precision: number;
+      recall: number;
+    };
+    performanceMetrics: {
+      inferenceTime: number;
+      memoryUsage: number;
+      gpuUtilization: number;
+    };
+  };
+}
 
-  if (!mlAnalysis) {
-    return (
-      <div className="ml-visualization loading">
-        <div className="loading-spinner">Loading AI Analysis...</div>
-      </div>
-    );
-  }
-
-  const renderOverview = () => (
-    <div className="ml-overview">
-      <div className="analysis-card">
-        <h3>🎯 Win Probability</h3>
-        <div className="probability-display">
-          <div className="probability-bar">
-            <div 
-              className="probability-fill"
-              style={{ width: `${(mlAnalysis.winProbability || 0) * 100}%` }}
-            />
-          </div>
-          <span className="probability-text">
-            {((mlAnalysis.winProbability || 0) * 100).toFixed(1)}%
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderGraphAnalysis = () => (
-    <div className="graph-analysis">
-      <div className="analysis-card">
-        <h3>🕸️ Graph Structure</h3>
-        <div className="graph-metrics">
-          <div className="metric">
-            <span className="metric-label">Connectivity:</span>
-            <span className="metric-value">{mlAnalysis.graphMetrics?.connectivity || 0}%</span>
-          </div>
-          <div className="metric">
-            <span className="metric-label">Critical Paths:</span>
-            <span className="metric-value">{mlAnalysis.graphMetrics?.criticalPaths || 0}</span>
-          </div>
-          <div className="metric">
-            <span className="metric-label">Bottlenecks:</span>
-            <span className="metric-value">{mlAnalysis.graphMetrics?.bottlenecks || 0}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderPolynomialFeatures = () => (
-    <div className="polynomial-analysis">
-      <div className="analysis-card">
-        <h3>📊 Polynomial Degree</h3>
-        <div className="degree-display">
-          {mlAnalysis.polynomialFeatures?.degrees.map((degree, index) => (
-            <div key={index} className="degree-item">
-              <span className="degree-label">{degree.name}:</span>
-              <div className="degree-bar">
-                <div 
-                  className="degree-fill" 
-                  style={{ width: `${degree.value * 100}%` }} 
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="analysis-card">
-        <h3>🧮 Feature Interactions</h3>
-        <div className="interactions">
-          <div className="interaction-metric">
-            <span className="metric-label">Complexity Score:</span>
-            <span className="metric-value">{mlAnalysis.polynomialFeatures?.complexityScore.toFixed(2)}</span>
-          </div>
-          <div className="interaction-metric">
-            <span className="metric-label">Non-linear Patterns:</span>
-            <span className="metric-value">{mlAnalysis.polynomialFeatures?.nonLinearPatterns}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderMLMetrics = () => (
-    <div className="ml-metrics">
-      <div className="analysis-card">
-        <h3>🏗️ Architecture</h3>
-        <div className="architecture-info">
-          <div className="arch-item">
-            <span className="arch-label">Model Type:</span>
-            <span className="arch-value">{mlAnalysis.modelMetrics?.type}</span>
-          </div>
-          <div className="arch-item">
-            <span className="arch-label">Parameters:</span>
-            <span className="arch-value">{mlAnalysis.modelMetrics?.parameters}</span>
-          </div>
-          <div className="arch-item">
-            <span className="arch-label">Layers:</span>
-            <span className="arch-value">{mlAnalysis.modelMetrics?.layers}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="analysis-card">
-        <h3>⚡ Performance</h3>
-        <div className="performance-metrics">
-          <div className="perf-item">
-            <span className="perf-label">Inference Time:</span>
-            <span className="perf-value">{mlAnalysis.performanceMetrics?.inferenceTime}</span>
-          </div>
-          <div className="perf-item">
-            <span className="perf-label">Confidence:</span>
-            <span className="perf-value">{((mlAnalysis.confidence || 0) * 100).toFixed(1)}%</span>
-          </div>
-          <div className="perf-item">
-            <span className="perf-label">Memory Usage:</span>
-            <span className="perf-value">{mlAnalysis.performanceMetrics?.memoryUsage}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+const MLVisualization: React.FC<MLVisualizationProps> = ({ analysis }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'graph' | 'polynomial' | 'metrics'>('overview');
 
   return (
-    <motion.div 
+    <motion.div
       className="ml-visualization"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      exit={{ opacity: 0, y: -20 }}
     >
-      <div className="ml-header">
-        <h2>🤖 Advanced AI Analysis</h2>
-        <div className="ml-tabs">
-          <button 
-            className={`tab ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overview')}
-          >
-            Overview
-          </button>
-          <button 
-            className={`tab ${activeTab === 'graph' ? 'active' : ''}`}
-            onClick={() => setActiveTab('graph')}
-          >
-            Graph Analysis
-          </button>
-          <button 
-            className={`tab ${activeTab === 'polynomial' ? 'active' : ''}`}
-            onClick={() => setActiveTab('polynomial')}
-          >
-            Polynomial Features
-          </button>
-          <button 
-            className={`tab ${activeTab === 'metrics' ? 'active' : ''}`}
-            onClick={() => setActiveTab('metrics')}
-          >
-            ML Metrics
-          </button>
-        </div>
+      <div className="tabs">
+        <button
+          className={activeTab === 'overview' ? 'active' : ''}
+          onClick={() => setActiveTab('overview')}
+        >
+          Overview
+        </button>
+        <button
+          className={activeTab === 'graph' ? 'active' : ''}
+          onClick={() => setActiveTab('graph')}
+        >
+          Graph
+        </button>
+        <button
+          className={activeTab === 'polynomial' ? 'active' : ''}
+          onClick={() => setActiveTab('polynomial')}
+        >
+          Polynomial
+        </button>
+        <button
+          className={activeTab === 'metrics' ? 'active' : ''}
+          onClick={() => setActiveTab('metrics')}
+        >
+          Metrics
+        </button>
       </div>
 
-      <div className="ml-content">
-        {activeTab === 'overview' && renderOverview()}
-        {activeTab === 'graph' && renderGraphAnalysis()}
-        {activeTab === 'polynomial' && renderPolynomialFeatures()}
-        {activeTab === 'metrics' && renderMLMetrics()}
+      <div className="content">
+        {activeTab === 'overview' && (
+          <div className="overview">
+            <h3>Game Analysis</h3>
+            <div className="metrics-grid">
+              <div className="metric">
+                <span>Win Probability</span>
+                <span>{(analysis.graphMetrics.winProbability * 100).toFixed(1)}%</span>
+              </div>
+              <div className="metric">
+                <span>Move Quality</span>
+                <span>{(analysis.graphMetrics.moveQuality * 100).toFixed(1)}%</span>
+              </div>
+              <div className="metric">
+                <span>Game Progress</span>
+                <span>{(analysis.graphMetrics.gameProgress * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'graph' && (
+          <div className="graph">
+            <h3>Performance Graph</h3>
+            {/* Add graph visualization here */}
+          </div>
+        )}
+
+        {activeTab === 'polynomial' && (
+          <div className="polynomial">
+            <h3>Polynomial Features</h3>
+            <div className="features-grid">
+              {analysis.polynomialFeatures.map((feature, index) => (
+                <div key={index} className="feature">
+                  <span>Feature {index + 1}</span>
+                  <span>{feature.toFixed(3)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'metrics' && (
+          <div className="metrics">
+            <h3>Model Metrics</h3>
+            <div className="metrics-grid">
+              <div className="metric">
+                <span>Accuracy</span>
+                <span>{(analysis.modelMetrics.accuracy * 100).toFixed(1)}%</span>
+              </div>
+              <div className="metric">
+                <span>Precision</span>
+                <span>{(analysis.modelMetrics.precision * 100).toFixed(1)}%</span>
+              </div>
+              <div className="metric">
+                <span>Recall</span>
+                <span>{(analysis.modelMetrics.recall * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+            <h3>Performance Metrics</h3>
+            <div className="metrics-grid">
+              <div className="metric">
+                <span>Inference Time</span>
+                <span>{analysis.performanceMetrics.inferenceTime.toFixed(2)}ms</span>
+              </div>
+              <div className="metric">
+                <span>Memory Usage</span>
+                <span>{analysis.performanceMetrics.memoryUsage.toFixed(2)}MB</span>
+              </div>
+              <div className="metric">
+                <span>GPU Utilization</span>
+                <span>{(analysis.performanceMetrics.gpuUtilization * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );
-}; 
+};
+
+export default MLVisualization; 

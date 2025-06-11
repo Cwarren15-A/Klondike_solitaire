@@ -1,4 +1,4 @@
-import { GameState, Card, Move, GameStats } from '../types/game';
+import { GameState, Card, Move } from '../types/game';
 
 interface MoveResult {
   success: boolean;
@@ -17,10 +17,112 @@ export const createInitialGameState = (): GameState => {
     waste: [],
     tableau: dealtCards.tableau,
     foundations: { '♠': [], '♥': [], '♦': [], '♣': [] },
-    moves: [],
+    selectedCard: null,
+    moves: 0,
     score: 0,
     time: 0,
-    difficulty: 'medium',
+    isWon: false,
+    canUndo: false,
+    gameStats: {
+      time: 0,
+      moves: 0,
+      score: 0
+    },
+    gameHistory: [],
+    drawMode: 1,
+    settings: {
+      difficulty: 'medium',
+      autoMoveToFoundation: false,
+      showMoveHints: false,
+      enableMLAnalysis: false,
+      adaptiveDifficulty: false,
+      drawMode: 1,
+      scoringMode: 'standard',
+      theme: 'light',
+      soundEnabled: true,
+      musicEnabled: true,
+      volume: 0.5,
+      showWinProbability: false,
+      enableWebGPU: false,
+      enableParticles: false,
+      enableShadows: false,
+      enablePostProcessing: false,
+      enableIBL: false,
+      enableSSR: false,
+      enableSSAO: false,
+      enableBloom: false,
+      enableMotionBlur: false,
+      enableDepthOfField: false,
+      enableChromaticAberration: false,
+      enableVignette: false,
+      enableGrain: false,
+      enableLensFlare: false,
+      enableGodRays: false,
+      enableVolumetricLighting: false,
+      enableCaustics: false,
+      enableSubsurfaceScattering: false,
+      enableParallaxOcclusionMapping: false,
+      enableTessellation: false,
+      enableDisplacement: false,
+      enableNormalMapping: false,
+      enableRoughnessMapping: false,
+      enableMetallicMapping: false,
+      enableAOMapping: false,
+      enableEmissiveMapping: false,
+      enableClearcoatMapping: false,
+      enableSheenMapping: false,
+      enableTransmissionMapping: false,
+      enableVolumeMapping: false,
+      enableIridescenceMapping: false,
+      enableSpecularMapping: false,
+      enableSpecularTintMapping: false,
+      enableAnisotropyMapping: false,
+      enableAnisotropicRotationMapping: false,
+      enableBumpMapping: false,
+      enableDetailMapping: false,
+      enableDetailMaskMapping: false,
+      enableDetailNormalMapping: false,
+      enableDetailRoughnessMapping: false,
+      enableDetailMetallicMapping: false,
+      enableDetailAOMapping: false,
+      enableDetailEmissiveMapping: false,
+      enableDetailClearcoatMapping: false,
+      enableDetailSheenMapping: false,
+      enableDetailTransmissionMapping: false,
+      enableDetailVolumeMapping: false,
+      enableDetailIridescenceMapping: false,
+      enableDetailSpecularMapping: false,
+      enableDetailSpecularTintMapping: false,
+      enableDetailAnisotropyMapping: false,
+      enableDetailAnisotropicRotationMapping: false,
+      enableDetailBumpMapping: false,
+      enableDetailDisplacementMapping: false,
+      enableDetailParallaxOcclusionMapping: false,
+      enableDetailTessellationMapping: false,
+      enableDetailSubsurfaceScatteringMapping: false,
+      enableDetailCausticsMapping: false,
+      enableDetailVolumetricLightingMapping: false,
+      enableDetailGodRaysMapping: false,
+      enableDetailLensFlareMapping: false,
+      enableDetailGrainMapping: false,
+      enableDetailVignetteMapping: false,
+      enableDetailChromaticAberrationMapping: false,
+      enableDetailDepthOfFieldMapping: false,
+      enableDetailMotionBlurMapping: false,
+      enableDetailBloomMapping: false,
+      enableDetailSSAOMapping: false,
+      enableDetailSSRMapping: false,
+      enableDetailIBLMapping: false,
+      enableDetailPostProcessingMapping: false,
+      enableDetailShadowsMapping: false,
+      enableDetailParticlesMapping: false,
+      enableDetailWebGPUMapping: false,
+      enableDetailDrawModeMapping: false,
+      enableDetailMusicEnabledMapping: false,
+      enableDetailSoundEnabledMapping: false,
+      enableDetailThemeMapping: false,
+      enableDetailSettingsMapping: false
+    }
   };
 };
 
@@ -89,58 +191,240 @@ export const dealCards = (deck: Card[]) => {
 };
 
 export class GameEngine {
-  createNewGame(): Partial<GameState> {
+  private readonly SUITS = ['♠', '♥', '♦', '♣'] as const;
+  private readonly RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'] as const;
+
+  initializeGame(): GameState {
     const deck = this.createDeck();
-    const tableau: Card[][] = Array(7).fill(null).map(() => []);
-    const foundations: { [key: string]: Card[] } = {
+    const shuffledDeck = this.shuffleDeck(deck);
+    const tableau = this.dealTableau(shuffledDeck);
+    const stock = shuffledDeck.slice(28);
+    const waste: Card[] = [];
+    const foundations: Record<string, Card[]> = {
       '♠': [],
       '♥': [],
       '♦': [],
-      '♣': []
+      '♣': [],
     };
-
-    // Deal cards to tableau
-    for (let i = 0; i < 7; i++) {
-      for (let j = i; j < 7; j++) {
-        const card = deck.pop();
-        if (card) {
-          card.faceUp = i === j;
-          card.location = 'tableau';
-          card.position = j;
-          tableau[j].push(card);
-        }
-      }
-    }
-
-    // Remaining cards go to stock
-    const stock = deck.map(card => {
-      card.location = 'stock';
-      card.position = deck.indexOf(card);
-      return card;
-    });
 
     return {
       stock,
-      waste: [],
-      tableau,
+      waste,
       foundations,
-      moves: [],
+      tableau,
+      selectedCard: null,
+      moves: 0,
       score: 0,
       time: 0,
-      difficulty: 'medium',
+      isWon: false,
+      canUndo: false,
+      gameStats: {
+        time: 0,
+        moves: 0,
+        score: 0,
+      },
+      gameHistory: [],
+      drawMode: 1,
+      settings: {
+        difficulty: 'medium',
+        autoMoveToFoundation: false,
+        showMoveHints: false,
+        enableMLAnalysis: false,
+        adaptiveDifficulty: false,
+        drawMode: 1,
+        scoringMode: 'standard',
+        theme: 'light',
+        soundEnabled: true,
+        musicEnabled: true,
+        volume: 0.5,
+        showWinProbability: false,
+        enableWebGPU: false,
+        enableParticles: false,
+        enableShadows: false,
+        enablePostProcessing: false,
+        enableIBL: false,
+        enableSSR: false,
+        enableSSAO: false,
+        enableBloom: false,
+        enableMotionBlur: false,
+        enableDepthOfField: false,
+        enableChromaticAberration: false,
+        enableVignette: false,
+        enableGrain: false,
+        enableLensFlare: false,
+        enableGodRays: false,
+        enableVolumetricLighting: false,
+        enableCaustics: false,
+        enableSubsurfaceScattering: false,
+        enableParallaxOcclusionMapping: false,
+        enableTessellation: false,
+        enableDisplacement: false,
+        enableNormalMapping: false,
+        enableRoughnessMapping: false,
+        enableMetallicMapping: false,
+        enableAOMapping: false,
+        enableEmissiveMapping: false,
+        enableClearcoatMapping: false,
+        enableSheenMapping: false,
+        enableTransmissionMapping: false,
+        enableVolumeMapping: false,
+        enableIridescenceMapping: false,
+        enableSpecularMapping: false,
+        enableSpecularTintMapping: false,
+        enableAnisotropyMapping: false,
+        enableAnisotropicRotationMapping: false,
+        enableBumpMapping: false,
+        enableDetailMapping: false,
+        enableDetailMaskMapping: false,
+        enableDetailNormalMapping: false,
+        enableDetailRoughnessMapping: false,
+        enableDetailMetallicMapping: false,
+        enableDetailAOMapping: false,
+        enableDetailEmissiveMapping: false,
+        enableDetailClearcoatMapping: false,
+        enableDetailSheenMapping: false,
+        enableDetailTransmissionMapping: false,
+        enableDetailVolumeMapping: false,
+        enableDetailIridescenceMapping: false,
+        enableDetailSpecularMapping: false,
+        enableDetailSpecularTintMapping: false,
+        enableDetailAnisotropyMapping: false,
+        enableDetailAnisotropicRotationMapping: false,
+        enableDetailBumpMapping: false,
+        enableDetailDisplacementMapping: false,
+        enableDetailParallaxOcclusionMapping: false,
+        enableDetailTessellationMapping: false,
+        enableDetailSubsurfaceScatteringMapping: false,
+        enableDetailCausticsMapping: false,
+        enableDetailVolumetricLightingMapping: false,
+        enableDetailGodRaysMapping: false,
+        enableDetailLensFlareMapping: false,
+        enableDetailGrainMapping: false,
+        enableDetailVignetteMapping: false,
+        enableDetailChromaticAberrationMapping: false,
+        enableDetailDepthOfFieldMapping: false,
+        enableDetailMotionBlurMapping: false,
+        enableDetailBloomMapping: false,
+        enableDetailSSAOMapping: false,
+        enableDetailSSRMapping: false,
+        enableDetailIBLMapping: false,
+        enableDetailPostProcessingMapping: false,
+        enableDetailShadowsMapping: false,
+        enableDetailParticlesMapping: false,
+        enableDetailWebGPUMapping: false,
+        enableDetailDrawModeMapping: false,
+        enableDetailMusicEnabledMapping: false,
+        enableDetailSoundEnabledMapping: false,
+        enableDetailThemeMapping: false,
+        enableDetailSettingsMapping: false
+      }
     };
   }
 
-  makeMove(gameState: GameState, move: Move): { success: boolean; newState: GameState } {
-    // Simplified move validation and execution
-    const newState = { ...gameState };
-    newState.moves.push(move as any);
-    
-    return { success: true, newState };
+  private createDeck(): Card[] {
+    const deck: Card[] = [];
+    for (const suit of this.SUITS) {
+      for (const rank of this.RANKS) {
+        const value = rank === 'A' ? 1 :
+                     rank === 'J' ? 11 :
+                     rank === 'Q' ? 12 :
+                     rank === 'K' ? 13 :
+                     parseInt(rank);
+        
+        deck.push({
+          id: `${rank}-${suit}`,
+          suit,
+          rank,
+          value,
+          faceUp: false,
+          location: 'stock',
+          position: deck.length,
+        });
+      }
+    }
+    return deck;
   }
 
-  isGameWon(gameState: GameState): boolean {
-    return Object.values(gameState.foundations).every(pile => pile.length === 13);
+  private shuffleDeck(deck: Card[]): Card[] {
+    const shuffled = [...deck];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
+  private dealTableau(deck: Card[]): Card[][] {
+    const tableau: Card[][] = Array(7).fill(null).map(() => []);
+    for (let i = 0; i < 7; i++) {
+      for (let j = i; j < 7; j++) {
+        const card = deck[i * 7 + j];
+        card.faceUp = i === j;
+        card.location = 'tableau';
+        card.position = j;
+        tableau[j].push(card);
+      }
+    }
+    return tableau;
+  }
+
+  isValidMove(gameState: GameState, move: Move): boolean {
+    switch (move.type) {
+      case 'foundation':
+        return this.moveToFoundation(gameState, move).success;
+      case 'tableau':
+        return this.moveToTableau(gameState, move).success;
+      case 'waste-to-tableau':
+        return this.moveWasteToTableau(gameState, move).success;
+      default:
+        return false;
+    }
+  }
+
+  getPossibleMoves(gameState: GameState): Move[] {
+    return this.getAllPossibleMoves(gameState);
+  }
+
+  makeMove(gameState: GameState, move: Move): MoveResult {
+    // Ensure gameHistory exists
+    if (!gameState.gameHistory) {
+      gameState.gameHistory = [];
+    }
+
+    // Create a deep copy of the current state for history
+    const currentState = {
+      stock: [...gameState.stock],
+      waste: [...gameState.waste],
+      foundations: Object.fromEntries(
+        Object.entries(gameState.foundations).map(([suit, cards]) => [suit, [...cards]])
+      ),
+      tableau: gameState.tableau.map(pile => [...pile]),
+      gameStats: { ...gameState.gameStats }
+    };
+
+    // Add current state to history before making the move
+    gameState.gameHistory.push(currentState);
+
+    // Perform the move
+    const result = this.executeMove(gameState, move);
+    
+    if (result.success) {
+      // Update canUndo flag
+      result.newState.canUndo = true;
+    }
+
+    return result;
+  }
+
+  checkWinCondition(gameState: GameState): boolean {
+    return Object.values(gameState.foundations).every(
+      (foundation) => foundation.length === 13
+    );
+  }
+
+  updateScore(gameState: GameState): void {
+    // Implement scoring logic
+    gameState.score = 0;
   }
 
   calculateWinProbability(gameState: GameState): number {
@@ -151,49 +435,77 @@ export class GameEngine {
     return foundationCards / 52;
   }
 
-  isValidMove(gameState: GameState, move: Move): boolean {
-    // Simplified validation
-    return true;
-  }
-
-  getPossibleMoves(gameState: GameState): Move[] {
-    // Return array of possible moves
-    return [];
-  }
-
-  private createDeck(): Card[] {
-    const deck: Card[] = [];
-    const suits: ('♠' | '♥' | '♦' | '♣')[] = ['♠', '♥', '♦', '♣'];
-    const ranks: ('A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K')[] = 
-      ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-
-    for (const suit of suits) {
-      for (const rank of ranks) {
-        const value = rank === 'A' ? 1 :
-                     rank === 'J' ? 11 :
-                     rank === 'Q' ? 12 :
-                     rank === 'K' ? 13 :
-                     parseInt(rank);
-        
-        deck.push({
-          id: `${suit}-${rank}`,
-          suit,
-          rank,
-          value,
-          faceUp: false,
-          location: 'stock',
-          position: deck.length
-        });
+  getAllPossibleMoves(gameState: GameState): Move[] {
+    const moves: Move[] = [];
+    
+    // Foundation moves from tableau
+    gameState.tableau.forEach((pile, index) => {
+      if (pile.length > 0) {
+        const topCard = pile[pile.length - 1];
+        if (topCard.faceUp) {
+          const foundation = gameState.foundations[topCard.suit];
+          if ((foundation.length === 0 && topCard.rank === 'A') ||
+              (foundation.length > 0 && topCard.value === foundation[foundation.length - 1].value + 1)) {
+            moves.push({
+              type: 'foundation',
+              cardId: topCard.id,
+              sourceType: 'tableau',
+              sourceIndex: index,
+            });
+          }
+        }
       }
+    });
+
+    // Tableau to tableau moves
+    gameState.tableau.forEach((sourcePile, sourceIndex) => {
+      if (sourcePile.length > 0) {
+        const topCard = sourcePile[sourcePile.length - 1];
+        if (topCard.faceUp) {
+          gameState.tableau.forEach((targetPile, targetIndex) => {
+            if (sourceIndex !== targetIndex && this.canMoveToTableau(topCard, targetPile)) {
+              moves.push({
+                type: 'tableau',
+                cardId: topCard.id,
+                sourceType: 'tableau',
+                sourceIndex,
+                targetIndex,
+              });
+            }
+          });
+        }
+      }
+    });
+
+    // Waste to tableau moves
+    if (gameState.waste.length > 0) {
+      const wasteCard = gameState.waste[gameState.waste.length - 1];
+      gameState.tableau.forEach((pile, index) => {
+        if (this.canMoveToTableau(wasteCard, pile)) {
+          moves.push({
+            type: 'waste-to-tableau',
+            cardId: wasteCard.id,
+            sourceType: 'waste',
+            targetIndex: index,
+          });
+        }
+      });
     }
 
-    // Shuffle deck
-    for (let i = deck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [deck[i], deck[j]] = [deck[j], deck[i]];
-    }
+    return moves;
+  }
 
-    return deck;
+  private executeMove(gameState: GameState, move: Move): MoveResult {
+    switch (move.type) {
+      case 'foundation':
+        return this.moveToFoundation(gameState, move);
+      case 'tableau':
+        return this.moveToTableau(gameState, move);
+      case 'waste-to-tableau':
+        return this.moveWasteToTableau(gameState, move);
+      default:
+        return { success: false, newState: gameState, error: 'Invalid move type' };
+    }
   }
 
   private moveToFoundation(gameState: GameState, move: Move): MoveResult {
@@ -286,54 +598,6 @@ export class GameEngine {
     return { success: true, newState: gameState };
   }
 
-  private moveFoundationToTableau(gameState: GameState, move: Move): MoveResult {
-    const card = this.findCard(gameState, move.cardId);
-    if (!card || move.targetIndex === undefined) {
-      return { success: false, newState: gameState, error: 'Invalid move parameters' };
-    }
-
-    const targetPile = gameState.tableau[move.targetIndex];
-    
-    if (!this.canMoveToTableau(card, targetPile)) {
-      return { success: false, newState: gameState, error: 'Cannot move foundation card to tableau' };
-    }
-
-    // Remove from foundation
-    const foundation = gameState.foundations[card.suit];
-    foundation.pop();
-    
-    // Add to tableau
-    targetPile.push(card);
-    
-    // Update stats (penalty for moving from foundation)
-    gameState.moves++;
-    gameState.score -= 15;
-
-    return { success: true, newState: gameState };
-  }
-
-  private flipStock(gameState: GameState): MoveResult {
-    if (gameState.stock.length === 0) {
-      // Recycle waste pile back to stock
-      gameState.stock = [...gameState.waste.reverse()];
-      gameState.waste = [];
-      gameState.stock.forEach(card => card.faceUp = false);
-    } else {
-      // Draw cards from stock
-      const cardsToDraw = Math.min(gameState.drawMode, gameState.stock.length);
-      for (let i = 0; i < cardsToDraw; i++) {
-        const card = gameState.stock.pop();
-        if (card) {
-          card.faceUp = true;
-          gameState.waste.push(card);
-        }
-      }
-    }
-
-    gameState.moves++;
-    return { success: true, newState: gameState };
-  }
-
   private canMoveToTableau(card: Card, pile: Card[]): boolean {
     if (pile.length === 0) {
       return card.rank === 'K';
@@ -419,81 +683,36 @@ export class GameEngine {
     }
   }
 
-  getAllPossibleMoves(gameState: GameState): Move[] {
-    const moves: Move[] = [];
-    
-    // Foundation moves from tableau
-    gameState.tableau.forEach((pile, index) => {
-      if (pile.length > 0) {
-        const topCard = pile[pile.length - 1];
-        if (topCard.faceUp) {
-          const foundation = gameState.foundations[topCard.suit];
-          if ((foundation.length === 0 && topCard.rank === 'A') ||
-              (foundation.length > 0 && topCard.value === foundation[foundation.length - 1].value + 1)) {
-            moves.push({
-              type: 'foundation',
-              cardId: topCard.id,
-              sourceType: 'tableau',
-              sourceIndex: index,
-            });
-          }
-        }
-      }
-    });
-
-    // Tableau to tableau moves
-    gameState.tableau.forEach((sourcePile, sourceIndex) => {
-      if (sourcePile.length > 0) {
-        const topCard = sourcePile[sourcePile.length - 1];
-        if (topCard.faceUp) {
-          gameState.tableau.forEach((targetPile, targetIndex) => {
-            if (sourceIndex !== targetIndex && this.canMoveToTableau(topCard, targetPile)) {
-              moves.push({
-                type: 'tableau',
-                cardId: topCard.id,
-                sourceType: 'tableau',
-                sourceIndex,
-                targetIndex,
-              });
-            }
-          });
-        }
-      }
-    });
-
-    // Waste to tableau moves
-    if (gameState.waste.length > 0) {
-      const wasteCard = gameState.waste[gameState.waste.length - 1];
-      gameState.tableau.forEach((pile, index) => {
-        if (this.canMoveToTableau(wasteCard, pile)) {
-          moves.push({
-            type: 'waste-to-tableau',
-            cardId: wasteCard.id,
-            sourceType: 'waste',
-            targetIndex: index,
-          });
-        }
-      });
+  undo(gameState: GameState): MoveResult {
+    // Ensure gameHistory exists
+    if (!gameState.gameHistory) {
+      gameState.gameHistory = [];
     }
 
-    return moves;
-  }
+    if (gameState.gameHistory.length === 0) {
+      return { success: false, newState: gameState, error: 'No moves to undo' };
+    }
 
-  private deepCopyGameState(gameState: GameState): GameState {
-    return {
-      stock: gameState.stock.map(card => ({ ...card })),
-      waste: gameState.waste.map(card => ({ ...card })),
-      tableau: gameState.tableau.map(pile => pile.map(card => ({ ...card }))),
-      foundations: {
-        '♠': [...gameState.foundations['♠']],
-        '♥': [...gameState.foundations['♥']],
-        '♦': [...gameState.foundations['♦']],
-        '♣': [...gameState.foundations['♣']],
-      },
-      moves: [...gameState.moves],
-      score: gameState.score,
-      time: gameState.time,
-      difficulty: gameState.difficulty,
+    const previousState = gameState.gameHistory.pop();
+    if (!previousState) {
+      return { success: false, newState: gameState, error: 'Failed to restore previous state' };
+    }
+
+    // Create a new state with the previous state's values
+    const newState: GameState = {
+      ...gameState,
+      stock: [...previousState.stock],
+      waste: [...previousState.waste],
+      foundations: Object.fromEntries(
+        Object.entries(previousState.foundations).map(([suit, cards]) => [suit, [...cards]])
+      ),
+      tableau: previousState.tableau.map(pile => [...pile]),
+      gameHistory: [...gameState.gameHistory],
+      gameStats: { ...previousState.gameStats },
+      selectedCard: null,
+      canUndo: gameState.gameHistory.length > 0
     };
+
+    return { success: true, newState };
   }
 } 

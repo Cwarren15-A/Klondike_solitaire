@@ -88,6 +88,47 @@
             --text-color: white;
         }
         
+        /* Phase 2: Performance Monitor Styles */
+        .performance-monitor {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.85);
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border: 1px solid #00ff00;
+            z-index: 10000;
+            display: none;
+            min-width: 200px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .performance-monitor h4 {
+            margin: 0 0 10px 0;
+            color: #00ffff;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .performance-metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 2px 0;
+        }
+        
+        .performance-value {
+            color: #ffff00;
+            font-weight: bold;
+        }
+        
+        .performance-good { color: #00ff00; }
+        .performance-warning { color: #ffaa00; }
+        .performance-bad { color: #ff0000; }
+        
         .game-header {
             display: flex;
             justify-content: space-between;
@@ -216,6 +257,8 @@
         .btn-red { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; }
         .btn-gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: white; font-weight: bold; }
         .btn-gold:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4); }
+        .btn-info { background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; }
+        .btn-info:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 8px 20px rgba(14, 165, 233, 0.4); }
         
         button:disabled {
             opacity: 0.5;
@@ -525,9 +568,40 @@
                                         <button class="btn-gold" onclick="safeGameCall('ai.autoCompleteGame')" title="AI automatically plays the game to completion" aria-label="Auto-play game">🤖 Auto-Play</button>
                 <button class="btn-orange" onclick="safeGameCall('ui.showMLAnalysis')" title="Show ML analysis" aria-label="Show machine learning analysis">📊 AI Analysis</button>
                 <button class="btn-green" onclick="safeGameCall('storage.quickSave')" title="Quick save (S)" aria-label="Quick save game">💾 Save</button>
+                <!-- Phase 2: Performance Monitor Button -->
+                <button class="btn-info" onclick="togglePerformanceMonitor()" title="Show Phase 2 performance metrics" aria-label="Toggle performance monitor">⚡ Performance</button>
             </div>
         </div>
         <canvas id="gameCanvas" width="1000" height="600" role="application" aria-label="Klondike Solitaire Game Board" tabindex="0"></canvas>
+    </div>
+
+    <!-- Phase 2: Performance Monitor -->
+    <div id="performanceMonitor" class="performance-monitor">
+        <h4>⚡ Phase 2 Performance</h4>
+        <div class="performance-metric">
+            <span>FPS:</span>
+            <span id="fps-value" class="performance-value">60</span>
+        </div>
+        <div class="performance-metric">
+            <span>Render Time:</span>
+            <span id="render-time" class="performance-value">0ms</span>
+        </div>
+        <div class="performance-metric">
+            <span>Memory Usage:</span>
+            <span id="memory-usage" class="performance-value">0MB</span>
+        </div>
+        <div class="performance-metric">
+            <span>AI Worker:</span>
+            <span id="ai-worker-status" class="performance-value">Ready</span>
+        </div>
+        <div class="performance-metric">
+            <span>Animations:</span>
+            <span id="animation-count" class="performance-value">0</span>
+        </div>
+        <div class="performance-metric">
+            <span>Cache Size:</span>
+            <span id="cache-size" class="performance-value">0</span>
+        </div>
     </div>
     
     <!-- Additional menu screens -->
@@ -613,10 +687,13 @@
                 this.ui = new UIManager(this);
                 this.cards = new CardManager(this);
                 this.input = new InputManager(this);
-                this.renderer = new RenderEngine(this);
+                // Phase 2: Use high-performance renderer
+                this.renderer = new PerformanceRenderer(this);
                 this.rules = new GameRules(this);
                 this.state = new GameState(this);
                 this.ai = new AIHintSystem(this);
+                // Phase 2: Enhanced AI Worker Manager for non-blocking operations
+                this.aiWorkerManager = new AIWorkerManager(this);
                 this.daily = new DailyChallenge(this);
                 this.ml = new MLManager(this);
                 this.timer = null;
@@ -742,10 +819,20 @@
                     if (this.ml && !this.ml.isDisposed) {
                         this.ml.dispose();
                     }
-                    // Cleanup AI worker
+                    // Phase 2: Cleanup performance renderer
+                    if (this.renderer && this.renderer.destroy) {
+                        this.renderer.destroy();
+                        console.log('🎨 Performance Renderer cleaned up');
+                    }
+                    // Phase 2: Cleanup AI Worker Manager
+                    if (this.aiWorkerManager && this.aiWorkerManager.worker) {
+                        this.aiWorkerManager.worker.terminate();
+                        console.log('🤖 AI Worker Manager terminated');
+                    }
+                    // Cleanup legacy AI worker
                     if (this.ai && this.ai.worker) {
                         this.ai.worker.terminate();
-                        console.log('🤖 AI Worker terminated');
+                        console.log('🤖 Legacy AI Worker terminated');
                     }
                 } catch (error) {
                     console.error('Cleanup error:', error);
@@ -2923,28 +3010,33 @@
 
             // Enhanced deadlock detection with Phase 2 pattern recognition
             checkAdvancedDeadlockPatterns() {
-                this.initializeAdvancedPatternRecognition();
-                
-                const patterns = {
-                    cardBlocking: this.analyzeCardBlockingPatterns(),
-                    sequenceDeadlocks: this.analyzeSequenceDeadlocks(),
-                    foundationBottlenecks: this.analyzeFoundationBottlenecks(),
-                    stockExhaustion: this.analyzeStockExhaustionPatterns()
-                };
-                
-                // Calculate overall deadlock probability based on patterns
-                const deadlockProbability = this.calculateDeadlockProbability(patterns);
-                
-                if (deadlockProbability > 0.8) {
-                    console.log('🧠 Advanced pattern analysis indicates high deadlock probability:', deadlockProbability.toFixed(2));
-                    console.log('🔍 Detected patterns:', patterns);
-                    return true;
+                try {
+                    this.initializeAdvancedPatternRecognition();
+                    
+                    const patterns = {
+                        cardBlocking: this.analyzeCardBlockingPatterns(),
+                        sequenceDeadlocks: this.analyzeSequenceDeadlocks(),
+                        foundationBottlenecks: this.analyzeFoundationBottlenecks(),
+                        stockExhaustion: this.analyzeStockExhaustionPatterns()
+                    };
+                    
+                    // Calculate overall deadlock probability based on patterns
+                    const deadlockProbability = this.calculateDeadlockProbability(patterns);
+                    
+                    if (deadlockProbability > 0.8) {
+                        console.log('🧠 Advanced pattern analysis indicates high deadlock probability:', deadlockProbability.toFixed(2));
+                        console.log('🔍 Detected patterns:', patterns);
+                        return true;
+                    }
+                    
+                    // Store patterns for learning
+                    this.storePatternAnalysis(patterns, deadlockProbability);
+                    
+                    return false;
+                } catch (error) {
+                    console.warn('Error in advanced pattern recognition:', error);
+                    return false;
                 }
-                
-                // Store patterns for learning
-                this.storePatternAnalysis(patterns, deadlockProbability);
-                
-                return false;
             }
 
             analyzeFoundationBottlenecks() {
@@ -3442,6 +3534,31 @@
                 
                 return Math.min(0.6, congestionScore);
             }
+
+            // Helper methods for Phase 2 pattern recognition
+            canMoveToFoundation(card) {
+                if (!card || !this.game.state.foundations) return false;
+                
+                const foundationPile = this.game.state.foundations[card.suit];
+                if (!foundationPile) return false;
+                
+                if (foundationPile.length === 0) {
+                    return card.value === 1; // Only Ace can start foundation
+                }
+                
+                const topFoundationCard = foundationPile[foundationPile.length - 1];
+                return card.value === topFoundationCard.value + 1;
+            }
+
+            canPlaceOnTableau(card, targetCard) {
+                if (!card || !targetCard) return false;
+                
+                // Must be opposite color and one value lower
+                const cardColor = (card.suit === '♥' || card.suit === '♦') ? 'red' : 'black';
+                const targetColor = (targetCard.suit === '♥' || targetCard.suit === '♦') ? 'red' : 'black';
+                
+                return cardColor !== targetColor && card.value === targetCard.value - 1;
+            }
             
             handleDeadlock() {
                 console.log('🚫 Deadlock detected!');
@@ -3914,9 +4031,9 @@
                 const currentState = this.cloneGameState();
                 
                 try {
-                    // Try to use Web Worker first with progressive approach
-                    if (this.workerSupported) {
-                        console.log('🚀 Using Web Worker for winning path analysis...');
+                    // Phase 2: Try to use enhanced AI Worker Manager first
+                    if (this.game.aiWorkerManager && this.game.aiWorkerManager.isInitialized) {
+                        console.log('🚀 Phase 2: Using enhanced AI Worker Manager for winning path analysis...');
                         
                         // Progressive search strategy to avoid timeouts
                         let searchDepth = maxDepth;
@@ -3924,14 +4041,10 @@
                         const maxAttempts = 3;
                         
                         while (attempts < maxAttempts) {
-                            const timeout = attempts === 0 ? 120000 : 60000; // 2min first, then 1min
-                            console.log(`🔍 Attempt ${attempts + 1}: Searching ${searchDepth} moves deep (timeout: ${timeout/1000}s)`);
+                            console.log(`🔍 Attempt ${attempts + 1}: Searching ${searchDepth} moves deep`);
                             
                             try {
-                                const result = await this.requestFromWorker('findWinningPath', {
-                                    gameState: currentState,
-                                    maxDepth: searchDepth
-                                }, timeout);
+                                const result = await this.game.aiWorkerManager.findWinningPathAsync(currentState, searchDepth);
                                 
                                 const timeTaken = (performance.now() - startTime).toFixed(0);
                                 
@@ -5288,14 +5401,25 @@
              async showHint() {
                 try {
                     this.game.sound.play('cardFlip');
-                                    console.log('🧠 Enhanced AI Hint System with Auto-Complete Analysis...');
+                    console.log('🧠 Phase 2 Enhanced AI Hint System with Non-blocking Analysis...');
                 
                 // Track that AI assistance was used
                 this.game.aiHintUsed = true;
                 this.game.lastStrategyUsed = 'ai-assisted';
                 
-                // Use the new smart hint system with auto-complete
-                const smartHint = await this.getSmartHint();
+                // Phase 2: Show loading indicator while AI worker processes
+                this.game.ui.showNotification('🤖 AI analyzing position...', 'info', 2000);
+                
+                // Phase 2: Use non-blocking AI Worker Manager
+                let smartHint;
+                try {
+                    smartHint = await this.game.aiWorkerManager.analyzePositionAsync(this.game.state);
+                    console.log('✅ AI Worker completed analysis in background');
+                } catch (error) {
+                    console.warn('AI Worker failed, falling back to main thread:', error);
+                    // Fallback to original method
+                    smartHint = await this.getSmartHint();
+                }
                     const completeAnalysis = this.analyzeCompleteGameState();
                     this.game.state.hintCardId = null;
                     
@@ -7115,6 +7239,474 @@
             }
         }
 
+        // ===== PHASE 2 PERFORMANCE OPTIMIZATIONS =====
+
+        // High-Performance Rendering System
+        class PerformanceRenderer extends RenderEngine {
+            constructor(gameInstance) {
+                super(gameInstance);
+                
+                // Performance tracking
+                this.lastFrameTime = 0;
+                this.frameCount = 0;
+                this.fps = 60;
+                this.targetFPS = 60;
+                this.frameInterval = 1000 / this.targetFPS;
+                
+                // Rendering optimizations
+                this.isDirty = true;
+                this.dirtyRegions = [];
+                this.lastRenderState = null;
+                this.renderCache = new Map();
+                
+                // Animation system
+                this.animationId = null;
+                this.isAnimating = false;
+                this.animations = [];
+                
+                // Canvas optimizations
+                this.offscreenCanvas = null;
+                this.offscreenCtx = null;
+                this.highDPIScale = 1;
+                
+                // Performance monitoring
+                this.performanceMetrics = {
+                    renderTime: 0,
+                    lastFrameTime: 0,
+                    averageFrameTime: 16.67,
+                    droppedFrames: 0,
+                    memoryUsage: 0
+                };
+                
+                this.initPerformanceSystem();
+            }
+            
+            initPerformanceSystem() {
+                // Setup high-DPI canvas
+                this.setupHighDPICanvas();
+                
+                // Create offscreen canvas for complex drawings
+                this.createOffscreenCanvas();
+                
+                // Start render loop
+                this.startRenderLoop();
+                
+                // Monitor performance
+                this.startPerformanceMonitoring();
+            }
+            
+            setupHighDPICanvas() {
+                if (!this.canvas) return;
+                
+                const dpr = window.devicePixelRatio || 1;
+                const rect = this.canvas.getBoundingClientRect();
+                
+                // Set actual size in memory (scaled up for high DPI)
+                this.canvas.width = rect.width * dpr;
+                this.canvas.height = rect.height * dpr;
+                
+                // Scale back down using CSS
+                this.canvas.style.width = rect.width + 'px';
+                this.canvas.style.height = rect.height + 'px';
+                
+                // Scale the drawing context so everything draws at the correct size
+                this.ctx.scale(dpr, dpr);
+                this.highDPIScale = dpr;
+                
+                // Optimize canvas rendering
+                this.ctx.imageSmoothingEnabled = true;
+                this.ctx.imageSmoothingQuality = 'high';
+            }
+            
+            createOffscreenCanvas() {
+                try {
+                    if ('OffscreenCanvas' in window) {
+                        this.offscreenCanvas = new OffscreenCanvas(
+                            this.game.constants.CARD_WIDTH * this.highDPIScale,
+                            this.game.constants.CARD_HEIGHT * this.highDPIScale
+                        );
+                        this.offscreenCtx = this.offscreenCanvas.getContext('2d');
+                    }
+                } catch (error) {
+                    console.warn('OffscreenCanvas not supported, using regular canvas');
+                }
+            }
+            
+            startRenderLoop() {
+                const renderFrame = (timestamp) => {
+                    this.performanceMetrics.lastFrameTime = timestamp - this.lastFrameTime;
+                    
+                    // Frame rate limiting for performance
+                    if (timestamp - this.lastFrameTime >= this.frameInterval) {
+                        this.renderOptimized(timestamp);
+                        this.lastFrameTime = timestamp;
+                        this.frameCount++;
+                    }
+                    
+                    this.animationId = requestAnimationFrame(renderFrame);
+                };
+                
+                this.animationId = requestAnimationFrame(renderFrame);
+            }
+            
+            renderOptimized(timestamp) {
+                const renderStart = performance.now();
+                
+                try {
+                    // Only render if something changed or animations are active
+                    if (this.isDirty || this.isAnimating || this.animations.length > 0) {
+                        
+                        // Update animations first
+                        this.updateAnimations(timestamp);
+                        
+                        // Efficient partial rendering
+                        if (this.dirtyRegions.length > 0) {
+                            this.renderDirtyRegions();
+                        } else {
+                            this.renderComplete();
+                        }
+                        
+                        this.isDirty = false;
+                        this.dirtyRegions = [];
+                    }
+                    
+                } catch (error) {
+                    console.error('Render error:', error);
+                }
+                
+                // Track performance
+                this.performanceMetrics.renderTime = performance.now() - renderStart;
+                this.updatePerformanceMetrics();
+            }
+            
+            renderDirtyRegions() {
+                // Render only specific regions that changed
+                this.dirtyRegions.forEach(region => {
+                    this.ctx.save();
+                    this.ctx.beginPath();
+                    this.ctx.rect(region.x, region.y, region.width, region.height);
+                    this.ctx.clip();
+                    
+                    // Clear and redraw region
+                    this.ctx.clearRect(region.x, region.y, region.width, region.height);
+                    this.renderRegion(region);
+                    
+                    this.ctx.restore();
+                });
+            }
+            
+            renderComplete() {
+                // Full screen render with optimizations
+                this.ctx.clearRect(0, 0, this.canvas.width / this.highDPIScale, this.canvas.height / this.highDPIScale);
+                
+                // Batch similar operations for GPU efficiency
+                this.drawStockBatch();
+                this.drawWasteBatch();
+                this.drawFoundationsBatch();
+                this.drawTableauBatch();
+                this.drawDraggedCards();
+                
+                // Render particle effects
+                if (this.game.particles) {
+                    this.game.particles.update();
+                    this.game.particles.render();
+                }
+            }
+            
+            // Batched drawing methods for better performance
+            drawStockBatch() {
+                // Group similar operations
+                this.ctx.save();
+                
+                const stockX = 50;
+                const stockY = 50;
+                
+                if (this.game.state.stock.length > 0) {
+                    // Pre-calculate positions and draw all at once
+                    const positions = [];
+                    for (let i = Math.max(0, this.game.state.stock.length - 3); i < this.game.state.stock.length; i++) {
+                        positions.push({
+                            x: stockX + (i - Math.max(0, this.game.state.stock.length - 3)) * 2,
+                            y: stockY + (i - Math.max(0, this.game.state.stock.length - 3)) * 2
+                        });
+                    }
+                    
+                    // Batch draw card backs
+                    positions.forEach((pos, index) => {
+                        const card = this.game.state.stock[this.game.state.stock.length - 3 + index];
+                        if (card) {
+                            this.drawCardOptimized(card, pos.x, pos.y);
+                        }
+                    });
+                }
+                
+                this.ctx.restore();
+            }
+            
+            drawCardOptimized(card, x, y, highlighted = false, alpha = 1, isHovered = false) {
+                // Use cached rendering for identical cards
+                const cacheKey = `${card.suit}-${card.value}-${card.faceUp}-${highlighted}-${isHovered}`;
+                
+                if (this.renderCache.has(cacheKey) && !this.isDirty) {
+                    const cached = this.renderCache.get(cacheKey);
+                    this.ctx.save();
+                    this.ctx.globalAlpha = alpha;
+                    this.ctx.drawImage(cached, x, y);
+                    this.ctx.restore();
+                    return;
+                }
+                
+                // Call parent drawing method
+                this.drawCard(card, x, y, highlighted, alpha, isHovered);
+            }
+            
+            // Animation system
+            addAnimation(animation) {
+                animation.startTime = performance.now();
+                animation.id = Math.random().toString(36).substr(2, 9);
+                this.animations.push(animation);
+                this.isAnimating = true;
+            }
+            
+            updateAnimations(timestamp) {
+                this.animations = this.animations.filter(animation => {
+                    const elapsed = timestamp - animation.startTime;
+                    const progress = Math.min(elapsed / animation.duration, 1);
+                    
+                    // Update animation
+                    if (animation.update) {
+                        animation.update(progress, elapsed);
+                    }
+                    
+                    // Animation complete
+                    if (progress >= 1) {
+                        if (animation.onComplete) {
+                            animation.onComplete();
+                        }
+                        return false; // Remove from array
+                    }
+                    
+                    return true; // Keep in array
+                });
+                
+                this.isAnimating = this.animations.length > 0;
+            }
+            
+            // Performance monitoring
+            startPerformanceMonitoring() {
+                setInterval(() => {
+                    this.fps = Math.round(1000 / this.performanceMetrics.averageFrameTime);
+                    
+                    // Adjust quality based on performance
+                    if (this.fps < 45) {
+                        this.adjustQualityDown();
+                    } else if (this.fps > 55 && this.performanceMetrics.renderTime < 8) {
+                        this.adjustQualityUp();
+                    }
+                    
+                    // Memory usage check
+                    if (performance.memory) {
+                        this.performanceMetrics.memoryUsage = performance.memory.usedJSHeapSize / 1024 / 1024;
+                        
+                        // Clear cache if memory usage is high
+                        if (this.performanceMetrics.memoryUsage > 100) {
+                            this.clearRenderCache();
+                        }
+                    }
+                    
+                }, 1000);
+            }
+            
+            updatePerformanceMetrics() {
+                // Moving average for smooth FPS calculation
+                this.performanceMetrics.averageFrameTime = 
+                    (this.performanceMetrics.averageFrameTime * 0.9) + 
+                    (this.performanceMetrics.lastFrameTime * 0.1);
+                
+                // Track dropped frames
+                if (this.performanceMetrics.lastFrameTime > 20) {
+                    this.performanceMetrics.droppedFrames++;
+                }
+            }
+            
+            adjustQualityDown() {
+                // Reduce visual quality for better performance
+                this.ctx.imageSmoothingEnabled = false;
+                this.targetFPS = 30;
+                this.frameInterval = 1000 / this.targetFPS;
+            }
+            
+            adjustQualityUp() {
+                // Increase visual quality when performance allows
+                this.ctx.imageSmoothingEnabled = true;
+                this.ctx.imageSmoothingQuality = 'high';
+                this.targetFPS = 60;
+                this.frameInterval = 1000 / this.targetFPS;
+            }
+            
+            // Dirty region management
+            markDirty(x, y, width, height) {
+                this.isDirty = true;
+                this.dirtyRegions.push({ x, y, width, height });
+            }
+            
+            clearRenderCache() {
+                this.renderCache.clear();
+                if (typeof gc === 'function') {
+                    gc(); // Force garbage collection if available
+                }
+            }
+            
+            // Override parent render method
+            render() {
+                // The optimized render loop handles everything
+                this.isDirty = true;
+            }
+            
+            // Cleanup
+            destroy() {
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                }
+                this.clearRenderCache();
+                this.animations = [];
+            }
+        }
+        
+        // Enhanced AI Worker Integration for Non-blocking Operations
+        class AIWorkerManager {
+            constructor(game) {
+                this.game = game;
+                this.worker = null;
+                this.isInitialized = false;
+                this.pendingRequests = new Map();
+                this.requestId = 0;
+                
+                this.initWorker();
+            }
+            
+            initWorker() {
+                try {
+                    this.worker = new Worker('ai-worker.js');
+                    
+                    this.worker.onmessage = (event) => {
+                        this.handleWorkerMessage(event.data);
+                    };
+                    
+                    this.worker.onerror = (error) => {
+                        console.error('AI Worker error:', error);
+                        this.fallbackToMainThread();
+                    };
+                    
+                    this.isInitialized = true;
+                    console.log('🚀 AI Worker Manager initialized');
+                    
+                } catch (error) {
+                    console.warn('AI Worker not available, using main thread');
+                    this.fallbackToMainThread();
+                }
+            }
+            
+            async analyzePositionAsync(gameState) {
+                return new Promise((resolve, reject) => {
+                    if (!this.isInitialized || !this.worker) {
+                        // Fallback to main thread
+                        resolve(this.analyzePositionMainThread(gameState));
+                        return;
+                    }
+                    
+                    const requestId = ++this.requestId;
+                    this.pendingRequests.set(requestId, { resolve, reject, timeout: null });
+                    
+                    // Set timeout for request
+                    const timeout = setTimeout(() => {
+                        this.pendingRequests.delete(requestId);
+                        reject(new Error('AI analysis timeout'));
+                    }, 5000);
+                    
+                    this.pendingRequests.get(requestId).timeout = timeout;
+                    
+                    // Send to worker
+                    this.worker.postMessage({
+                        type: 'analyzePosition',
+                        gameState: gameState,
+                        requestId: requestId
+                    });
+                });
+            }
+            
+            async findWinningPathAsync(gameState, maxDepth = 150) {
+                return new Promise((resolve, reject) => {
+                    if (!this.isInitialized || !this.worker) {
+                        resolve({ canWin: false, error: 'Worker not available' });
+                        return;
+                    }
+                    
+                    const requestId = ++this.requestId;
+                    this.pendingRequests.set(requestId, { resolve, reject, timeout: null });
+                    
+                    // Set longer timeout for path finding
+                    const timeout = setTimeout(() => {
+                        this.pendingRequests.delete(requestId);
+                        reject(new Error('Path finding timeout'));
+                    }, 30000);
+                    
+                    this.pendingRequests.get(requestId).timeout = timeout;
+                    
+                    this.worker.postMessage({
+                        type: 'findWinningPath',
+                        gameState: gameState,
+                        maxDepth: maxDepth,
+                        requestId: requestId
+                    });
+                });
+            }
+            
+            handleWorkerMessage(data) {
+                const { requestId, result, error } = data;
+                
+                if (this.pendingRequests.has(requestId)) {
+                    const request = this.pendingRequests.get(requestId);
+                    
+                    // Clear timeout
+                    if (request.timeout) {
+                        clearTimeout(request.timeout);
+                    }
+                    
+                    // Resolve or reject
+                    if (error) {
+                        request.reject(new Error(error));
+                    } else {
+                        request.resolve(result);
+                    }
+                    
+                    this.pendingRequests.delete(requestId);
+                }
+            }
+            
+            analyzePositionMainThread(gameState) {
+                // Fallback implementation for main thread
+                try {
+                    // Basic analysis without worker
+                    return {
+                        possibleMoves: this.game.ai ? this.game.ai.findAllPossibleMoves() : [],
+                        winProbability: 0.5,
+                        bestMove: null,
+                        timestamp: Date.now()
+                    };
+                } catch (error) {
+                    return { error: error.message, timestamp: Date.now() };
+                }
+            }
+            
+            fallbackToMainThread() {
+                this.isInitialized = false;
+                this.worker = null;
+            }
+        }
+
+        // ===== END PHASE 2 OPTIMIZATIONS =====
+
         // Advanced Intelligent ML Manager with Complete Board Vision and Learning
         class MLManager {
             constructor(gameInstance) {
@@ -7986,7 +8578,7 @@
             
             recordDeadlockPatterns(gameRecord) {
                 try {
-                    const analysis = gameRecord.additionalData?.analysis || {};
+                    const analysis = gameRecord?.additionalData?.analysis || {};
                     
                     // Record common deadlock patterns for future detection
                     if (!this.gameMemory.deadlockPatterns) {
@@ -9073,12 +9665,80 @@
             }
             
             getPerformanceAnalytics() {
-                return {
-                    metadata: this.learningDatabase.metadata,
-                    recentPerformance: this.analyzeRecentPerformance(),
-                    strategySuggestions: this.generateStrategySuggestions(),
-                    learningProgress: this.calculateLearningProgress()
-                };
+                try {
+                    return {
+                        metadata: this.learningDatabase.metadata,
+                        recentPerformance: this.analyzeRecentPerformance(),
+                        strategySuggestions: this.generateStrategySuggestions(),
+                        learningProgress: this.calculateLearningProgress ? this.calculateLearningProgress() : {
+                            stage: 'beginner',
+                            progress: 0,
+                            gamesPlayed: 0,
+                            skillLevel: 'learning'
+                        }
+                    };
+                } catch (error) {
+                    console.warn('Error in getPerformanceAnalytics:', error);
+                    return {
+                        metadata: this.learningDatabase.metadata,
+                        recentPerformance: { recentWinRate: 0, improvementTrend: 'insufficient-data', gamesAnalyzed: 0 },
+                        strategySuggestions: ['Continue practicing to improve your game'],
+                        learningProgress: {
+                            stage: 'beginner',
+                            progress: 0,
+                            gamesPlayed: 0,
+                            skillLevel: 'learning'
+                        }
+                    };
+                }
+            }
+
+            calculateLearningProgress() {
+                try {
+                    const totalGames = this.learningDatabase.metadata.totalGamesPlayed;
+                    const winRate = this.learningDatabase.metadata.winRate;
+                    
+                    if (totalGames === 0) {
+                        return {
+                            stage: 'beginner',
+                            progress: 0,
+                            gamesPlayed: 0,
+                            skillLevel: 'learning'
+                        };
+                    }
+                    
+                    let stage = 'beginner';
+                    let skillLevel = 'learning';
+                    
+                    if (totalGames >= 100) {
+                        stage = 'expert';
+                        skillLevel = winRate > 15 ? 'advanced' : 'intermediate';
+                    } else if (totalGames >= 50) {
+                        stage = 'intermediate';
+                        skillLevel = winRate > 10 ? 'intermediate' : 'learning';
+                    } else if (totalGames >= 20) {
+                        stage = 'developing';
+                        skillLevel = winRate > 5 ? 'developing' : 'learning';
+                    }
+                    
+                    const progress = Math.min(100, (totalGames / 100) * 100);
+                    
+                    return {
+                        stage: stage,
+                        progress: progress,
+                        gamesPlayed: totalGames,
+                        skillLevel: skillLevel,
+                        winRate: winRate
+                    };
+                } catch (error) {
+                    console.warn('Error calculating learning progress:', error);
+                    return {
+                        stage: 'beginner',
+                        progress: 0,
+                        gamesPlayed: 0,
+                        skillLevel: 'learning'
+                    };
+                }
             }
             
             analyzeRecentPerformance() {
@@ -9778,6 +10438,105 @@
             }
         }
         
+        // Phase 2: Performance Monitor Functions
+        let performanceMonitorVisible = false;
+        let performanceUpdateInterval = null;
+
+        function togglePerformanceMonitor() {
+            const monitor = document.getElementById('performanceMonitor');
+            performanceMonitorVisible = !performanceMonitorVisible;
+            
+            if (performanceMonitorVisible) {
+                monitor.style.display = 'block';
+                startPerformanceUpdates();
+                console.log('📊 Phase 2 Performance Monitor enabled');
+            } else {
+                monitor.style.display = 'none';
+                stopPerformanceUpdates();
+                console.log('📊 Performance Monitor disabled');
+            }
+        }
+
+        function startPerformanceUpdates() {
+            if (performanceUpdateInterval) return;
+            
+            performanceUpdateInterval = setInterval(() => {
+                updatePerformanceDisplay();
+            }, 1000); // Update every second
+        }
+
+        function stopPerformanceUpdates() {
+            if (performanceUpdateInterval) {
+                clearInterval(performanceUpdateInterval);
+                performanceUpdateInterval = null;
+            }
+        }
+
+        function updatePerformanceDisplay() {
+            if (!window.game || !window.game.renderer) return;
+            
+            const renderer = window.game.renderer;
+            const aiWorker = window.game.aiWorkerManager;
+            
+            // Update FPS
+            const fpsElement = document.getElementById('fps-value');
+            if (renderer.fps !== undefined) {
+                const fps = renderer.fps;
+                fpsElement.textContent = fps;
+                fpsElement.className = fps >= 55 ? 'performance-value performance-good' : 
+                                     fps >= 30 ? 'performance-value performance-warning' : 
+                                     'performance-value performance-bad';
+            }
+            
+            // Update Render Time
+            const renderTimeElement = document.getElementById('render-time');
+            if (renderer.performanceMetrics && renderer.performanceMetrics.renderTime !== undefined) {
+                const renderTime = Math.round(renderer.performanceMetrics.renderTime * 10) / 10;
+                renderTimeElement.textContent = `${renderTime}ms`;
+                renderTimeElement.className = renderTime <= 8 ? 'performance-value performance-good' : 
+                                             renderTime <= 16 ? 'performance-value performance-warning' : 
+                                             'performance-value performance-bad';
+            }
+            
+            // Update Memory Usage
+            const memoryElement = document.getElementById('memory-usage');
+            if (performance.memory) {
+                const memoryMB = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                memoryElement.textContent = `${memoryMB}MB`;
+                memoryElement.className = memoryMB <= 50 ? 'performance-value performance-good' : 
+                                         memoryMB <= 100 ? 'performance-value performance-warning' : 
+                                         'performance-value performance-bad';
+            }
+            
+            // Update AI Worker Status
+            const aiStatusElement = document.getElementById('ai-worker-status');
+            if (aiWorker) {
+                const status = aiWorker.isInitialized ? 'Ready' : 'Offline';
+                aiStatusElement.textContent = status;
+                aiStatusElement.className = aiWorker.isInitialized ? 'performance-value performance-good' : 'performance-value performance-bad';
+            }
+            
+            // Update Animation Count
+            const animationElement = document.getElementById('animation-count');
+            if (renderer.animations !== undefined) {
+                const count = renderer.animations.length;
+                animationElement.textContent = count;
+                animationElement.className = count <= 3 ? 'performance-value performance-good' : 
+                                            count <= 6 ? 'performance-value performance-warning' : 
+                                            'performance-value performance-bad';
+            }
+            
+            // Update Cache Size
+            const cacheElement = document.getElementById('cache-size');
+            if (renderer.renderCache !== undefined) {
+                const size = renderer.renderCache.size;
+                cacheElement.textContent = size;
+                cacheElement.className = size <= 50 ? 'performance-value performance-good' : 
+                                        size <= 100 ? 'performance-value performance-warning' : 
+                                        'performance-value performance-bad';
+            }
+        }
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initializeGame);
         } else {

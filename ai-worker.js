@@ -1,8 +1,9 @@
-// AI Worker for Solitaire - Handles AI analysis in background thread
+// AI Worker for Solitaire - Phase 2 Enhanced with Non-blocking Operations
 class SolitaireAIWorker {
     constructor() {
         this.isReady = true;
-        console.log('🤖 AI Worker initialized');
+        this.requestHandlers = new Map();
+        console.log('🤖 Phase 2 AI Worker initialized');
     }
 
     analyzePosition(gameState) {

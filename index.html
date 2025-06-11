@@ -2601,7 +2601,7 @@
         class AIHintSystem {
             constructor(gameInstance) {
                 this.game = gameInstance;
-                this.autoSolveDepth = 50; // Maximum moves to look ahead
+                this.autoSolveDepth = 150; // Maximum moves to look ahead
                 this.winningPaths = new Map(); // Cache of winning sequences
                 
                 // Web Worker for background AI processing
@@ -2924,7 +2924,7 @@
                                 type: 'worker_strategic',
                                 move: workerHint.bestMove,
                                 message: `🤖 AI Recommends: ${this.describeMoveAction(workerHint.bestMove)}`,
-                                details: `Win probability: ${Math.round(workerHint.winProbability)}%. ${workerHint.stockRecommendation.reason}`,
+                                details: `Win probability: ${Math.round(workerHint.winProbability)}%. ${workerHint.stockRecommendation.reason}${workerHint.stockRecommendation.drawsNeeded > 0 ? ` (${workerHint.stockRecommendation.drawsNeeded} draws)` : ''}`,
                                 priority: 'medium',
                                 winProbability: workerHint.winProbability,
                                 stockRecommendation: workerHint.stockRecommendation,
@@ -3303,6 +3303,9 @@
                     case 'tableau_to_tableau':
                         return `Move ${move.card.rank}${move.card.suit} to tableau column ${move.to.index + 1}`;
                     case 'draw_stock':
+                        if (move.drawsNeeded && move.drawsNeeded > 1) {
+                            return `Draw from stock pile (${move.drawsNeeded} times)`;
+                        }
                         return 'Draw from stock pile';
                     default:
                         return 'Unknown move';
@@ -3440,12 +3443,12 @@
                 const useful = nextUseful.useful;
                 
                 if (drawsNeeded === 1) {
-                    return {
-                        shouldDraw: true,
-                        drawsNeeded: 1,
-                        reason: `Next card (${nextUseful.card.rank}${nextUseful.card.suit}) is immediately useful: ${useful.reason}`,
-                        priority: useful.priority || 'high'
-                    };
+                                            return {
+                            shouldDraw: true,
+                            drawsNeeded: 1,
+                            reason: `Next card (${nextUseful.card.rank}${nextUseful.card.suit}) is immediately useful: ${useful.reason}`,
+                            priority: useful.priority || 'high'
+                        };
                 } else if (drawsNeeded <= 3) {
                     return {
                         shouldDraw: true,
@@ -3766,9 +3769,9 @@
                                 <div style="margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 6px;">
                                     <strong>🤖 Web Worker Stock Analysis:</strong><br>
                                     <span style="color: ${stockRec.shouldDraw ? '#4ade80' : '#f59e0b'};">
-                                        ${stockRec.shouldDraw ? `✅ ${stockRec.reason}` : `⏸️ ${stockRec.reason}`}
+                                        ${stockRec.shouldDraw ? `✅ Draw ${stockRec.drawsNeeded || 1} time${(stockRec.drawsNeeded || 1) > 1 ? 's' : ''} from deck` : `⏸️ ${stockRec.reason}`}
                                     </span><br>
-                                    <small>Priority: ${stockRec.priority}</small>
+                                    <small>${stockRec.reason}${stockRec.priority ? ` • Priority: ${stockRec.priority}` : ''}</small>
                                 </div>
                             `;
                         } else if (completeAnalysis.stockAnalysis) {

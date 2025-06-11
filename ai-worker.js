@@ -318,14 +318,20 @@ class SolitaireAIWorker {
     analyzeStock(state) {
         const stockCards = state.stock.length;
         const wasteCards = state.waste.length;
+        const drawMode = state.drawMode || 3;
         
         if (stockCards === 0 && wasteCards === 0) {
             return {
                 shouldDraw: false,
+                drawsNeeded: 0,
                 reason: 'No cards in stock or waste',
                 priority: 'low'
             };
         }
+
+        // Simulate upcoming cards to give specific draw recommendations
+        const upcomingCards = this.simulateStockDraws(state, 10);
+        const nextUsefulCard = upcomingCards.find(item => item.useful);
 
         const availableMoves = this.generateAllPossibleMoves(state);
         const tableauMoves = availableMoves.filter(move => 
@@ -333,26 +339,92 @@ class SolitaireAIWorker {
         );
 
         if (tableauMoves.length === 0) {
+            if (nextUsefulCard) {
+                return {
+                    shouldDraw: true,
+                    drawsNeeded: nextUsefulCard.drawNumber,
+                    reason: `No tableau moves available. Draw ${nextUsefulCard.drawNumber} time${nextUsefulCard.drawNumber > 1 ? 's' : ''} to get ${nextUsefulCard.card.value}${nextUsefulCard.card.suit}`,
+                    priority: 'high'
+                };
+            }
             return {
                 shouldDraw: true,
-                reason: 'No tableau moves available',
+                drawsNeeded: 1,
+                reason: 'No tableau moves available, try drawing from stock',
                 priority: 'high'
             };
         }
 
-        if (tableauMoves.length < 2) {
+        if (tableauMoves.length < 2 && nextUsefulCard && nextUsefulCard.drawNumber <= 3) {
             return {
                 shouldDraw: true,
-                reason: 'Limited tableau options',
+                drawsNeeded: nextUsefulCard.drawNumber,
+                reason: `Limited tableau options. Draw ${nextUsefulCard.drawNumber} time${nextUsefulCard.drawNumber > 1 ? 's' : ''} to get useful ${nextUsefulCard.card.value}${nextUsefulCard.card.suit}`,
                 priority: 'medium'
+            };
+        }
+
+        if (nextUsefulCard && nextUsefulCard.drawNumber <= 5) {
+            return {
+                shouldDraw: false,
+                drawsNeeded: nextUsefulCard.drawNumber,
+                reason: `Focus on ${tableauMoves.length} tableau moves first. (Useful card in ${nextUsefulCard.drawNumber} draws)`,
+                priority: 'low'
             };
         }
 
         return {
             shouldDraw: false,
-            reason: 'Focus on available tableau moves first',
+            drawsNeeded: 0,
+            reason: `Focus on ${tableauMoves.length} available tableau moves first`,
             priority: 'low'
         };
+    }
+
+    simulateStockDraws(state, maxDraws) {
+        const stockCopy = [...state.stock];
+        const wasteCopy = [...state.waste];
+        const drawMode = state.drawMode || 3;
+        const upcomingCards = [];
+
+        for (let draw = 0; draw < maxDraws && (stockCopy.length > 0 || wasteCopy.length > 0); draw++) {
+            if (stockCopy.length === 0) {
+                // Reset stock from waste
+                stockCopy.push(...wasteCopy.reverse());
+                wasteCopy.length = 0;
+            }
+
+            const cardsDrawn = stockCopy.splice(-Math.min(drawMode, stockCopy.length));
+            if (cardsDrawn.length > 0) {
+                const topCard = cardsDrawn[cardsDrawn.length - 1];
+                upcomingCards.push({
+                    card: topCard,
+                    drawNumber: draw + 1,
+                    useful: this.isCardUsefulInPosition(topCard, state)
+                });
+                wasteCopy.push(...cardsDrawn);
+            }
+        }
+
+        return upcomingCards;
+    }
+
+    isCardUsefulInPosition(card, state) {
+        // Check if can go to foundation
+        for (const [suit, foundationPile] of Object.entries(state.foundations)) {
+            if (this.canPlaceOnFoundation(card, foundationPile)) {
+                return true;
+            }
+        }
+
+        // Check if can go to tableau
+        for (let i = 0; i < state.tableau.length; i++) {
+            if (this.canPlaceOnTableau(card, state.tableau[i])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

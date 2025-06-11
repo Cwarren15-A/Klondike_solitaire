@@ -741,6 +741,11 @@
                     if (this.ml && !this.ml.isDisposed) {
                         this.ml.dispose();
                     }
+                    // Cleanup AI worker
+                    if (this.ai && this.ai.worker) {
+                        this.ai.worker.terminate();
+                        console.log('🤖 AI Worker terminated');
+                    }
                 } catch (error) {
                     console.error('Cleanup error:', error);
                 }
@@ -2598,6 +2603,78 @@
                 this.game = gameInstance;
                 this.autoSolveDepth = 50; // Maximum moves to look ahead
                 this.winningPaths = new Map(); // Cache of winning sequences
+                
+                // Web Worker for background AI processing
+                this.worker = null;
+                this.pendingRequests = new Map();
+                this.requestIdCounter = 0;
+                this.workerSupported = false;
+                
+                this.initializeWorker();
+            }
+            
+            initializeWorker() {
+                try {
+                    if (typeof Worker !== 'undefined') {
+                        this.worker = new Worker('ai-worker.js');
+                        this.worker.onmessage = (event) => this.handleWorkerMessage(event);
+                        this.worker.onerror = (error) => {
+                            console.warn('AI Worker error:', error);
+                            this.workerSupported = false;
+                        };
+                        this.workerSupported = true;
+                        console.log('🤖 AI Web Worker initialized successfully');
+                    } else {
+                        console.log('🤖 Web Workers not supported, using main thread');
+                        this.workerSupported = false;
+                    }
+                } catch (error) {
+                    console.warn('Failed to initialize AI Worker:', error);
+                    this.workerSupported = false;
+                }
+            }
+            
+            handleWorkerMessage(event) {
+                const { requestId, success, data, error, requestType } = event.data;
+                
+                if (this.pendingRequests.has(requestId)) {
+                    const { resolve, reject, type } = this.pendingRequests.get(requestId);
+                    this.pendingRequests.delete(requestId);
+                    
+                    if (success) {
+                        console.log(`✅ AI Worker completed ${type} in background`);
+                        resolve(data);
+                    } else {
+                        console.error(`❌ AI Worker error for ${type}:`, error);
+                        reject(new Error(error));
+                    }
+                }
+            }
+            
+            async requestFromWorker(type, data) {
+                return new Promise((resolve, reject) => {
+                    if (!this.workerSupported || !this.worker) {
+                        reject(new Error('Worker not available'));
+                        return;
+                    }
+                    
+                    const requestId = ++this.requestIdCounter;
+                    this.pendingRequests.set(requestId, { resolve, reject, type });
+                    
+                    this.worker.postMessage({
+                        type,
+                        data,
+                        requestId
+                    });
+                    
+                    // Timeout after 30 seconds
+                    setTimeout(() => {
+                        if (this.pendingRequests.has(requestId)) {
+                            this.pendingRequests.delete(requestId);
+                            reject(new Error('Worker request timeout'));
+                        }
+                    }, 30000);
+                });
             }
             
             // NEW: Auto-Complete Game Solver - Returns complete winning sequence
@@ -2608,6 +2685,43 @@
                 const currentState = this.cloneGameState();
                 
                 try {
+                    // Try to use Web Worker first
+                    if (this.workerSupported) {
+                        console.log('🚀 Using Web Worker for winning path analysis...');
+                        try {
+                            const result = await this.requestFromWorker('findWinningPath', {
+                                gameState: currentState,
+                                maxDepth: maxDepth
+                            });
+                            
+                            const timeTaken = (performance.now() - startTime).toFixed(0);
+                            
+                            if (result.canWin) {
+                                console.log(`🎯 Auto-Complete found winning path in ${result.timeTaken}ms: ${result.moveCount} moves`);
+                                return {
+                                    canWin: true,
+                                    moves: result.moves,
+                                    moveCount: result.moveCount,
+                                    timeTaken: timeTaken,
+                                    confidence: result.confidence
+                                };
+                            } else {
+                                console.log(`❌ No winning path found within ${maxDepth} moves (${result.timeTaken}ms)`);
+                                return {
+                                    canWin: false,
+                                    reason: `No winning sequence found within ${maxDepth} moves`,
+                                    timeTaken: timeTaken,
+                                    suggestedMoves: await this.getBestProgressiveMoves(currentState, 3)
+                                };
+                            }
+                        } catch (workerError) {
+                            console.warn('Worker failed, falling back to main thread:', workerError);
+                            // Fall through to main thread implementation
+                        }
+                    }
+                    
+                    // Fallback to main thread
+                    console.log('🔄 Using main thread for winning path analysis...');
                     const winningSequence = await this.findWinningPath(currentState, [], maxDepth);
                     const timeTaken = (performance.now() - startTime).toFixed(0);
                     
@@ -2676,6 +2790,29 @@
             // Enhanced hint system using auto-complete analysis
             async getSmartHint() {
                 console.log('🧠 Generating AI hint with auto-complete analysis...');
+                
+                // Try to get a quick hint from worker first
+                if (this.workerSupported) {
+                    try {
+                        console.log('🚀 Getting quick hint from Web Worker...');
+                        const workerHint = await this.requestFromWorker('getHint', {
+                            gameState: this.cloneGameState()
+                        });
+                        
+                        if (workerHint.bestMove) {
+                            return {
+                                type: 'worker_strategic',
+                                move: workerHint.bestMove,
+                                message: `🤖 AI Recommends: ${this.describeMoveAction(workerHint.bestMove)}`,
+                                details: `Win probability: ${Math.round(workerHint.winProbability)}%. ${workerHint.stockRecommendation.reason}`,
+                                priority: 'medium',
+                                winProbability: workerHint.winProbability
+                            };
+                        }
+                    } catch (workerError) {
+                        console.warn('Worker hint failed, trying auto-complete:', workerError);
+                    }
+                }
                 
                 // First, try auto-complete for immediate win detection
                 const autoComplete = await this.autoCompleteGame(25); // Shorter depth for hints
@@ -3451,6 +3588,7 @@
                     
                     // Use the new smart hint system with auto-complete
                     const smartHint = await this.getSmartHint();
+                    const completeAnalysis = this.analyzeCompleteGameState();
                     this.game.state.hintCardId = null;
                     
                     if (smartHint && smartHint.move) {
@@ -3462,7 +3600,8 @@
                         
                         // Display enhanced hint message
                         const isWinningPath = smartHint.type === 'winning_path';
-                        const aiIcon = isWinningPath ? '🎯' : '🧠';
+                        const isWorkerHint = smartHint.type === 'worker_strategic';
+                        const aiIcon = isWinningPath ? '🎯' : isWorkerHint ? '🤖' : '🧠';
                         const priority = smartHint.priority === 'critical' ? '#4ade80' : '#a78bfa';
                         
                         // Display winning path or strategic information
@@ -3487,9 +3626,9 @@
                         
                         // Enhanced stock drawing recommendation with complete analysis
                         let stockAdvice = '';
-                        if (analysis.stockRecommendation) {
-                            const stockRec = analysis.stockRecommendation;
-                            const stockAnalysis = analysis.completeAnalysis.stockAnalysis;
+                        if (completeAnalysis.stockAnalysis) {
+                            const stockRec = completeAnalysis.stockAnalysis.recommendation;
+                            const stockAnalysis = completeAnalysis.stockAnalysis;
                             
                             let upcomingCardsText = '';
                             if (stockAnalysis.upcomingCards && stockAnalysis.upcomingCards.length > 0) {
@@ -3517,8 +3656,9 @@
                         
                         // Hidden cards insights
                         let hiddenInsights = '';
-                        if (analysis.hiddenCardInsights && analysis.hiddenCardInsights.insights.length > 0) {
-                            const insights = analysis.hiddenCardInsights.insights.slice(0, 3); // Show top 3
+                        const hiddenCardInsights = this.analyzeHiddenCards(this.game.state);
+                        if (hiddenCardInsights && hiddenCardInsights.insights.length > 0) {
+                            const insights = hiddenCardInsights.insights.slice(0, 3); // Show top 3
                             hiddenInsights = `
                                 <div style="margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 6px;">
                                     <strong>🔍 Hidden Card Intel:</strong><br>
@@ -3529,18 +3669,20 @@
                         
                         // Learning insights
                         let learningInfo = '';
-                        if (analysis.learningInsights && analysis.learningInsights.totalLearningData > 0) {
+                        const learningInsights = this.game.ml ? this.game.ml.performLearningAnalysis(this.game.state) : null;
+                        if (learningInsights && learningInsights.totalLearningData > 0) {
                             learningInfo = `
                                 <div style="margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 6px;">
                                     <strong>📖 AI Learning:</strong><br>
-                                    <small>Learned from ${analysis.learningInsights.totalLearningData} winning games</small>
-                                    ${analysis.learningInsights.insights.length > 0 ? '<br>' + analysis.learningInsights.insights.map(insight => `<small>• ${insight}</small>`).join('<br>') : ''}
+                                    <small>Learned from ${learningInsights.totalLearningData} winning games</small>
+                                    ${learningInsights.insights.length > 0 ? '<br>' + learningInsights.insights.map(insight => `<small>• ${insight}</small>`).join('<br>') : ''}
                                 </div>
                             `;
                         }
                         
                         // Alternative moves
                         let alternativeMoves = '';
+                        const smartMoves = this.findAllPossibleMoves();
                         if (smartMoves && smartMoves.length > 1) {
                             const alternatives = smartMoves.slice(1, 3);
                             alternativeMoves = `
@@ -3573,8 +3715,8 @@
                                 ${pathInfo}
                                 
                                 <div style="text-align: center; margin-top: 15px; font-size: 11px; opacity: 0.7;">
-                                    <strong>Powered by:</strong> ${isWinningPath ? 'Auto-Complete AI with Winning Path Analysis' : 'Enhanced Strategic AI'}<br>
-                                    ${isWinningPath ? 'Complete game simulation • Winning path detection • Move confidence scoring' : 'Complete board vision • Strategic analysis • Learning algorithms'}
+                                    <strong>Powered by:</strong> ${isWinningPath ? 'Auto-Complete AI with Winning Path Analysis' : isWorkerHint ? 'Web Worker AI (Background Processing)' : 'Enhanced Strategic AI'}<br>
+                                    ${isWinningPath ? 'Complete game simulation • Winning path detection • Move confidence scoring' : isWorkerHint ? 'Non-blocking analysis • Background processing • Real-time hints' : 'Complete board vision • Strategic analysis • Learning algorithms'}
                                 </div>
                             </div>
                         `;
@@ -5071,13 +5213,13 @@
                     const centerY = y + this.game.constants.CARD_HEIGHT/2;
                     
                     // Central diamond
-                    this.ctx.beginPath();
+                            this.ctx.beginPath();
                     this.ctx.moveTo(centerX, centerY - 20);
                     this.ctx.lineTo(centerX + 15, centerY);
                     this.ctx.lineTo(centerX, centerY + 20);
                     this.ctx.lineTo(centerX - 15, centerY);
                     this.ctx.closePath();
-                    this.ctx.fill();
+                            this.ctx.fill();
                     
                     // Corner diamonds
                     for (let i = 0; i < 4; i++) {
@@ -5085,14 +5227,14 @@
                         this.ctx.translate(centerX, centerY);
                         this.ctx.rotate(i * Math.PI / 2);
                         this.ctx.translate(0, -30);
-                        
-                        this.ctx.beginPath();
+                            
+                            this.ctx.beginPath();
                         this.ctx.moveTo(0, -8);
                         this.ctx.lineTo(6, 0);
                         this.ctx.lineTo(0, 8);
                         this.ctx.lineTo(-6, 0);
                         this.ctx.closePath();
-                        this.ctx.fill();
+                            this.ctx.fill();
                         
                         this.ctx.restore();
                     }

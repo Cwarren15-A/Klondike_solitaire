@@ -214,6 +214,8 @@
         .btn-green { background: linear-gradient(135deg, #059669, #047857); color: white; }
         .btn-orange { background: linear-gradient(145deg, #f97316, #ea580c); color: white; }
         .btn-red { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; }
+        .btn-gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: white; font-weight: bold; }
+        .btn-gold:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4); }
         
         button:disabled {
             opacity: 0.5;
@@ -520,6 +522,7 @@
                 <button class="btn-yellow" id="undoBtn" onclick="safeGameCall('undo')" title="Undo last move (U)" aria-label="Undo last move">↶ Undo</button>
                 <button class="btn-orange" id="redoBtn" onclick="safeGameCall('redo')" title="Redo last undone move (R)" aria-label="Redo last undone move">↷ Redo</button>
                 <button class="btn-purple" onclick="safeGameCall('ai.showHint')" title="Show AI hint (H)" aria-label="Show AI move hint">🧠 AI Hint</button>
+                <button class="btn-gold" onclick="safeGameCall('ai.autoCompleteGame')" title="Auto-complete game with AI" aria-label="Auto-complete game">🤖 Auto-Solve</button>
                 <button class="btn-orange" onclick="safeGameCall('ui.showMLAnalysis')" title="Show ML analysis" aria-label="Show machine learning analysis">📊 AI Analysis</button>
                 <button class="btn-green" onclick="safeGameCall('storage.quickSave')" title="Quick save (S)" aria-label="Quick save game">💾 Save</button>
             </div>
@@ -2589,10 +2592,337 @@
             }
         }
 
-        // AI hint system
+        // AI hint system with Auto-Complete capabilities
         class AIHintSystem {
             constructor(gameInstance) {
                 this.game = gameInstance;
+                this.autoSolveDepth = 50; // Maximum moves to look ahead
+                this.winningPaths = new Map(); // Cache of winning sequences
+            }
+            
+            // NEW: Auto-Complete Game Solver - Returns complete winning sequence
+            async autoCompleteGame(maxDepth = this.autoSolveDepth) {
+                console.log('🤖 Auto-Complete AI analyzing winning paths...');
+                
+                const startTime = performance.now();
+                const currentState = this.cloneGameState();
+                
+                try {
+                    const winningSequence = await this.findWinningPath(currentState, [], maxDepth);
+                    const timeTaken = (performance.now() - startTime).toFixed(0);
+                    
+                    if (winningSequence) {
+                        console.log(`🎯 Auto-Complete found winning path in ${timeTaken}ms: ${winningSequence.length} moves`);
+                        return {
+                            canWin: true,
+                            moves: winningSequence,
+                            moveCount: winningSequence.length,
+                            timeTaken: timeTaken,
+                            confidence: this.calculatePathConfidence(winningSequence)
+                        };
+                    } else {
+                        console.log(`❌ No winning path found within ${maxDepth} moves (${timeTaken}ms)`);
+                        return {
+                            canWin: false,
+                            reason: `No winning sequence found within ${maxDepth} moves`,
+                            timeTaken: timeTaken,
+                            suggestedMoves: await this.getBestProgressiveMoves(currentState, 3)
+                        };
+                    }
+                } catch (error) {
+                    console.error('Auto-Complete error:', error);
+                    return { canWin: false, error: error.message };
+                }
+            }
+            
+            // Recursive pathfinding with pruning and memoization
+            async findWinningPath(gameState, moveSequence, depthRemaining) {
+                // Check if game is won
+                if (this.isGameWon(gameState)) {
+                    return moveSequence;
+                }
+                
+                // Depth limit reached
+                if (depthRemaining <= 0) {
+                    return null;
+                }
+                
+                // Generate all possible moves from current state
+                const possibleMoves = this.generateAllPossibleMoves(gameState);
+                
+                // Sort moves by strategic value (most promising first)
+                const rankedMoves = this.rankMovesByWinPotential(possibleMoves, gameState);
+                
+                // Try each move recursively
+                for (const move of rankedMoves) {
+                    const newState = this.applyMoveToState(gameState, move);
+                    const newSequence = [...moveSequence, move];
+                    
+                    // Recursive search
+                    const winningPath = await this.findWinningPath(newState, newSequence, depthRemaining - 1);
+                    if (winningPath) {
+                        return winningPath;
+                    }
+                    
+                    // Yield control to prevent UI freezing
+                    if (moveSequence.length % 10 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 1));
+                    }
+                }
+                
+                return null; // No winning path found
+            }
+            
+            // Enhanced hint system using auto-complete analysis
+            async getSmartHint() {
+                console.log('🧠 Generating AI hint with auto-complete analysis...');
+                
+                // First, try auto-complete for immediate win detection
+                const autoComplete = await this.autoCompleteGame(25); // Shorter depth for hints
+                
+                if (autoComplete.canWin && autoComplete.moves.length > 0) {
+                    const nextMove = autoComplete.moves[0];
+                    const movesLeft = autoComplete.moves.length;
+                    
+                    return {
+                        type: 'winning_path',
+                        move: nextMove,
+                        confidence: autoComplete.confidence,
+                        message: `🎯 WINNING MOVE: ${this.describeMoveAction(nextMove)}`,
+                        details: `This leads to victory in ${movesLeft} moves (${autoComplete.confidence}% confidence)`,
+                        priority: 'critical',
+                        fullPath: autoComplete.moves.slice(0, 5), // Show first 5 moves
+                        pathLength: movesLeft
+                    };
+                } else {
+                    // Fallback to current analysis if no winning path found
+                    const currentAnalysis = this.analyzeCompleteGameState();
+                    const bestMove = this.findBestCurrentMove(currentAnalysis);
+                    
+                    return {
+                        type: 'strategic',
+                        move: bestMove,
+                        message: `💡 Strategic Move: ${this.describeMoveAction(bestMove)}`,
+                        details: currentAnalysis.stockAnalysis.recommendation.reason,
+                        priority: 'medium',
+                        suggestion: autoComplete.suggestedMoves ? `Progress moves: ${autoComplete.suggestedMoves.map(m => this.describeMoveAction(m)).join(', ')}` : null
+                    };
+                }
+            }
+            
+            // Utility functions for auto-complete
+            cloneGameState() {
+                return JSON.parse(JSON.stringify(this.game.state));
+            }
+            
+            isGameWon(state) {
+                return Object.values(state.foundations).every(pile => pile.length === 13);
+            }
+            
+            generateAllPossibleMoves(state) {
+                const moves = [];
+                
+                // Tableau to foundation moves
+                for (let i = 0; i < state.tableau.length; i++) {
+                    const pile = state.tableau[i];
+                    if (pile.length > 0) {
+                        const topCard = pile[pile.length - 1];
+                        if (topCard.faceUp) {
+                            Object.keys(state.foundations).forEach(suit => {
+                                if (this.canPlaceOnFoundationState(topCard, state.foundations[suit])) {
+                                    moves.push({
+                                        type: 'tableau_to_foundation',
+                                        from: { source: 'tableau', index: i },
+                                        to: { source: 'foundation', suit: suit },
+                                        card: topCard
+                                    });
+                                }
+                            });
+                        }
+                    }
+                }
+                
+                // Waste to foundation moves
+                if (state.waste.length > 0) {
+                    const topCard = state.waste[state.waste.length - 1];
+                    Object.keys(state.foundations).forEach(suit => {
+                        if (this.canPlaceOnFoundationState(topCard, state.foundations[suit])) {
+                            moves.push({
+                                type: 'waste_to_foundation',
+                                from: { source: 'waste' },
+                                to: { source: 'foundation', suit: suit },
+                                card: topCard
+                            });
+                        }
+                    });
+                }
+                
+                // Tableau to tableau moves
+                for (let i = 0; i < state.tableau.length; i++) {
+                    const fromPile = state.tableau[i];
+                    if (fromPile.length > 0) {
+                        const topCard = fromPile[fromPile.length - 1];
+                        if (topCard.faceUp) {
+                            for (let j = 0; j < state.tableau.length; j++) {
+                                if (i !== j && this.canPlaceOnTableauState(topCard, state.tableau[j])) {
+                                    moves.push({
+                                        type: 'tableau_to_tableau',
+                                        from: { source: 'tableau', index: i },
+                                        to: { source: 'tableau', index: j },
+                                        card: topCard
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Stock draw move
+                if (state.stock.length > 0 || state.waste.length > 0) {
+                    moves.push({
+                        type: 'draw_stock',
+                        from: { source: 'stock' },
+                        to: { source: 'waste' }
+                    });
+                }
+                
+                return moves;
+            }
+            
+            rankMovesByWinPotential(moves, state) {
+                return moves.sort((a, b) => {
+                    let scoreA = this.calculateMoveScore(a, state);
+                    let scoreB = this.calculateMoveScore(b, state);
+                    return scoreB - scoreA; // Higher score first
+                });
+            }
+            
+            calculateMoveScore(move, state) {
+                let score = 0;
+                
+                // Foundation moves are highest priority
+                if (move.type.includes('foundation')) {
+                    score += 1000 + move.card.value; // Higher cards worth more
+                }
+                
+                // Moves that reveal hidden cards
+                if (move.type === 'tableau_to_tableau' || move.type === 'tableau_to_foundation') {
+                    const fromPile = state.tableau[move.from.index];
+                    if (fromPile && fromPile.length > 1 && !fromPile[fromPile.length - 2].faceUp) {
+                        score += 500; // Revealing hidden cards is valuable
+                    }
+                }
+                
+                // King to empty space
+                if (move.type === 'tableau_to_tableau' && move.card.value === 13 && state.tableau[move.to.index].length === 0) {
+                    score += 300;
+                }
+                
+                // Stock draws (lowest priority)
+                if (move.type === 'draw_stock') {
+                    score += 10;
+                }
+                
+                return score;
+            }
+            
+            applyMoveToState(state, move) {
+                const newState = JSON.parse(JSON.stringify(state)); // Deep clone
+                
+                try {
+                    switch (move.type) {
+                        case 'tableau_to_foundation':
+                            const tableauPile = newState.tableau[move.from.index];
+                            const card = tableauPile.pop();
+                            newState.foundations[move.to.suit].push(card);
+                            // Flip hidden card if revealed
+                            if (tableauPile.length > 0 && !tableauPile[tableauPile.length - 1].faceUp) {
+                                tableauPile[tableauPile.length - 1].faceUp = true;
+                            }
+                            break;
+                            
+                        case 'waste_to_foundation':
+                            const wasteCard = newState.waste.pop();
+                            newState.foundations[move.to.suit].push(wasteCard);
+                            break;
+                            
+                        case 'tableau_to_tableau':
+                            const fromPile = newState.tableau[move.from.index];
+                            const toPile = newState.tableau[move.to.index];
+                            const movingCard = fromPile.pop();
+                            toPile.push(movingCard);
+                            // Flip hidden card if revealed
+                            if (fromPile.length > 0 && !fromPile[fromPile.length - 1].faceUp) {
+                                fromPile[fromPile.length - 1].faceUp = true;
+                            }
+                            break;
+                            
+                        case 'draw_stock':
+                            if (newState.stock.length > 0) {
+                                const drawCount = Math.min(newState.drawMode || 3, newState.stock.length);
+                                const drawnCards = newState.stock.splice(-drawCount);
+                                newState.waste.push(...drawnCards);
+                            } else if (newState.waste.length > 0) {
+                                newState.stock = newState.waste.reverse();
+                                newState.waste = [];
+                            }
+                            break;
+                    }
+                } catch (error) {
+                    console.error('Error applying move:', error, move);
+                    return state; // Return original state on error
+                }
+                
+                return newState;
+            }
+            
+            canPlaceOnFoundationState(card, foundationPile) {
+                if (foundationPile.length === 0) {
+                    return card.value === 1; // Ace
+                }
+                const topCard = foundationPile[foundationPile.length - 1];
+                return topCard.suit === card.suit && topCard.value === card.value - 1;
+            }
+            
+            canPlaceOnTableauState(card, tableauPile) {
+                if (tableauPile.length === 0) {
+                    return card.value === 13; // King
+                }
+                const topCard = tableauPile[tableauPile.length - 1];
+                if (!topCard.faceUp) return false;
+                
+                const cardColor = (card.suit === '♠' || card.suit === '♣') ? 'black' : 'red';
+                const topColor = (topCard.suit === '♠' || topCard.suit === '♣') ? 'black' : 'red';
+                
+                return cardColor !== topColor && card.value === topCard.value - 1;
+            }
+            
+            calculatePathConfidence(winningPath) {
+                // Shorter paths = higher confidence
+                const lengthFactor = Math.max(20, 100 - winningPath.length * 2);
+                
+                // More foundation moves = higher confidence
+                const foundationMoves = winningPath.filter(move => move.type.includes('foundation')).length;
+                const foundationFactor = foundationMoves * 5;
+                
+                return Math.min(95, lengthFactor + foundationFactor);
+            }
+            
+            describeMoveAction(move) {
+                if (!move) return 'No move available';
+                
+                switch (move.type) {
+                    case 'tableau_to_foundation':
+                        return `Place ${move.card.rank}${move.card.suit} on foundation`;
+                    case 'waste_to_foundation':
+                        return `Move ${move.card.rank}${move.card.suit} from waste to foundation`;
+                    case 'tableau_to_tableau':
+                        return `Move ${move.card.rank}${move.card.suit} to tableau column ${move.to.index + 1}`;
+                    case 'draw_stock':
+                        return 'Draw from stock pile';
+                    default:
+                        return 'Unknown move';
+                }
             }
             
             // New method: Analyze complete deck state with stock preview
@@ -3001,60 +3331,40 @@
              async showHint() {
                 try {
                     this.game.sound.play('cardFlip');
+                    console.log('🧠 Enhanced AI Hint System with Auto-Complete Analysis...');
                     
-                    // Get comprehensive game state analysis using complete board vision
-                    const completeAnalysis = this.analyzeCompleteGameState();
-                    console.log('🔍 Complete Board Analysis:', completeAnalysis);
-                    
-                    const moves = this.findAllPossibleMoves();
+                    // Use the new smart hint system with auto-complete
+                    const smartHint = await this.getSmartHint();
                     this.game.state.hintCardId = null;
                     
-                    // Filter out non-strategic moves (like lateral moves between same-value cards)
-                    const strategicMoves = this.filterStrategicMoves(moves, completeAnalysis);
-                    
-                    if (strategicMoves.length > 0) {
-                        let bestMove, analysis, smartMoves;
-                        
-                        // Use enhanced strategic evaluation
-                        console.log('🧠 Using enhanced strategic analysis with complete board vision...');
-                        
-                        // Evaluate moves with complete board context
-                        const evaluatedMoves = strategicMoves.map(move => {
-                            const evaluation = this.evaluateStrategicMove(move, completeAnalysis);
-                            return { ...move, ...evaluation };
-                        });
-                        
-                        // Sort by strategic score
-                        smartMoves = evaluatedMoves.sort((a, b) => b.strategicScore - a.strategicScore);
-                        bestMove = smartMoves[0];
-                        
-                        // Create enhanced analysis
-                        analysis = {
-                            winProbability: this.calculateWinProbability(completeAnalysis),
-                            difficulty: this.assessDifficulty(completeAnalysis),
-                            recommendation: this.generateRecommendation(completeAnalysis, bestMove),
-                            stockRecommendation: completeAnalysis.stockAnalysis.recommendation,
-                            completeAnalysis: completeAnalysis
-                        };
-                        
-                        this.game.state.hintCardId = bestMove.cardId;
+                    if (smartHint && smartHint.move) {
+                        // Highlight the recommended move if it has a card ID
+                        if (smartHint.move.card && smartHint.move.card.id) {
+                            this.game.state.hintCardId = smartHint.move.card.id;
+                        }
                         this.game.renderer.render();
                         
-                        // Create enhanced hint message with full AI capabilities
-                        const mlMode = this.game.ml && this.game.ml.isInitialized && !this.game.ml.fallbackMode;
-                        const aiIcon = mlMode ? '🧠' : '🎯';
-                        const aiType = mlMode ? 'Advanced AI with Complete Board Vision' : 'Smart Analysis';
+                        // Display enhanced hint message
+                        const isWinningPath = smartHint.type === 'winning_path';
+                        const aiIcon = isWinningPath ? '🎯' : '🧠';
+                        const priority = smartHint.priority === 'critical' ? '#4ade80' : '#a78bfa';
                         
-                        // Enhanced move reasoning with strategic analysis
-                        let moveReasoning = '';
-                        if (bestMove.strategicReasoning && bestMove.strategicReasoning.length > 0) {
-                            moveReasoning = `
+                        // Display winning path or strategic information
+                        let pathInfo = '';
+                        if (isWinningPath) {
+                            pathInfo = `
+                                <div style="margin-top: 10px; padding: 8px; background: rgba(72, 222, 128, 0.2); border-radius: 6px; border: 1px solid #4ade80;">
+                                    <strong>🎯 WINNING PATH DETECTED!</strong><br>
+                                    <small>This move leads to victory in ${smartHint.pathLength} moves</small><br>
+                                    <small><strong>Confidence:</strong> ${smartHint.confidence}%</small>
+                                    ${smartHint.fullPath ? `<br><small><strong>Next moves:</strong> ${smartHint.fullPath.slice(1, 4).map(m => this.describeMoveAction(m)).join(' → ')}</small>` : ''}
+                                </div>
+                            `;
+                        } else if (smartHint.suggestion) {
+                            pathInfo = `
                                 <div style="margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 6px;">
-                                    <strong>🎯 Strategic Analysis:</strong><br>
-                                    <ul style="margin: 5px 0; padding-left: 20px; font-size: 12px;">
-                                        ${bestMove.strategicReasoning.map(reason => `<li>${reason}</li>`).join('')}
-                                    </ul>
-                                    <small><strong>Strategic Score:</strong> ${Math.round(bestMove.strategicScore)}/100 | <strong>Confidence:</strong> ${Math.round(bestMove.confidence * 100)}%</small>
+                                    <strong>💡 Strategic Progress:</strong><br>
+                                    <small>${smartHint.suggestion}</small>
                                 </div>
                             `;
                         }
@@ -3131,42 +3441,24 @@
                         const message = `
                             <div style="text-align: left; line-height: 1.6; font-size: 14px; max-width: 500px;">
                                 <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; text-align: center;">
-                                    ${aiIcon} ${aiType}
+                                    ${aiIcon} ${isWinningPath ? 'Auto-Complete AI Analysis' : 'Enhanced AI Hint System'}
                                 </div>
                                 
                                 <div style="margin-bottom: 10px;">
-                                    <strong>💡 Best Move:</strong><br>
-                                    <span style="color: #4ade80; font-weight: bold;">${bestMove.description}</span>
-                                    ${bestMove.aiScore ? `<span style="color: #a78bfa; font-size: 12px;"> (AI Score: ${Math.round(bestMove.aiScore)})</span>` : ''}
-                                    ${bestMove.confidence ? `<span style="color: #fbbf24; font-size: 12px;"> (${Math.round(bestMove.confidence * 100)}% confidence)</span>` : ''}
+                                    <strong>${isWinningPath ? '🎯 WINNING MOVE' : '💡 Best Move'}:</strong><br>
+                                    <span style="color: ${priority}; font-weight: bold;">${smartHint.message}</span>
                                 </div>
                                 
                                 <div style="margin-bottom: 10px;">
-                                    <strong>🎯 Win Probability:</strong> 
-                                    <span style="color: ${analysis.winProbability > 0.6 ? '#4ade80' : analysis.winProbability > 0.3 ? '#f59e0b' : '#ef4444'};">
-                                        ${Math.round(analysis.winProbability * 100)}%
-                                    </span>
+                                    <strong>📋 Analysis:</strong><br>
+                                    <span style="color: #e5e7eb;">${smartHint.details}</span>
                                 </div>
                                 
-                                <div style="margin-bottom: 10px;">
-                                    <strong>📊 Difficulty:</strong> 
-                                    <span class="difficulty-indicator diff-${analysis.difficulty}">${analysis.difficulty.toUpperCase()}</span>
-                                </div>
-                                
-                                ${moveReasoning}
-                                ${stockAdvice}
-                                ${hiddenInsights}
-                                ${learningInfo}
-                                ${alternativeMoves}
-                                
-                                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3);">
-                                    <strong>🤖 AI Recommendation:</strong><br>
-                                    <span style="color: #a78bfa; font-style: italic;">${analysis.recommendation}</span>
-                                </div>
+                                ${pathInfo}
                                 
                                 <div style="text-align: center; margin-top: 15px; font-size: 11px; opacity: 0.7;">
-                                    <strong>Powered by:</strong> ${aiType}<br>
-                                    ${mlMode ? 'Complete board vision • Learning algorithms • Strategic planning' : 'Mathematical analysis • Pattern recognition'}
+                                    <strong>Powered by:</strong> ${isWinningPath ? 'Auto-Complete AI with Winning Path Analysis' : 'Enhanced Strategic AI'}<br>
+                                    ${isWinningPath ? 'Complete game simulation • Winning path detection • Move confidence scoring' : 'Complete board vision • Strategic analysis • Learning algorithms'}
                                 </div>
                             </div>
                         `;

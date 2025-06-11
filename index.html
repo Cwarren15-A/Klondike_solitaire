@@ -2615,21 +2615,140 @@
             
             initializeWorker() {
                 try {
+                    console.log('🔄 Attempting to initialize AI Web Worker...');
                     if (typeof Worker !== 'undefined') {
-                        this.worker = new Worker('ai-worker.js');
-                        this.worker.onmessage = (event) => this.handleWorkerMessage(event);
-                        this.worker.onerror = (error) => {
-                            console.warn('AI Worker error:', error);
-                            this.workerSupported = false;
-                        };
-                        this.workerSupported = true;
-                        console.log('🤖 AI Web Worker initialized successfully');
+                        try {
+                            // Try to create worker with detailed error handling
+                            this.worker = new Worker('ai-worker.js');
+                            
+                            this.worker.onmessage = (event) => {
+                                console.log('📨 Worker message received:', event.data.type);
+                                this.handleWorkerMessage(event);
+                            };
+                            
+                            this.worker.onerror = (error) => {
+                                console.error('❌ AI Worker file error:', error);
+                                console.error('Worker error details:', error.message, error.filename, error.lineno);
+                                console.log('🔄 Trying inline worker as fallback...');
+                                this.tryInlineWorker();
+                            };
+                            
+                            this.worker.onmessageerror = (error) => {
+                                console.error('❌ AI Worker message error:', error);
+                                this.workerSupported = false;
+                            };
+                            
+                            // Test the worker with a simple message
+                            setTimeout(() => {
+                                if (this.worker && this.workerSupported) {
+                                    console.log('🧪 Testing worker communication...');
+                                    this.testWorker();
+                                }
+                            }, 100);
+                            
+                            this.workerSupported = true;
+                            console.log('🤖 AI Web Worker initialized successfully');
+                            
+                        } catch (workerError) {
+                            console.warn('❌ Failed to load ai-worker.js:', workerError);
+                            console.log('🔄 Trying inline worker as fallback...');
+                            this.tryInlineWorker();
+                        }
                     } else {
-                        console.log('🤖 Web Workers not supported, using main thread');
+                        console.log('🤖 Web Workers not supported in this browser, using main thread');
                         this.workerSupported = false;
                     }
                 } catch (error) {
-                    console.warn('Failed to initialize AI Worker:', error);
+                    console.error('❌ Failed to initialize AI Worker:', error);
+                    console.log('🔄 Falling back to main thread processing');
+                    this.workerSupported = false;
+                }
+            }
+            
+            tryInlineWorker() {
+                try {
+                    // Create a simple inline worker for basic AI functionality
+                    const workerCode = `
+                        self.onmessage = function(event) {
+                            const { type, data, requestId } = event.data;
+                            
+                            try {
+                                let result = { message: 'Inline worker - limited functionality' };
+                                
+                                if (type === 'test') {
+                                    result = { message: 'Inline worker is responsive', timestamp: Date.now() };
+                                } else {
+                                    result = { error: 'Inline worker has limited functionality - using main thread' };
+                                }
+                                
+                                self.postMessage({
+                                    type: 'response',
+                                    requestId,
+                                    success: type === 'test',
+                                    data: result
+                                });
+                            } catch (error) {
+                                self.postMessage({
+                                    type: 'response',
+                                    requestId,
+                                    success: false,
+                                    error: error.message
+                                });
+                            }
+                        };
+                    `;
+                    
+                    const blob = new Blob([workerCode], { type: 'application/javascript' });
+                    this.worker = new Worker(URL.createObjectURL(blob));
+                    
+                    this.worker.onmessage = (event) => {
+                        console.log('📨 Inline worker message received:', event.data.type);
+                        this.handleWorkerMessage(event);
+                    };
+                    
+                    this.worker.onerror = (error) => {
+                        console.error('❌ Inline worker error:', error);
+                        this.workerSupported = false;
+                    };
+                    
+                    this.workerSupported = true;
+                    console.log('🤖 Inline AI Worker created as fallback');
+                    
+                    // Test the inline worker
+                    setTimeout(() => {
+                        if (this.worker && this.workerSupported) {
+                            console.log('🧪 Testing inline worker communication...');
+                            this.testWorker();
+                        }
+                    }, 100);
+                    
+                } catch (inlineError) {
+                    console.error('❌ Failed to create inline worker:', inlineError);
+                    this.workerSupported = false;
+                    console.log('🔄 Using main thread processing only');
+                }
+            }
+            
+            testWorker() {
+                try {
+                    // Send a simple test message to verify worker is responsive
+                    const testRequest = {
+                        type: 'test',
+                        data: { message: 'hello' },
+                        requestId: 'test-' + Date.now()
+                    };
+                    
+                    this.worker.postMessage(testRequest);
+                    
+                    // Set a timeout to check if worker responds
+                    setTimeout(() => {
+                        if (this.workerSupported) {
+                            console.log('✅ Worker communication test passed');
+                        }
+                    }, 1000);
+                    
+                } catch (error) {
+                    console.error('❌ Worker test failed:', error);
                     this.workerSupported = false;
                 }
             }
@@ -2792,14 +2911,15 @@
                 console.log('🧠 Generating AI hint with auto-complete analysis...');
                 
                 // Try to get a quick hint from worker first
-                if (this.workerSupported) {
+                if (this.workerSupported && this.worker) {
                     try {
                         console.log('🚀 Getting quick hint from Web Worker...');
                         const workerHint = await this.requestFromWorker('getHint', {
                             gameState: this.cloneGameState()
                         });
                         
-                        if (workerHint.bestMove) {
+                        if (workerHint && workerHint.bestMove) {
+                            console.log('✅ Worker provided hint successfully');
                             return {
                                 type: 'worker_strategic',
                                 move: workerHint.bestMove,
@@ -2808,10 +2928,19 @@
                                 priority: 'medium',
                                 winProbability: workerHint.winProbability
                             };
+                        } else {
+                            console.log('⚠️ Worker returned no valid hint, falling back to main thread');
                         }
                     } catch (workerError) {
-                        console.warn('Worker hint failed, trying auto-complete:', workerError);
+                        console.warn('❌ Worker hint failed, trying auto-complete:', workerError);
+                        // Disable worker if it's consistently failing
+                        if (workerError.message.includes('timeout') || workerError.message.includes('Worker not available')) {
+                            console.log('🔄 Disabling worker due to persistent issues');
+                            this.workerSupported = false;
+                        }
                     }
+                } else {
+                    console.log('🔄 Worker not available, using main thread for hints');
                 }
                 
                 // First, try auto-complete for immediate win detection

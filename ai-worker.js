@@ -366,6 +366,10 @@ self.onmessage = async function(event) {
         let result;
         
         switch (type) {
+            case 'test':
+                result = { message: 'Worker is responsive', timestamp: Date.now() };
+                break;
+                
             case 'analyzePosition':
                 result = aiWorker.analyzePosition(data.gameState);
                 break;
@@ -384,7 +388,7 @@ self.onmessage = async function(event) {
                 break;
                 
             default:
-                result = { error: 'Unknown request type' };
+                result = { error: 'Unknown request type: ' + type };
         }
         
         self.postMessage({

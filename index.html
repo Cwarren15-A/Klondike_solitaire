@@ -2195,6 +2195,26 @@
                 this.hoveredCard = null;
             }
             
+            canMoveToFoundation(card) {
+                // Check if card is face up
+                if (!card.faceUp) return false;
+                
+                // Get the foundation pile for this card's suit
+                const foundationPile = this.foundations[card.suit];
+                if (!foundationPile) return false;
+                
+                // If foundation is empty, only Ace can be placed
+                if (foundationPile.length === 0) {
+                    return card.value === 1;
+                }
+                
+                // Get the top card of the foundation pile
+                const topCard = foundationPile[foundationPile.length - 1];
+                
+                // Card must be one rank higher than the top card
+                return card.value === topCard.value + 1;
+            }
+            
             saveGameState() {
                 if (!this.game.gameHistory) {
                     this.game.gameHistory = [];
@@ -7278,10 +7298,18 @@
                     memoryUsage: 0
                 };
                 
-                this.initPerformanceSystem();
+                // Initialize after a short delay to ensure canvas is ready
+                setTimeout(() => this.initPerformanceSystem(), 100);
             }
             
             initPerformanceSystem() {
+                // Ensure canvas and context are available
+                if (!this.canvas || !this.ctx) {
+                    console.warn('Canvas not ready for PerformanceRenderer, retrying...');
+                    setTimeout(() => this.initPerformanceSystem(), 200);
+                    return;
+                }
+                
                 // Setup high-DPI canvas
                 this.setupHighDPICanvas();
                 
@@ -7296,7 +7324,7 @@
             }
             
             setupHighDPICanvas() {
-                if (!this.canvas) return;
+                if (!this.canvas || !this.ctx) return;
                 
                 const dpr = window.devicePixelRatio || 1;
                 const rect = this.canvas.getBoundingClientRect();
@@ -7396,6 +7424,12 @@
             }
             
             renderComplete() {
+                // Ensure context is available
+                if (!this.ctx || !this.canvas) {
+                    console.warn('Canvas context not available for rendering');
+                    return;
+                }
+                
                 // Full screen render with optimizations
                 this.ctx.clearRect(0, 0, this.canvas.width / this.highDPIScale, this.canvas.height / this.highDPIScale);
                 
@@ -7531,15 +7565,19 @@
             
             adjustQualityDown() {
                 // Reduce visual quality for better performance
-                this.ctx.imageSmoothingEnabled = false;
+                if (this.ctx) {
+                    this.ctx.imageSmoothingEnabled = false;
+                }
                 this.targetFPS = 30;
                 this.frameInterval = 1000 / this.targetFPS;
             }
             
             adjustQualityUp() {
                 // Increase visual quality when performance allows
-                this.ctx.imageSmoothingEnabled = true;
-                this.ctx.imageSmoothingQuality = 'high';
+                if (this.ctx) {
+                    this.ctx.imageSmoothingEnabled = true;
+                    this.ctx.imageSmoothingQuality = 'high';
+                }
                 this.targetFPS = 60;
                 this.frameInterval = 1000 / this.targetFPS;
             }

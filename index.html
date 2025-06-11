@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Klondike Solitaire - AI Enhanced</title>
-    <!-- Cache buster: 2024-12-19-15:30 -->
+    <!-- Cache buster: 2024-12-19-15:45 FORCE REFRESH -->
     <!-- Enhanced graphics deployed - cache refresh required -->
     <meta name="description" content="Play Klondike Solitaire with AI-powered hints, analysis, and adaptive difficulty. Advanced machine learning provides intelligent gameplay assistance.">
     
@@ -7255,11 +7255,6 @@
             constructor(gameInstance) {
                 super(gameInstance);
                 
-                // TEMPORARY: Disable PerformanceRenderer to fix infinite retry loop
-                console.log('🚫 PerformanceRenderer: Temporarily disabled to prevent initialization issues');
-                this.disabled = true;
-                return;
-                
                 // Performance tracking
                 this.lastFrameTime = 0;
                 this.frameCount = 0;
@@ -7309,7 +7304,8 @@
                 }
                 
                 // Ensure canvas and context are available
-                if (!this.canvas || !this.ctx) {
+                // Also check if canvas is properly attached to DOM
+                if (!this.canvas || !this.ctx || !document.contains(this.canvas)) {
                     this.initRetryCount++;
                     
                     // Stop retrying after 10 attempts (2 seconds)

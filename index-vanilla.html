@@ -2217,14 +2217,79 @@
                 // Get all possible moves
                 const possibleMoves = this.game.ai.findAllPossibleMoves();
                 
-                // Check if we can draw more cards from stock
-                const canDrawFromStock = this.stock.length > 0 || 
-                    (this.stock.length === 0 && this.waste.length > 0);
-                
-                // If no moves available and can't draw from stock, it's a deadlock
-                if (possibleMoves.length === 0 && !canDrawFromStock) {
-                    this.handleDeadlock();
+                console.log(`🔍 Deadlock Check: Found ${possibleMoves.length} possible moves`);
+                if (possibleMoves.length > 0) {
+                    console.log(`🔍 Available moves: ${possibleMoves.map(m => m.description).join(', ')}`);
                 }
+                
+                // True deadlock: no moves available at all (including stock moves)
+                if (possibleMoves.length === 0) {
+                    this.handleDeadlock();
+                    return;
+                }
+                
+                // Advanced deadlock detection: Check for infinite cycling
+                const nonStockMoves = possibleMoves.filter(move => 
+                    move.type !== 'stock-draw' && move.type !== 'stock-reset'
+                );
+                
+                // If only stock moves are available, check for cycling patterns
+                if (nonStockMoves.length === 0 && possibleMoves.length > 0) {
+                    // Only stock cycling moves available - check if we're in a cycle
+                    if (this.detectStockCycling()) {
+                        console.log('🚫 Detected stock cycling deadlock!');
+                        this.handleDeadlock();
+                    }
+                }
+            }
+            
+            detectStockCycling() {
+                // Track recent game states to detect cycling
+                if (!this.cycleDetectionHistory) {
+                    this.cycleDetectionHistory = [];
+                }
+                
+                // Create a signature of the current game state (simplified)
+                const currentSignature = this.createGameStateSignature();
+                
+                // Add current state to history
+                this.cycleDetectionHistory.push({
+                    signature: currentSignature,
+                    timestamp: Date.now()
+                });
+                
+                // Keep only recent history (last 20 states)
+                if (this.cycleDetectionHistory.length > 20) {
+                    this.cycleDetectionHistory.shift();
+                }
+                
+                // Check for repeated states (indicating cycling)
+                const recentStates = this.cycleDetectionHistory.slice(-10); // Check last 10 states
+                const signatureCount = {};
+                
+                recentStates.forEach(state => {
+                    signatureCount[state.signature] = (signatureCount[state.signature] || 0) + 1;
+                });
+                
+                // If any state signature appears 3+ times in recent history, it's likely cycling
+                const maxRepeats = Math.max(...Object.values(signatureCount));
+                return maxRepeats >= 3;
+            }
+            
+            createGameStateSignature() {
+                // Create a simplified signature of the game state to detect cycles
+                const tableauTops = this.tableau.map(pile => {
+                    if (pile.length === 0) return 'empty';
+                    const topCard = pile[pile.length - 1];
+                    return topCard.faceUp ? `${topCard.value}${topCard.suit}` : 'hidden';
+                });
+                
+                const wasteTop = this.waste.length > 0 ? 
+                    `${this.waste[this.waste.length - 1].value}${this.waste[this.waste.length - 1].suit}` : 'empty';
+                
+                const foundationLengths = Object.values(this.foundations).map(pile => pile.length);
+                
+                return `T:${tableauTops.join(',')}|W:${wasteTop}|F:${foundationLengths.join(',')}|S:${this.stock.length}`;
             }
             
             handleDeadlock() {
@@ -2683,6 +2748,7 @@
                 moves.push(...this.findFoundationMoves());
                 moves.push(...this.findTableauMoves());
                 moves.push(...this.findWasteMoves());
+                moves.push(...this.findStockMoves());
                 
                 return moves;
             }
@@ -2829,6 +2895,31 @@
                 return moves;
             }
             
+            findStockMoves() {
+                const moves = [];
+                
+                // Check if we can draw from stock (stock has cards) or reset waste to stock (stock empty but waste has cards)
+                if (this.game.state.stock.length > 0) {
+                    moves.push({
+                        type: 'stock-draw',
+                        cardId: null,
+                        card: null,
+                        priority: 1, // Low priority, but still a valid move
+                        description: 'Draw card(s) from stock'
+                    });
+                } else if (this.game.state.waste.length > 0) {
+                    moves.push({
+                        type: 'stock-reset',
+                        cardId: null,
+                        card: null,
+                        priority: 1, // Low priority, but still a valid move
+                        description: 'Reset waste pile to stock'
+                    });
+                }
+                
+                return moves;
+            }
+            
             prioritizeMoves(moves) {
                 // Check for deadlock patterns (lateral moves)
                 const lateralMoves = this.detectLateralMoves(moves);
@@ -2871,7 +2962,7 @@
                     }
                     
                     // Secondary sort by type
-                    const typeOrder = { foundation: 4, tableau: 2, 'waste-to-tableau': 1 };
+                    const typeOrder = { foundation: 4, tableau: 2, 'waste-to-tableau': 1, 'stock-draw': 0.5, 'stock-reset': 0.5 };
                     return (typeOrder[b.type] || 0) - (typeOrder[a.type] || 0);
                 });
             }

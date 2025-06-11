@@ -2344,6 +2344,21 @@
                     }
                 }
                 
+                // Case 2.5: Very few progressive moves with mostly stock cycling
+                if (progressiveMoves.length <= 1 && possibleMoves.length > 1) {
+                    const stockMoves = possibleMoves.filter(move => 
+                        move.type === 'stock-draw' || move.type === 'stock-reset'
+                    );
+                    // If >75% of moves are stock moves, likely deadlocked
+                    if (stockMoves.length / possibleMoves.length > 0.75) {
+                        if (this.detectStockCycling()) {
+                            console.log('🚫 Detected stock-heavy deadlock with minimal progress!');
+                            this.handleDeadlock();
+                            return;
+                        }
+                    }
+                }
+                
                 // Case 3: Check for repeated game states (cycling through same positions)
                 if (this.detectGameStateCycling()) {
                     console.log('🚫 Detected game state cycling deadlock!');
@@ -2505,26 +2520,26 @@
                      }
                      
                      // Case 2: High proportion of lateral moves over time
-                     if (this.lateralMoveHistory.length >= 12) {
-                         const recentEntries = this.lateralMoveHistory.slice(-12);
+                     if (this.lateralMoveHistory.length >= 10) {
+                         const recentEntries = this.lateralMoveHistory.slice(-10);
                          const totalLateralMoves = recentEntries.reduce((sum, entry) => sum + entry.lateralMoveCount, 0);
                          const totalMoves = recentEntries.reduce((sum, entry) => sum + entry.totalMoveCount, 0);
                          
-                         // If >70% of recent moves are lateral, we might be in a deadlock
-                         if (totalMoves > 0 && (totalLateralMoves / totalMoves) > 0.7) {
+                         // If >65% of recent moves are lateral, we might be in a deadlock (reduced from 70%)
+                         if (totalMoves > 0 && (totalLateralMoves / totalMoves) > 0.65) {
                              console.log(`🔍 Lateral deadlock detected: ${Math.round(totalLateralMoves/totalMoves*100)}% lateral moves`);
                              return true;
                          }
                      }
                      
                      // Case 3: Many moves without progress
-                     if (this.lateralMoveHistory.length >= 15) {
+                     if (this.lateralMoveHistory.length >= 12) {
                          const oldestEntry = this.lateralMoveHistory[0];
                          const newestEntry = this.lateralMoveHistory[this.lateralMoveHistory.length - 1];
                          const movesMade = newestEntry.moveCount - oldestEntry.moveCount;
                          
-                         // If we've made 15+ moves and returned to a similar state
-                         if (movesMade >= 15) {
+                         // If we've made 12+ moves and returned to a similar state (reduced from 15)
+                         if (movesMade >= 12) {
                              const statesSimilar = this.areStatesSimilar(oldestEntry.state, newestEntry.state);
                              if (statesSimilar) {
                                  console.log(`🔍 Lateral deadlock detected: ${movesMade} moves with minimal progress`);
@@ -2622,15 +2637,21 @@
                 const foundationProgress = newestEntry.foundationCards - oldestEntry.foundationCards;
                 const movesMade = newestEntry.moveCount - oldestEntry.moveCount;
                 
-                // If we've made 10+ moves with no foundation progress and very few progressive moves
-                if (movesMade >= 10 && foundationProgress === 0) {
+                // If we've made 8+ moves with no foundation progress and very few progressive moves
+                if (movesMade >= 8 && foundationProgress === 0) {
                     const avgProgressiveMoves = recentEntries.reduce((sum, entry) => sum + entry.progressiveMoves, 0) / recentEntries.length;
                     
-                    // If average progressive moves per check is very low (< 1), we're likely stuck
-                    if (avgProgressiveMoves < 1.0) {
+                    // If average progressive moves per check is very low (< 1.2), we're likely stuck
+                    if (avgProgressiveMoves < 1.2) {
                         console.log(`🔍 Progress stagnation: ${movesMade} moves, ${foundationProgress} foundation progress, avg ${avgProgressiveMoves.toFixed(1)} progressive moves`);
                         return true;
                     }
+                }
+                
+                // Also check for minimal foundation progress over longer periods
+                if (movesMade >= 15 && foundationProgress <= 2) {
+                    console.log(`🔍 Progress stagnation: ${movesMade} moves with only ${foundationProgress} foundation progress`);
+                    return true;
                 }
                 
                 // Also check for very slow foundation progress
@@ -3486,9 +3507,9 @@
                         await new Promise(resolve => setTimeout(resolve, 100));
                         
                         // Check if game is won
-                        if (this.isGameWon()) {
+                        if (this.isGameWon(this.cloneGameState())) {
                             console.log('🎉 Game won through auto-execution!');
-                            this.showWinMessage();
+                            this.game.ui.showWinModal();
                             break;
                         }
                         
@@ -3507,7 +3528,7 @@
                 let consecutiveNonProgressMoves = 0;
                 const maxNonProgressMoves = 20; // Prevent infinite loops
                 
-                while (movesPlayed < maxMoves && !this.isGameWon()) {
+                while (movesPlayed < maxMoves && !this.isGameWon(this.cloneGameState())) {
                     // Get current game state for analysis
                     const currentState = this.cloneGameState();
                     
@@ -3535,7 +3556,7 @@
                         movesPlayed++;
                         
                         // Check progress after move
-                        const foundationCardsAfter = Object.values(this.foundations)
+                        const foundationCardsAfter = Object.values(this.game.state.foundations)
                             .reduce((sum, pile) => sum + pile.length, 0);
                         
                         if (foundationCardsAfter > foundationCardsBefore) {
@@ -3565,9 +3586,9 @@
                         }
                         
                         // Check if game is won
-                        if (this.isGameWon()) {
+                        if (this.isGameWon(this.cloneGameState())) {
                             console.log(`🎉 Game won in ${movesPlayed} moves!`);
-                            this.showWinMessage();
+                            this.game.ui.showWinModal();
                             return true;
                         }
                         
@@ -3576,7 +3597,7 @@
                         
                         // Show progress every 25 moves
                         if (movesPlayed % 25 === 0) {
-                            const foundationCount = Object.values(this.foundations)
+                            const foundationCount = Object.values(this.game.state.foundations)
                                 .reduce((sum, pile) => sum + pile.length, 0);
                             console.log(`📊 Progress update: ${movesPlayed} moves played, ${foundationCount}/52 cards in foundations`);
                         }
@@ -3650,32 +3671,38 @@
                 try {
                     switch (move.type) {
                         case 'tableau_to_foundation':
-                            this.moveToFoundation(move.card, move.from?.index);
+                            this.game.ai.moveCardToFoundation(move.card);
                             break;
                             
                         case 'waste_to_foundation':
-                            this.moveWasteToFoundation(move.card);
+                            this.game.ai.moveCardToFoundation(move.card);
                             break;
                             
                         case 'tableau_to_tableau':
-                            this.moveTableauCard(move.from?.index, move.to?.index, move.cardCount || 1);
+                            // Find the card and move it to the target tableau
+                            const sourceCard = move.card;
+                            this.game.ai.moveCardToTableau(sourceCard, move.to?.index);
                             break;
                             
                         case 'waste_to_tableau':
-                            this.moveWasteToTableau(move.to?.index);
+                            // Move waste card to tableau
+                            if (this.game.state.waste.length > 0) {
+                                const wasteCard = this.game.state.waste[this.game.state.waste.length - 1];
+                                this.game.ai.moveCardToTableau(wasteCard, move.to?.index);
+                            }
                             break;
                             
                         case 'draw_stock':
                             // Execute multiple draws if specified
                             const drawCount = move.drawCount || 1;
                             for (let i = 0; i < drawCount; i++) {
-                                this.drawCard();
+                                this.game.ai.flipStock();
                                 await new Promise(resolve => setTimeout(resolve, 50)); // Brief delay between draws
                             }
                             break;
                             
                         case 'reset_stock':
-                            this.resetStock();
+                            this.game.ai.flipStock(); // This handles both draw and reset
                             break;
                             
                         default:
@@ -3788,6 +3815,18 @@
                 try {
                     // Clone only the essential game state, avoiding circular references
                     const state = this.game.state;
+                    if (!state) {
+                        console.warn('Game state is undefined, returning default state');
+                        return {
+                            tableau: Array.from({ length: 7 }, () => []),
+                            foundations: { '♠': [], '♥': [], '♦': [], '♣': [] },
+                            stock: [],
+                            waste: [],
+                            drawMode: 3,
+                            moves: 0,
+                            score: 0
+                        };
+                    }
                     return {
                         tableau: state.tableau.map(pile => 
                             pile.map(card => ({
@@ -7281,7 +7320,7 @@
             
             recordDeadlockPatterns(gameRecord) {
                 try {
-                    const analysis = gameRecord.additionalData.analysis;
+                    const analysis = gameRecord.additionalData?.analysis || {};
                     
                     // Record common deadlock patterns for future detection
                     if (!this.gameMemory.deadlockPatterns) {
@@ -8246,6 +8285,98 @@
                     this.updatePerformanceMetrics(gameRecord);
                 } catch (error) {
                     console.warn('Failed to learn from game:', error);
+                }
+            }
+            
+            updateMoveEffectiveness(gameRecord) {
+                try {
+                    const effectiveness = this.learningDatabase.patterns.moveEffectiveness;
+                    
+                    gameRecord.moveSequence?.forEach((move, index) => {
+                        const moveKey = `${move.type || 'unknown'}_${move.card?.value || 'any'}`;
+                        
+                        if (!effectiveness.has(moveKey)) {
+                            effectiveness.set(moveKey, { wins: 0, losses: 0, total: 0 });
+                        }
+                        
+                        const stats = effectiveness.get(moveKey);
+                        stats.total++;
+                        
+                        if (gameRecord.won) {
+                            stats.wins++;
+                        } else {
+                            stats.losses++;
+                        }
+                        
+                        effectiveness.set(moveKey, stats);
+                    });
+                } catch (error) {
+                    console.warn('Error updating move effectiveness:', error);
+                }
+            }
+            
+            updateStrategyEffectiveness(gameRecord) {
+                try {
+                    const strategy = gameRecord.strategyUsed || 'standard';
+                    const strategies = this.learningDatabase.strategies;
+                    
+                    if (gameRecord.patterns?.openingMoves?.length > 0) {
+                        const openingKey = gameRecord.patterns.openingMoves.slice(0, 3)
+                            .map(m => m.type || 'unknown').join('-');
+                        
+                        if (!strategies.successfulOpenings.has(openingKey)) {
+                            strategies.successfulOpenings.set(openingKey, { wins: 0, total: 0 });
+                        }
+                        
+                        const openingStats = strategies.successfulOpenings.get(openingKey);
+                        openingStats.total++;
+                        if (gameRecord.won) openingStats.wins++;
+                        strategies.successfulOpenings.set(openingKey, openingStats);
+                    }
+                } catch (error) {
+                    console.warn('Error updating strategy effectiveness:', error);
+                }
+            }
+            
+            updatePerformanceMetrics(gameRecord) {
+                try {
+                    const metrics = this.learningDatabase.performanceMetrics;
+                    
+                    if (gameRecord.won) {
+                        const currentAvg = metrics.averageMovesPerWin || 0;
+                        const totalWins = this.learningDatabase.metadata.totalGamesWon;
+                        metrics.averageMovesPerWin = ((currentAvg * (totalWins - 1)) + gameRecord.moves) / totalWins;
+                        
+                        if (gameRecord.timeElapsed) {
+                            const currentTimeAvg = metrics.averageTimePerWin || 0;
+                            metrics.averageTimePerWin = ((currentTimeAvg * (totalWins - 1)) + gameRecord.timeElapsed) / totalWins;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Error updating performance metrics:', error);
+                }
+            }
+            
+            generateStrategySuggestions() {
+                try {
+                    const suggestions = [];
+                    const winRate = this.learningDatabase.metadata.winRate;
+                    
+                    if (winRate < 20) {
+                        suggestions.push('Focus on foundation building early in the game');
+                        suggestions.push('Prioritize revealing hidden cards over lateral moves');
+                    } else if (winRate < 40) {
+                        suggestions.push('Consider stock cycling patterns more carefully');
+                        suggestions.push('Look for multi-move sequences that create progress');
+                    } else {
+                        suggestions.push('Experiment with advanced strategies');
+                        suggestions.push('Focus on optimizing move efficiency');
+                    }
+                    
+                    return suggestions;
+                } catch (error) {
+                    console.warn('Error generating strategy suggestions:', error);
+                    return ['Continue practicing to improve your game'];
                 }
             }
             

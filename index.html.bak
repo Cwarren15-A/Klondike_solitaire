@@ -6472,7 +6472,7 @@
                         recommendation: this.generateAdvancedRecommendation(basicAnalysis, strategicAnalysis, learningAnalysis),
                         stockRecommendation: stockAnalysis,
                         strategicInsights: strategicAnalysis.insights,
-                        hiddenCardInsights: null, // Temporarily disabled due to method error
+                        hiddenCardInsights: this.analyzeHiddenCards(gameState),
                         learningInsights: learningAnalysis,
                         webAIInsights: webAIInsights,
                         neuralWeights: { ...this.neuralWeights }

@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Klondike Solitaire - AI Enhanced</title>
-    <!-- Cache buster: 2024-12-19-15:45 FORCE REFRESH -->
+    <!-- Cache buster: 2024-12-19-16:00 -->
     <!-- Enhanced graphics deployed - cache refresh required -->
     <meta name="description" content="Play Klondike Solitaire with AI-powered hints, analysis, and adaptive difficulty. Advanced machine learning provides intelligent gameplay assistance.">
     
@@ -10652,8 +10655,100 @@
             });
         }
 
+        // ===== VERSION MANAGEMENT =====
+        
+        const CURRENT_VERSION = "2024.12.19.16.00";
+        
+        function checkVersion() {
+            const lastVersion = localStorage.getItem('klondike_version');
+            if (lastVersion !== CURRENT_VERSION) {
+                console.log(`🔄 Version update detected: ${lastVersion || 'first-time'} → ${CURRENT_VERSION}`);
+                
+                // Clear any cached data that might be outdated
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (key.startsWith('klondike_') || key.startsWith('solitaire_'))) {
+                        if (key !== 'klondike_gameRecords' && key !== 'klondike_learningData') {
+                            keysToRemove.push(key);
+                        }
+                    }
+                }
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+                
+                // Update version
+                localStorage.setItem('klondike_version', CURRENT_VERSION);
+                
+                // Show update notification
+                if (lastVersion) {
+                    console.log('🎉 Game updated! New features and improvements loaded.');
+                    
+                    // Show visual update notification
+                    setTimeout(() => {
+                        const notification = document.createElement('div');
+                        notification.style.cssText = `
+                            position: fixed;
+                            top: 20px;
+                            right: 20px;
+                            background: linear-gradient(135deg, #10b981, #059669);
+                            color: white;
+                            padding: 15px 20px;
+                            border-radius: 10px;
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                            z-index: 10000;
+                            font-family: Arial, sans-serif;
+                            font-size: 14px;
+                            max-width: 300px;
+                            animation: slideIn 0.5s ease-out;
+                        `;
+                        notification.innerHTML = `
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 20px;">🎉</span>
+                                <div>
+                                    <strong>Game Updated!</strong><br>
+                                    <small>New features and improvements loaded</small>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Add animation keyframes
+                        if (!document.getElementById('update-notification-styles')) {
+                            const style = document.createElement('style');
+                            style.id = 'update-notification-styles';
+                            style.textContent = `
+                                @keyframes slideIn {
+                                    from { transform: translateX(100%); opacity: 0; }
+                                    to { transform: translateX(0); opacity: 1; }
+                                }
+                                @keyframes slideOut {
+                                    from { transform: translateX(0); opacity: 1; }
+                                    to { transform: translateX(100%); opacity: 0; }
+                                }
+                            `;
+                            document.head.appendChild(style);
+                        }
+                        
+                        document.body.appendChild(notification);
+                        
+                        // Auto-remove after 5 seconds
+                        setTimeout(() => {
+                            notification.style.animation = 'slideOut 0.5s ease-in';
+                            setTimeout(() => {
+                                if (notification.parentNode) {
+                                    notification.parentNode.removeChild(notification);
+                                }
+                            }, 500);
+                        }, 5000);
+                    }, 2000);
+                }
+            }
+        }
+
         function initializeGame() {
             try {
+                // Check version first
+                checkVersion();
+                
                 console.log('🎮 Starting game initialization...');
                 
                 if (typeof KlondikeSolitaire === 'undefined') {

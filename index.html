@@ -2313,23 +2313,372 @@
                 
                 // True deadlock: no moves available at all (including stock moves)
                 if (possibleMoves.length === 0) {
+                    console.log('🚫 No moves available - immediate deadlock!');
                     this.handleDeadlock();
                     return;
                 }
                 
-                // Advanced deadlock detection: Check for infinite cycling
+                // Enhanced deadlock detection
+                const progressiveMoves = this.identifyProgressiveMoves(possibleMoves);
                 const nonStockMoves = possibleMoves.filter(move => 
                     move.type !== 'stock-draw' && move.type !== 'stock-reset'
                 );
                 
-                // If only stock moves are available, check for cycling patterns
+                console.log(`🔍 Progressive moves: ${progressiveMoves.length}, Non-stock moves: ${nonStockMoves.length}`);
+                
+                // Case 1: Only stock moves available - check for cycling
                 if (nonStockMoves.length === 0 && possibleMoves.length > 0) {
-                    // Only stock cycling moves available - check if we're in a cycle
                     if (this.detectStockCycling()) {
                         console.log('🚫 Detected stock cycling deadlock!');
                         this.handleDeadlock();
+                        return;
                     }
                 }
+                
+                // Case 2: No progressive moves available - check for lateral move deadlock
+                if (progressiveMoves.length === 0) {
+                    if (this.detectLateralMoveDeadlock(possibleMoves)) {
+                        console.log('🚫 Detected lateral move deadlock - no progressive moves available!');
+                        this.handleDeadlock();
+                        return;
+                    }
+                }
+                
+                // Case 3: Check for repeated game states (cycling through same positions)
+                if (this.detectGameStateCycling()) {
+                    console.log('🚫 Detected game state cycling deadlock!');
+                    this.handleDeadlock();
+                    return;
+                }
+                
+                // Case 4: Check for stagnation - very few progressive moves over time
+                if (this.detectProgressStagnation(progressiveMoves, possibleMoves)) {
+                    console.log('🚫 Detected progress stagnation deadlock!');
+                    this.handleDeadlock();
+                    return;
+                }
+            }
+            
+            identifyProgressiveMoves(possibleMoves) {
+                const progressiveMoves = [];
+                
+                for (const move of possibleMoves) {
+                    if (this.isMoveProgressive(move)) {
+                        progressiveMoves.push(move);
+                    }
+                }
+                
+                return progressiveMoves;
+            }
+            
+            isMoveProgressive(move) {
+                // Foundation moves are always progressive
+                if (move.type === 'foundation') {
+                    return true;
+                }
+                
+                // Moving Kings to empty spaces is progressive
+                if (move.card && move.card.value === 13 && 
+                    move.description && move.description.includes('empty space')) {
+                    return true;
+                }
+                
+                // Moves that reveal hidden cards are progressive
+                if (move.description && move.description.includes('reveals card')) {
+                    return true;
+                }
+                
+                // Check if tableau move creates new opportunities
+                if (move.type === 'tableau' || move.type === 'waste-to-tableau') {
+                    return this.doesMoveCreateOpportunities(move);
+                }
+                
+                // Stock moves can be progressive if they reveal useful cards
+                if (move.type === 'stock-draw' || move.type === 'stock-reset') {
+                    return this.canStockMoveRevealUsefulCards();
+                }
+                
+                return false;
+            }
+            
+            doesMoveCreateOpportunities(move) {
+                if (!move.card) return false;
+                
+                // Simulate the move and check if it creates new foundation opportunities
+                // or reveals cards that could lead to foundation moves
+                
+                // For now, use heuristics:
+                // 1. Moving lower value cards (2-5) is often progressive, but be more selective
+                if (move.card.value <= 5) {
+                    return true;
+                }
+                
+                // 2. Moving 6s and 7s is only progressive if it reveals cards or creates foundation opportunities
+                if (move.card.value <= 7) {
+                    // Check if this move would create a foundation opportunity
+                    const nextFoundationValue = this.game.state.foundations[move.card.suit].length + 1;
+                    if (move.card.value === nextFoundationValue) {
+                        return true; // This card can go to foundation after the move
+                    }
+                }
+                
+                // 2. Moving cards that could uncover hidden cards
+                const cardLocation = this.game.cards.findCardLocation(move.card);
+                if (cardLocation && cardLocation.type === 'tableau') {
+                    const pile = this.game.state.tableau[cardLocation.pileIndex];
+                    const cardIndex = cardLocation.cardIndex;
+                    // If there are hidden cards below this card, moving it could be progressive
+                    if (cardIndex > 0 && pile[cardIndex - 1] && !pile[cardIndex - 1].faceUp) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            
+            canStockMoveRevealUsefulCards() {
+                // Check if cycling through stock could reveal cards that can go to foundation
+                // This is a simplified check - in a real implementation, we'd analyze the stock contents
+                
+                // If foundations are not full, stock moves might be useful
+                const foundationCounts = Object.values(this.game.state.foundations).map(pile => pile.length);
+                const totalFoundationCards = foundationCounts.reduce((sum, count) => sum + count, 0);
+                
+                // Be more conservative - if we've placed a good number of cards, stock moves are less likely to help
+                // Also check if we have stock cards left to cycle through
+                const hasStockCards = this.game.state.stock.length > 0 || this.game.state.waste.length > 0;
+                
+                // Stock moves are progressive if:
+                // 1. We haven't placed many cards on foundations yet (early game)
+                // 2. OR we have very few foundation cards (stuck early)
+                // 3. AND we actually have cards to cycle through
+                return hasStockCards && (totalFoundationCards < 20 || totalFoundationCards < 8);
+            }
+            
+            detectLateralMoveDeadlock(possibleMoves) {
+                // Check if we're in a state where only lateral moves are available
+                // and we've been cycling through them
+                
+                if (!this.lateralMoveHistory) {
+                    this.lateralMoveHistory = [];
+                }
+                
+                // Identify lateral moves (moves that don't make progress)
+                const lateralMoves = possibleMoves.filter(move => !this.isMoveProgressive(move));
+                
+                // If all non-stock moves are lateral, we might be in a deadlock
+                const nonStockMoves = possibleMoves.filter(move => 
+                    move.type !== 'stock-draw' && move.type !== 'stock-reset'
+                );
+                
+                                 // Track lateral move patterns regardless of whether all moves are lateral
+                 const currentState = this.createGameStateSignature();
+                 this.lateralMoveHistory.push({
+                     state: currentState,
+                     timestamp: Date.now(),
+                     moveCount: this.moves,
+                     lateralMoveCount: lateralMoves.length,
+                     totalMoveCount: possibleMoves.length
+                 });
+                 
+                 // Keep only recent history
+                 if (this.lateralMoveHistory.length > 20) {
+                     this.lateralMoveHistory.shift();
+                 }
+                 
+                 // Check for lateral deadlock patterns
+                 if (nonStockMoves.length > 0) {
+                     // Case 1: All non-stock moves are lateral
+                     if (lateralMoves.length === nonStockMoves.length) {
+                         const recentStates = this.lateralMoveHistory.slice(-6);
+                         const stateCount = {};
+                         
+                         recentStates.forEach(entry => {
+                             stateCount[entry.state] = (stateCount[entry.state] || 0) + 1;
+                         });
+                         
+                         const maxRepeats = Math.max(...Object.values(stateCount));
+                         if (maxRepeats >= 3) {
+                             console.log(`🔍 Lateral deadlock detected: all moves lateral, state repeated ${maxRepeats} times`);
+                             return true;
+                         }
+                     }
+                     
+                     // Case 2: High proportion of lateral moves over time
+                     if (this.lateralMoveHistory.length >= 12) {
+                         const recentEntries = this.lateralMoveHistory.slice(-12);
+                         const totalLateralMoves = recentEntries.reduce((sum, entry) => sum + entry.lateralMoveCount, 0);
+                         const totalMoves = recentEntries.reduce((sum, entry) => sum + entry.totalMoveCount, 0);
+                         
+                         // If >70% of recent moves are lateral, we might be in a deadlock
+                         if (totalMoves > 0 && (totalLateralMoves / totalMoves) > 0.7) {
+                             console.log(`🔍 Lateral deadlock detected: ${Math.round(totalLateralMoves/totalMoves*100)}% lateral moves`);
+                             return true;
+                         }
+                     }
+                     
+                     // Case 3: Many moves without progress
+                     if (this.lateralMoveHistory.length >= 15) {
+                         const oldestEntry = this.lateralMoveHistory[0];
+                         const newestEntry = this.lateralMoveHistory[this.lateralMoveHistory.length - 1];
+                         const movesMade = newestEntry.moveCount - oldestEntry.moveCount;
+                         
+                         // If we've made 15+ moves and returned to a similar state
+                         if (movesMade >= 15) {
+                             const statesSimilar = this.areStatesSimilar(oldestEntry.state, newestEntry.state);
+                             if (statesSimilar) {
+                                 console.log(`🔍 Lateral deadlock detected: ${movesMade} moves with minimal progress`);
+                                 return true;
+                             }
+                         }
+                     }
+                 }
+                
+                return false;
+            }
+            
+            areStatesSimilar(state1, state2) {
+                // Compare two game state signatures to see if they're similar
+                // (not necessarily identical, but close enough to indicate lack of progress)
+                
+                if (state1 === state2) return true;
+                
+                // Parse the states to compare components
+                const parseState = (state) => {
+                    const parts = state.split('|');
+                    const result = {};
+                    parts.forEach(part => {
+                        const [key, value] = part.split(':');
+                        result[key] = value;
+                    });
+                    return result;
+                };
+                
+                try {
+                    const parsed1 = parseState(state1);
+                    const parsed2 = parseState(state2);
+                    
+                    // Compare foundation progress (most important)
+                    if (parsed1.F !== parsed2.F) {
+                        return false; // Foundation progress changed, states are different
+                    }
+                    
+                    // Compare tableau structure (allow some variation)
+                    const tableau1 = parsed1.T ? parsed1.T.split(',') : [];
+                    const tableau2 = parsed2.T ? parsed2.T.split(',') : [];
+                    
+                    if (tableau1.length !== tableau2.length) return false;
+                    
+                    // Count how many tableau positions are identical
+                    let identicalPositions = 0;
+                    for (let i = 0; i < tableau1.length; i++) {
+                        if (tableau1[i] === tableau2[i]) {
+                            identicalPositions++;
+                        }
+                    }
+                    
+                    // If >75% of tableau positions are identical and foundations are same, states are similar
+                    const similarityThreshold = tableau1.length * 0.75;
+                    return identicalPositions >= similarityThreshold;
+                    
+                } catch (error) {
+                    // If parsing fails, fall back to exact comparison
+                    return state1 === state2;
+                }
+            }
+            
+            detectProgressStagnation(progressiveMoves, allMoves) {
+                // Check if we're making very little progress over time
+                if (!this.progressHistory) {
+                    this.progressHistory = [];
+                }
+                
+                const foundationCounts = Object.values(this.game.state.foundations).map(pile => pile.length);
+                const totalFoundationCards = foundationCounts.reduce((sum, count) => sum + count, 0);
+                
+                this.progressHistory.push({
+                    foundationCards: totalFoundationCards,
+                    progressiveMoves: progressiveMoves.length,
+                    totalMoves: allMoves.length,
+                    timestamp: Date.now(),
+                    moveCount: this.moves
+                });
+                
+                // Keep only recent history
+                if (this.progressHistory.length > 20) {
+                    this.progressHistory.shift();
+                }
+                
+                // Need at least 10 entries to detect stagnation
+                if (this.progressHistory.length < 10) {
+                    return false;
+                }
+                
+                const recentEntries = this.progressHistory.slice(-10);
+                const oldestEntry = recentEntries[0];
+                const newestEntry = recentEntries[recentEntries.length - 1];
+                
+                // Check for foundation progress stagnation
+                const foundationProgress = newestEntry.foundationCards - oldestEntry.foundationCards;
+                const movesMade = newestEntry.moveCount - oldestEntry.moveCount;
+                
+                // If we've made 10+ moves with no foundation progress and very few progressive moves
+                if (movesMade >= 10 && foundationProgress === 0) {
+                    const avgProgressiveMoves = recentEntries.reduce((sum, entry) => sum + entry.progressiveMoves, 0) / recentEntries.length;
+                    
+                    // If average progressive moves per check is very low (< 1), we're likely stuck
+                    if (avgProgressiveMoves < 1.0) {
+                        console.log(`🔍 Progress stagnation: ${movesMade} moves, ${foundationProgress} foundation progress, avg ${avgProgressiveMoves.toFixed(1)} progressive moves`);
+                        return true;
+                    }
+                }
+                
+                // Also check for very slow foundation progress
+                if (movesMade >= 20 && foundationProgress <= 1) {
+                    console.log(`🔍 Progress stagnation: ${movesMade} moves with only ${foundationProgress} foundation progress`);
+                    return true;
+                }
+                
+                return false;
+            }
+            
+            detectGameStateCycling() {
+                // Enhanced version of detectStockCycling that works for all game states
+                if (!this.gameStateCycleHistory) {
+                    this.gameStateCycleHistory = [];
+                }
+                
+                // Create a detailed signature of the current game state
+                const currentSignature = this.createDetailedGameStateSignature();
+                
+                // Add current state to history
+                this.gameStateCycleHistory.push({
+                    signature: currentSignature,
+                    timestamp: Date.now(),
+                    moveCount: this.moves
+                });
+                
+                // Keep only recent history (last 25 states)
+                if (this.gameStateCycleHistory.length > 25) {
+                    this.gameStateCycleHistory.shift();
+                }
+                
+                // Check for repeated states (indicating cycling)
+                const recentStates = this.gameStateCycleHistory.slice(-12); // Check last 12 states
+                const signatureCount = {};
+                
+                recentStates.forEach(state => {
+                    signatureCount[state.signature] = (signatureCount[state.signature] || 0) + 1;
+                });
+                
+                // If any state signature appears 4+ times in recent history, it's cycling
+                const maxRepeats = Math.max(...Object.values(signatureCount));
+                if (maxRepeats >= 4) {
+                    console.log(`🔍 Game state cycling detected: state repeated ${maxRepeats} times`);
+                    return true;
+                }
+                
+                return false;
             }
             
             detectStockCycling() {
@@ -2379,6 +2728,32 @@
                 const foundationLengths = Object.values(this.foundations).map(pile => pile.length);
                 
                 return `T:${tableauTops.join(',')}|W:${wasteTop}|F:${foundationLengths.join(',')}|S:${this.stock.length}`;
+            }
+            
+            createDetailedGameStateSignature() {
+                // Create a more detailed signature that includes more game state information
+                const tableauSignature = this.tableau.map((pile, index) => {
+                    if (pile.length === 0) return `${index}:empty`;
+                    
+                    // Include top 2-3 visible cards and hidden card count
+                    const visibleCards = pile.filter(card => card.faceUp);
+                    const hiddenCount = pile.length - visibleCards.length;
+                    const topCards = visibleCards.slice(-3).map(card => `${card.value}${card.suit}`);
+                    
+                    return `${index}:h${hiddenCount}:${topCards.join('-')}`;
+                }).join('|');
+                
+                const wasteSignature = this.waste.length > 0 ? 
+                    `${this.waste[this.waste.length - 1].value}${this.waste[this.waste.length - 1].suit}` : 'empty';
+                
+                const foundationSignature = Object.entries(this.foundations).map(([suit, pile]) => 
+                    `${suit}:${pile.length}`
+                ).join(',');
+                
+                // Include stock position information
+                const stockInfo = `${this.stock.length}`;
+                
+                return `T:${tableauSignature}|W:${wasteSignature}|F:${foundationSignature}|S:${stockInfo}`;
             }
             
             handleDeadlock() {

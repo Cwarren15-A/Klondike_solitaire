@@ -7759,7 +7759,13 @@
                 } catch (drawError) {
                     console.warn('Error in batch drawing, falling back to parent render:', drawError);
                     // Fallback to parent render method
-                    super.render();
+                    try {
+                        super.render();
+                    } catch (fallbackError) {
+                        console.error('Error in fallback render, disabling PerformanceRenderer:', fallbackError);
+                        this.disabled = true;
+                        this.cleanup();
+                    }
                 }
                 
                 // Render particle effects
@@ -7771,11 +7777,12 @@
             
             // Batched drawing methods for better performance
             drawStockBatch() {
-                // Fallback to parent method if available
-                if (super.drawStock) {
+                // Use the parent's drawStock method directly
+                try {
                     super.drawStock();
-                } else {
-                    // Basic stock drawing implementation
+                } catch (error) {
+                    console.warn('Error calling parent drawStock, using fallback:', error);
+                    // Basic stock drawing implementation as fallback
                     try {
                         this.ctx.save();
                         
@@ -7791,18 +7798,19 @@
                         }
                         
                         this.ctx.restore();
-                    } catch (error) {
-                        console.warn('Error drawing stock batch:', error);
+                    } catch (fallbackError) {
+                        console.error('Error in stock fallback rendering:', fallbackError);
                     }
                 }
             }
             
             drawWasteBatch() {
-                // Fallback to parent method if available
-                if (super.drawWaste) {
+                // Use the parent's drawWaste method directly
+                try {
                     super.drawWaste();
-                } else {
-                    // Basic waste drawing implementation
+                } catch (error) {
+                    console.warn('Error calling parent drawWaste, using fallback:', error);
+                    // Basic waste drawing implementation as fallback
                     try {
                         this.ctx.save();
                         
@@ -7815,18 +7823,19 @@
                         }
                         
                         this.ctx.restore();
-                    } catch (error) {
-                        console.warn('Error drawing waste batch:', error);
+                    } catch (fallbackError) {
+                        console.error('Error in waste fallback rendering:', fallbackError);
                     }
                 }
             }
             
             drawFoundationsBatch() {
-                // Fallback to parent method if available
-                if (super.drawFoundations) {
+                // Use the parent's drawFoundations method directly
+                try {
                     super.drawFoundations();
-                } else {
-                    // Basic foundations drawing implementation
+                } catch (error) {
+                    console.warn('Error calling parent drawFoundations, using fallback:', error);
+                    // Basic foundations drawing implementation as fallback
                     try {
                         this.ctx.save();
                         
@@ -7847,57 +7856,74 @@
                         });
                         
                         this.ctx.restore();
-                    } catch (error) {
-                        console.warn('Error drawing foundations batch:', error);
+                    } catch (fallbackError) {
+                        console.error('Error in foundations fallback rendering:', fallbackError);
                     }
                 }
             }
             
             drawTableauBatch() {
-                // Fallback to parent method if available
-                if (super.drawTableau) {
+                // Use the parent's drawTableau method directly
+                try {
                     super.drawTableau();
-                } else {
-                    // Basic tableau drawing implementation
+                } catch (error) {
+                    console.warn('Error calling parent drawTableau, using fallback:', error);
+                    // Basic tableau drawing implementation as fallback
                     try {
                         this.ctx.save();
                         
-                        for (let col = 0; col < 7; col++) {
-                            const pile = this.game.state.tableau[col];
-                            const x = 50 + col * 120;
-                            let y = 200;
+                        const tableauStartX = 50;
+                        const tableauY = 50 + this.game.constants.CARD_HEIGHT + 40;
+                        
+                        this.game.state.tableau.forEach((pile, pileIndex) => {
+                            const pileX = tableauStartX + pileIndex * (this.game.constants.CARD_WIDTH + 15);
                             
-                            pile.forEach((card, index) => {
+                            pile.forEach((card, cardIndex) => {
+                                const cardY = tableauY + cardIndex * (card.faceUp ? this.game.constants.FACE_UP_OFFSET : this.game.constants.FACE_DOWN_OFFSET);
+                                
                                 if (card.faceUp) {
-                                    this.drawCardSimple(card, x, y);
+                                    this.drawCardSimple(card, pileX, cardY);
                                 } else {
                                     // Draw card back
                                     this.ctx.fillStyle = '#0066cc';
-                                    this.ctx.fillRect(x, y, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
+                                    this.ctx.fillRect(pileX, cardY, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
                                     this.ctx.strokeStyle = '#003d7a';
-                                    this.ctx.strokeRect(x, y, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
+                                    this.ctx.strokeRect(pileX, cardY, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
                                 }
-                                y += card.faceUp ? 30 : 15;
                             });
-                        }
+                            
+                            // Draw empty pile placeholder if needed
+                            if (pile.length === 0) {
+                                this.ctx.strokeStyle = '#ccc';
+                                this.ctx.setLineDash([5, 5]);
+                                this.ctx.strokeRect(pileX, tableauY, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
+                                this.ctx.setLineDash([]);
+                            }
+                        });
                         
                         this.ctx.restore();
-                    } catch (error) {
-                        console.warn('Error drawing tableau batch:', error);
+                    } catch (fallbackError) {
+                        console.error('Error in tableau fallback rendering:', fallbackError);
                     }
                 }
             }
             
             drawDraggedCards() {
-                // Fallback to parent method if available
-                if (super.drawDraggedCards) {
+                // Use the parent's drawDraggedCards method directly
+                try {
                     super.drawDraggedCards();
+                } catch (error) {
+                    console.warn('Error calling parent drawDraggedCards:', error);
+                    // Basic dragged cards implementation could go here if needed
                 }
             }
             
             drawCardSimple(card, x, y) {
                 // Simple card drawing for fallback
                 try {
+                    if (!card || !this.ctx) return;
+                    
+                    // Draw card background
                     this.ctx.fillStyle = 'white';
                     this.ctx.fillRect(x, y, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
                     this.ctx.strokeStyle = 'black';
@@ -7906,7 +7932,22 @@
                     // Draw card value and suit
                     this.ctx.fillStyle = (card.suit === '♥' || card.suit === '♦') ? 'red' : 'black';
                     this.ctx.font = '16px Arial';
-                    this.ctx.fillText(`${card.value}${card.suit}`, x + 5, y + 20);
+                    this.ctx.textAlign = 'left';
+                    this.ctx.textBaseline = 'top';
+                    
+                    // Use rank if available, otherwise use value
+                    const displayValue = card.rank || card.value || '?';
+                    const displaySuit = card.suit || '?';
+                    
+                    this.ctx.fillText(`${displayValue}${displaySuit}`, x + 5, y + 5);
+                    
+                    // Draw suit in bottom right (flipped)
+                    this.ctx.save();
+                    this.ctx.translate(x + this.game.constants.CARD_WIDTH, y + this.game.constants.CARD_HEIGHT);
+                    this.ctx.rotate(Math.PI);
+                    this.ctx.fillText(`${displayValue}${displaySuit}`, 5, 5);
+                    this.ctx.restore();
+                    
                 } catch (error) {
                     console.warn('Error drawing simple card:', error);
                 }
@@ -11127,7 +11168,7 @@
 
         // ===== VERSION MANAGEMENT =====
         
-        const CURRENT_VERSION = "2024.12.19.20.00";
+        const CURRENT_VERSION = "2024.12.19.21.00";
         
         function checkVersion() {
             const lastVersion = localStorage.getItem('klondike_version');

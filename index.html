@@ -2455,6 +2455,11 @@
             checkDeadlockCondition() {
                 if (this.game.gameWon) return; // Already won, no need to check
                 
+                // Don't check for deadlock until player has made at least one move
+                if (!this.gameStats.moves || this.gameStats.moves === 0) {
+                    return; // Skip deadlock check at game start
+                }
+                
                 // Get all possible moves
                 const possibleMoves = this.game.ai.findAllPossibleMoves();
                 
@@ -3304,32 +3309,46 @@
                     this.gameStateCycleHistory = [];
                 }
                 
+                // Don't detect cycling until we have made several moves
+                if (!this.moves || this.moves < 10) {
+                    return false; // Need at least 10 moves to detect meaningful cycling
+                }
+                
                 // Create a detailed signature of the current game state
                 const currentSignature = this.createDetailedGameStateSignature();
                 
-                // Add current state to history
-                this.gameStateCycleHistory.push({
-                    signature: currentSignature,
-                    timestamp: Date.now(),
-                    moveCount: this.moves
-                });
+                // Only add to history if this is a new state (don't count repeated calls)
+                const lastEntry = this.gameStateCycleHistory[this.gameStateCycleHistory.length - 1];
+                if (!lastEntry || lastEntry.signature !== currentSignature || lastEntry.moveCount !== this.moves) {
+                    // Add current state to history
+                    this.gameStateCycleHistory.push({
+                        signature: currentSignature,
+                        timestamp: Date.now(),
+                        moveCount: this.moves
+                    });
+                }
                 
                 // Keep only recent history (last 25 states)
                 if (this.gameStateCycleHistory.length > 25) {
                     this.gameStateCycleHistory.shift();
                 }
                 
+                // Need at least 15 entries to detect cycling
+                if (this.gameStateCycleHistory.length < 15) {
+                    return false;
+                }
+                
                 // Check for repeated states (indicating cycling)
-                const recentStates = this.gameStateCycleHistory.slice(-12); // Check last 12 states
+                const recentStates = this.gameStateCycleHistory.slice(-15); // Check last 15 states
                 const signatureCount = {};
                 
                 recentStates.forEach(state => {
                     signatureCount[state.signature] = (signatureCount[state.signature] || 0) + 1;
                 });
                 
-                // If any state signature appears 8+ times in recent history, it's cycling (was 4+, now more lenient)
+                // If any state signature appears 12+ times in recent history, it's cycling (more conservative)
                 const maxRepeats = Math.max(...Object.values(signatureCount));
-                if (maxRepeats >= 8) {
+                if (maxRepeats >= 12) {
                     console.log(`🔍 Game state cycling detected: state repeated ${maxRepeats} times`);
                     return true;
                 }
@@ -11457,7 +11476,7 @@
                 checkVersion();
                 
                 console.log('🎮 Starting game initialization...');
-                console.log('🔄 Game version: 2024.12.20.14.00 - Fixed timer and undefined cards'); // Cache busting version
+                console.log('🔄 Game version: 2024.12.20.14.30 - Fixed deadlock false triggering at game start'); // Cache busting version
                 
                 if (typeof KlondikeSolitaire === 'undefined') {
                     throw new Error('KlondikeSolitaire class is not defined');

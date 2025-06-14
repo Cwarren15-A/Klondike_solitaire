@@ -279,6 +279,8 @@
             display: block;
             animation: slideInUp 0.5s ease-out;
             transition: all 0.3s ease;
+            width: 1000px;
+            height: 600px;
         }
         
         #gameCanvas:hover {
@@ -6959,9 +6961,13 @@
                 console.log('🎨 RenderEngine: 2D context obtained');
                 
                 const rect = this.canvas.getBoundingClientRect();
-                this.canvas.width = rect.width;
-                this.canvas.height = rect.height;
-                console.log('🎨 RenderEngine: Canvas size set to', rect.width, 'x', rect.height);
+                // Fix: If getBoundingClientRect returns 0, use default size
+                const canvasWidth = rect.width > 0 ? rect.width : 1000;
+                const canvasHeight = rect.height > 0 ? rect.height : 600;
+                
+                this.canvas.width = canvasWidth;
+                this.canvas.height = canvasHeight;
+                console.log('🎨 RenderEngine: Canvas size set to', canvasWidth, 'x', canvasHeight);
                 
                 // Initialize particle system
                 if (!this.game.particles) {
@@ -7576,8 +7582,15 @@
                 try {
                     console.log('🎨 PerformanceRenderer: Initializing performance systems...');
                     
-                    // Setup high-DPI canvas
-                    this.setupHighDPICanvas();
+                    // Setup high-DPI canvas - TEMPORARILY DISABLED for debugging
+                    // this.setupHighDPICanvas();
+                    
+                    // Ensure canvas has proper size
+                    if (this.canvas && (!this.canvas.width || !this.canvas.height)) {
+                        this.canvas.width = 1000;
+                        this.canvas.height = 600;
+                        console.log('🎨 PerformanceRenderer: Set canvas size to 1000x600');
+                    }
                     
                     // Create offscreen canvas for complex drawings
                     this.createOffscreenCanvas();
@@ -7603,13 +7616,19 @@
                 const dpr = window.devicePixelRatio || 1;
                 const rect = this.canvas.getBoundingClientRect();
                 
+                // Fix: If getBoundingClientRect returns 0, use default size
+                const canvasWidth = rect.width > 0 ? rect.width : 1000;
+                const canvasHeight = rect.height > 0 ? rect.height : 600;
+                
+                console.log('🎨 PerformanceRenderer: Setting up high DPI canvas:', canvasWidth, 'x', canvasHeight, 'DPR:', dpr);
+                
                 // Set actual size in memory (scaled up for high DPI)
-                this.canvas.width = rect.width * dpr;
-                this.canvas.height = rect.height * dpr;
+                this.canvas.width = canvasWidth * dpr;
+                this.canvas.height = canvasHeight * dpr;
                 
                 // Scale back down using CSS
-                this.canvas.style.width = rect.width + 'px';
-                this.canvas.style.height = rect.height + 'px';
+                this.canvas.style.width = canvasWidth + 'px';
+                this.canvas.style.height = canvasHeight + 'px';
                 
                 // Scale the drawing context so everything draws at the correct size
                 this.ctx.scale(dpr, dpr);
@@ -7618,6 +7637,8 @@
                 // Optimize canvas rendering
                 this.ctx.imageSmoothingEnabled = true;
                 this.ctx.imageSmoothingQuality = 'high';
+                
+                console.log('🎨 PerformanceRenderer: High DPI canvas setup complete');
             }
             
             createOffscreenCanvas() {

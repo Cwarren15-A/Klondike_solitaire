@@ -771,6 +771,10 @@
                     this.input.initCanvas();
                     this.state.initializeGame();
                     
+                    // Start the game timer
+                    console.log('⏰ Starting game timer...');
+                    this.state.startTimer();
+                    
                     // Ensure renderer is working
                     setTimeout(() => {
                         console.log('🎨 Checking renderer after game start...');
@@ -803,6 +807,10 @@
                     this.ui.showElement('gameArea');
                     this.input.initCanvas();
                     this.state.initializeGame();
+                    
+                    // Start the game timer
+                    console.log('⏰ Starting daily challenge timer...');
+                    this.state.startTimer();
                 } catch (error) {
                     console.error('Error starting daily challenge:', error);
                 }
@@ -813,6 +821,10 @@
                     if (confirm('Start a new game? Current progress will be lost.')) {
                         this.state.resetAllGameState();
                         this.state.initializeGame();
+                        
+                        // Start the game timer
+                        console.log('⏰ Starting new game timer...');
+                        this.state.startTimer();
                     }
                 } catch (error) {
                     console.error('Error starting new game:', error);
@@ -3827,10 +3839,18 @@
             }
             
             canPlaceOnTableau(card, targetPile) {
+                if (!card || !targetPile) return false;
+                
                 if (targetPile.length === 0) {
                     return card.value === 13;
                 }
                 const topCard = targetPile[targetPile.length - 1];
+                
+                // Check if topCard exists and has required properties
+                if (!topCard || topCard.faceUp === undefined || !topCard.value || !topCard.suit) {
+                    return false;
+                }
+                
                 return topCard.faceUp && 
                        topCard.value === card.value + 1 && 
                        this.game.constants.RED_SUITS.has(topCard.suit) !== this.game.constants.RED_SUITS.has(card.suit);
@@ -7212,8 +7232,14 @@
                     let maxY = tableauY;
                     
                     pile.forEach((card, cardIndex) => {
+                        // Skip undefined/null cards
+                        if (!card || !card.hasOwnProperty('faceUp')) {
+                            console.warn(`⚠️ Skipping invalid card at tableau[${pileIndex}][${cardIndex}]:`, card);
+                            return;
+                        }
+                        
                         const cardY = tableauY + cardIndex * (card.faceUp ? this.game.constants.FACE_UP_OFFSET : this.game.constants.FACE_DOWN_OFFSET);
-                        const isDraggedCard = this.game.input.isDragging && this.game.input.draggedCards.some(dc => dc.id === card.id);
+                        const isDraggedCard = this.game.input.isDragging && this.game.input.draggedCards.some(dc => dc && dc.id === card.id);
                         const alpha = isDraggedCard ? 0.3 : 1;
                         const isHovered = this.game.state.hoveredCard && this.game.state.hoveredCard.id === card.id;
                         
@@ -8018,6 +8044,12 @@
                             const pileX = tableauStartX + pileIndex * (this.game.constants.CARD_WIDTH + 15);
                             
                             pile.forEach((card, cardIndex) => {
+                                // Skip undefined/null cards
+                                if (!card || !card.hasOwnProperty('faceUp')) {
+                                    console.warn(`⚠️ Skipping invalid card in fallback tableau[${pileIndex}][${cardIndex}]:`, card);
+                                    return;
+                                }
+                                
                                 const cardY = tableauY + cardIndex * (card.faceUp ? this.game.constants.FACE_UP_OFFSET : this.game.constants.FACE_DOWN_OFFSET);
                                 
                                 if (card.faceUp) {
@@ -11425,6 +11457,7 @@
                 checkVersion();
                 
                 console.log('🎮 Starting game initialization...');
+                console.log('🔄 Game version: 2024.12.20.14.00 - Fixed timer and undefined cards'); // Cache busting version
                 
                 if (typeof KlondikeSolitaire === 'undefined') {
                     throw new Error('KlondikeSolitaire class is not defined');

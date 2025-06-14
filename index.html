@@ -3806,6 +3806,26 @@
                        (topCard && card.value === topCard.value + 1);
             }
             
+            canMoveToFoundation(card) {
+                // Check if card is face up
+                if (!card.faceUp) return false;
+                
+                // Get the foundation pile for this card's suit
+                const foundationPile = this.game.state.foundations[card.suit];
+                if (!foundationPile) return false;
+                
+                // If foundation is empty, only Ace can be placed
+                if (foundationPile.length === 0) {
+                    return card.value === 1;
+                }
+                
+                // Get the top card of the foundation pile
+                const topCard = foundationPile[foundationPile.length - 1];
+                
+                // Card must be one rank higher than the top card
+                return card.value === topCard.value + 1;
+            }
+            
             canPlaceOnTableau(card, targetPile) {
                 if (targetPile.length === 0) {
                     return card.value === 13;
@@ -4406,21 +4426,27 @@
                     // Check for cycling
                     if (gameStateHistory.has(stateSignature)) {
                         cycleDetectionCounter++;
-                        console.log(`🔄 Detected game state cycle (${cycleDetectionCounter}/3)`);
+                        console.log(`🔄 Detected game state cycle (${cycleDetectionCounter}/2)`);
                         
-                        if (cycleDetectionCounter >= 3) {
-                            console.log('❌ Breaking out of infinite cycle - trying stock draw');
-                            // Force a stock draw to break the cycle
-                            try {
-                                this.game.ai.flipStock();
-                                movesPlayed++;
-                                cycleDetectionCounter = 0;
-                                gameStateHistory.clear();
-                                continue;
-                            } catch (error) {
-                                console.log('❌ Cannot break cycle - stopping auto-play');
-                                return false;
+                        if (cycleDetectionCounter >= 2) {
+                            console.log('❌ Breaking out of infinite cycle - trying different strategy');
+                            
+                            // Try stock draw first
+                            if (this.game.state.stock.length > 0) {
+                                try {
+                                    this.game.ai.flipStock();
+                                    movesPlayed++;
+                                    cycleDetectionCounter = 0;
+                                    gameStateHistory.clear();
+                                    continue;
+                                } catch (error) {
+                                    console.log('❌ Stock draw failed');
+                                }
                             }
+                            
+                            // If stock draw doesn't work, stop auto-play
+                            console.log('❌ Cannot break cycle - stopping auto-play');
+                            return false;
                         }
                     } else {
                         cycleDetectionCounter = 0;
@@ -4554,9 +4580,9 @@
                 if (stateHistory.size < 2) return moves;
                 
                 // Prioritize moves that haven't been seen recently
-                const recentStates = Array.from(stateHistory.keys()).slice(-5);
+                const recentStates = Array.from(stateHistory.keys()).slice(-10);
                 
-                return moves.filter(move => {
+                const filteredMoves = moves.filter(move => {
                     // Simulate the move to see if it creates a known state
                     try {
                         const testState = this.applyMoveToState(this.cloneGameState(), move);
@@ -4569,6 +4595,9 @@
                         return true;
                     }
                 });
+                
+                // If all moves are filtered out, return the original moves to prevent getting stuck
+                return filteredMoves.length > 0 ? filteredMoves : moves.slice(0, 1);
             }
 
             // Find a sequence of moves that makes foundation progress
@@ -6716,7 +6745,34 @@
                             // Try to auto-move to foundation first, otherwise enable dragging
                             if (this.game.rules.canMoveToFoundation && this.game.rules.canMoveToFoundation(cardInfo.card)) {
                                 console.log('🎯 Auto-moving waste card to foundation');
-                                this.game.ai.moveToFoundation(cardInfo.card);
+                                try {
+                                    // Move the card from waste to foundation
+                                    const wasteCard = this.game.state.waste.pop();
+                                    this.game.state.foundations[wasteCard.suit].push(wasteCard);
+                                    this.game.state.gameStats.moves++;
+                                    this.game.state.updateScore('foundation');
+                                    this.game.state.checkWinCondition();
+                                    console.log('✅ Successfully moved to foundation');
+                                } catch (error) {
+                                    console.error('❌ Error moving to foundation:', error);
+                                }
+                            } else {
+                                console.log('❌ Cannot auto-move to foundation - trying tableau');
+                                // Try to find a valid tableau placement
+                                for (let i = 0; i < this.game.state.tableau.length; i++) {
+                                    if (this.game.rules.canPlaceOnTableau(cardInfo.card, this.game.state.tableau[i])) {
+                                        console.log(`✅ Moving to tableau column ${i + 1}`);
+                                        try {
+                                            const wasteCard = this.game.state.waste.pop();
+                                            this.game.state.tableau[i].push(wasteCard);
+                                            this.game.state.gameStats.moves++;
+                                            this.game.state.updateScore('waste_to_tableau');
+                                            break;
+                                        } catch (error) {
+                                            console.error('❌ Error moving to tableau:', error);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -11593,9 +11649,35 @@
                 // Simulate clicking on waste pile
                 if (window.game.rules.canMoveToFoundation && window.game.rules.canMoveToFoundation(wasteCard)) {
                     console.log('✅ Can move to foundation, attempting...');
-                    window.game.ai.moveToFoundation(wasteCard);
+                    try {
+                        // Move the card from waste to foundation
+                        const card = window.game.state.waste.pop();
+                        window.game.state.foundations[card.suit].push(card);
+                        window.game.state.gameStats.moves++;
+                        window.game.state.updateScore('foundation');
+                        window.game.state.checkWinCondition();
+                        console.log('✅ Successfully moved to foundation');
+                    } catch (error) {
+                        console.error('❌ Error moving to foundation:', error);
+                    }
                 } else {
                     console.log('❌ Cannot move to foundation');
+                    // Try tableau
+                    for (let i = 0; i < window.game.state.tableau.length; i++) {
+                        if (window.game.rules.canPlaceOnTableau(wasteCard, window.game.state.tableau[i])) {
+                            console.log(`✅ Can move to tableau column ${i + 1}`);
+                            try {
+                                const card = window.game.state.waste.pop();
+                                window.game.state.tableau[i].push(card);
+                                window.game.state.gameStats.moves++;
+                                window.game.state.updateScore('waste_to_tableau');
+                                console.log('✅ Successfully moved to tableau');
+                                break;
+                            } catch (error) {
+                                console.error('❌ Error moving to tableau:', error);
+                            }
+                        }
+                    }
                 }
             } else {
                 console.log('❌ No cards in waste pile');

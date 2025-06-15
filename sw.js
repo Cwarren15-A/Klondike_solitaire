@@ -1,2 +1,84 @@
-if(!self.define){let e,i={};const n=(n,s)=>(n=new URL(n+".js",s).href,i[n]||new Promise((i=>{if("document"in self){const e=document.createElement("script");e.src=n,e.onload=i,document.head.appendChild(e)}else e=n,importScripts(n),i()})).then((()=>{let e=i[n];if(!e)throw new Error(`Module ${n} didn’t register its module`);return e})));self.define=(s,c)=>{const r=e||("document"in self?document.currentScript.src:"")||location.href;if(i[r])return;let o={};const d=e=>n(e,r),t={module:{uri:r},exports:o,require:d};i[r]=Promise.all(s.map((e=>t[e]||d(e)))).then((e=>(c(...e),o)))}}define(["./workbox-74f2ef77"],(function(e){"use strict";self.skipWaiting(),e.clientsClaim(),e.precacheAndRoute([{url:"assets/animations-4ed993c7.js",revision:null},{url:"assets/gestures-4ed993c7.js",revision:null},{url:"assets/react-4ed993c7.js",revision:null},{url:"assets/state-4ed993c7.js",revision:null},{url:"assets/tensorflow-4ed993c7.js",revision:null},{url:"favicon.ico",revision:"d41d8cd98f00b204e9800998ecf8427e"},{url:"icon-144.png",revision:"7215ee9c7d9dc229d2921a40e899ec5f"},{url:"icon-192.png",revision:"7215ee9c7d9dc229d2921a40e899ec5f"},{url:"icon-512.png",revision:"7215ee9c7d9dc229d2921a40e899ec5f"},{url:"icon.svg",revision:"7ddd86897f351fc8f1a8f9ab260cb3b1"},{url:"index.html",revision:"f72eb3527f16c9cc3a33b20a1805b345"},{url:"registerSW.js",revision:"39ac1faff4c2d679de07782346851cf6"},{url:"favicon.ico",revision:"d41d8cd98f00b204e9800998ecf8427e"},{url:"icon-192.png",revision:"7215ee9c7d9dc229d2921a40e899ec5f"},{url:"icon-512.png",revision:"7215ee9c7d9dc229d2921a40e899ec5f"},{url:"manifest.webmanifest",revision:"6db841537dd1ba3eb98ce0062ff8ef1b"}],{}),e.cleanupOutdatedCaches(),e.registerRoute(new e.NavigationRoute(e.createHandlerBoundToURL("index.html"))),e.registerRoute(/^https:\/\/cdn\.jsdelivr\.net\/.*/,new e.CacheFirst({cacheName:"cdn-cache",plugins:[new e.ExpirationPlugin({maxEntries:50,maxAgeSeconds:604800})]}),"GET")}));
+// Service Worker with NetworkFirst strategy for better updates
+self.addEventListener('install', (event) => {
+  console.log('🔄 Service Worker installing...');
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  console.log('✅ Service Worker activating...');
+  event.waitUntil(
+    Promise.all([
+      // Take control of all clients as soon as it activates
+      self.clients.claim(),
+      // Clear all caches
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            console.log('🗑️ Deleting cache:', cacheName);
+            return caches.delete(cacheName);
+          })
+        );
+      })
+    ])
+  );
+});
+
+// Listen for messages from the client
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('⚡ Skipping waiting and activating new service worker');
+    self.skipWaiting();
+  }
+});
+
+// NetworkFirst strategy for all requests
+self.addEventListener('fetch', (event) => {
+  // Skip cross-origin requests
+  if (!event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+  
+  // Skip non-GET requests
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  
+  // For HTML requests, always go to network first
+  if (event.request.headers.get('accept').includes('text/html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          // Cache the response for offline use
+          const responseClone = response.clone();
+          caches.open('html-cache').then(cache => {
+            cache.put(event.request, responseClone);
+          });
+          return response;
+        })
+        .catch(() => {
+          // If network fails, try the cache
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+  
+  // For other resources, try network first, then cache
+  event.respondWith(
+    fetch(event.request)
+      .then(response => {
+        // Cache the response for offline use
+        const responseClone = response.clone();
+        caches.open('resource-cache').then(cache => {
+          cache.put(event.request, responseClone);
+        });
+        return response;
+      })
+      .catch(() => {
+        // If network fails, try the cache
+        return caches.match(event.request);
+      })
+  );
+});
+
 //# sourceMappingURL=sw.js.map

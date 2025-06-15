@@ -7,8 +7,164 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Klondike Solitaire - AI Enhanced</title>
-    <!-- Cache buster: 2024-12-20-16:00 -->
-    <!-- Fixed caching issues - no more hard refresh needed! -->
+    <!-- Cache buster: 2024-12-20-17:00 -->
+    <!-- Aggressive cache busting implemented - no more hard refresh needed! -->
+    
+    <!-- AGGRESSIVE CACHE BUSTING SCRIPT -->
+    <script>
+        // Force cache clearing on every page load
+        (function() {
+            console.log('🧹 AGGRESSIVE CACHE BUSTING INITIATED');
+            
+            // Clear localStorage version keys
+            localStorage.removeItem('sw_cache_version');
+            localStorage.removeItem('klondike_version');
+            console.log('✅ Cleared localStorage version keys');
+            
+            // Clear all browser caches
+            if ('caches' in window) {
+                caches.keys().then(function(cacheNames) {
+                    return Promise.all(
+                        cacheNames.map(function(cacheName) {
+                            console.log('🗑️ Deleting cache:', cacheName);
+                            return caches.delete(cacheName);
+                        })
+                    );
+                }).then(function() {
+                    console.log('✅ Cleared all browser caches');
+                });
+            }
+            
+            // Unregister all service workers
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for (let registration of registrations) {
+                        console.log('🔄 Unregistering service worker');
+                        registration.unregister();
+                    }
+                    console.log('✅ Unregistered all service workers');
+                });
+            }
+            
+            // Add a timestamp to all script and link tags to prevent caching
+            document.addEventListener('DOMContentLoaded', function() {
+                const timestamp = '?v=' + Date.now();
+                const scripts = document.querySelectorAll('script[src]');
+                const links = document.querySelectorAll('link[href]');
+                
+                scripts.forEach(function(script) {
+                    if (!script.src.includes('?')) {
+                        script.src += timestamp;
+                    }
+                });
+                
+                links.forEach(function(link) {
+                    if (!link.href.includes('?')) {
+                        link.href += timestamp;
+                    }
+                });
+                
+                console.log('✅ Added cache busters to all resources');
+            });
+
+            // Helper function to check current cache status
+            window.checkCacheStatus = async function() {
+                try {
+                    const status = {
+                        currentVersion: "2024.12.20.17.00",
+                        storedCacheVersion: localStorage.getItem('sw_cache_version'),
+                        storedGameVersion: localStorage.getItem('klondike_version'),
+                        serviceWorkerRegistrations: 0,
+                        cacheNames: []
+                    };
+                    
+                    if ('serviceWorker' in navigator) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        status.serviceWorkerRegistrations = registrations.length;
+                    }
+                    
+                    if ('caches' in window) {
+                        status.cacheNames = await caches.keys();
+                    }
+                    
+                    console.log('📊 Cache Status:', status);
+                    return status;
+                } catch (error) {
+                    console.error('❌ Failed to check cache status:', error);
+                    return { error: error.message };
+                }
+            };
+
+            // Force reload if service worker is causing issues
+            window.forceReload = function() {
+                console.log('🔄 Forcing page reload with cache clearing...');
+                
+                // Clear localStorage
+                localStorage.removeItem('sw_cache_version');
+                localStorage.removeItem('klondike_version');
+                
+                // Clear all caches
+                if ('caches' in window) {
+                    caches.keys().then(function(cacheNames) {
+                        return Promise.all(
+                            cacheNames.map(function(cacheName) {
+                                return caches.delete(cacheName);
+                            })
+                        );
+                    });
+                }
+                
+                // Unregister all service workers
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                        for (let registration of registrations) {
+                            registration.unregister();
+                        }
+                    });
+                }
+                
+                // Force reload with cache clearing
+                window.location.reload(true);
+            };
+
+            // Add a button to force reload if needed
+            document.addEventListener('DOMContentLoaded', function() {
+                // Create a floating button for force reload
+                const reloadButton = document.createElement('button');
+                reloadButton.textContent = '🔄 Force Reload';
+                reloadButton.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background: #ef4444;
+                    color: white;
+                    border: none;
+                    border-radius: 50%;
+                    width: 50px;
+                    height: 50px;
+                    font-size: 20px;
+                    cursor: pointer;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    z-index: 10000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.3s ease;
+                `;
+                reloadButton.addEventListener('mouseover', function() {
+                    this.style.transform = 'scale(1.1)';
+                });
+                reloadButton.addEventListener('mouseout', function() {
+                    this.style.transform = 'scale(1)';
+                });
+                reloadButton.addEventListener('click', window.forceReload);
+                document.body.appendChild(reloadButton);
+            });
+
+            document.addEventListener('DOMContentLoaded', initializeGame);
+        })();
+    </script>
+    
     <meta name="description" content="Play Klondike Solitaire with AI-powered hints, analysis, and adaptive difficulty. Advanced machine learning provides intelligent gameplay assistance.">
     
     <!-- Social Media Meta Tags -->
@@ -11377,41 +11533,40 @@
             window.addEventListener('load', async () => {
                 try {
                     // Check if we need to clear all caches due to version update
-                    const currentVersion = "2024.12.20.16.00";
+                    const currentVersion = "2024.12.20.17.00";
                     const lastCacheVersion = localStorage.getItem('sw_cache_version');
                     
-                    if (lastCacheVersion !== currentVersion) {
-                        console.log('🧹 Version change detected, clearing all caches...');
-                        
-                        // Clear all caches
-                        if ('caches' in window) {
-                            const cacheNames = await caches.keys();
-                            await Promise.all(
-                                cacheNames.map(cacheName => {
-                                    console.log('🗑️ Deleting cache:', cacheName);
-                                    return caches.delete(cacheName);
-                                })
-                            );
-                        }
-                        
-                        // Unregister existing service workers
-                        const registrations = await navigator.serviceWorker.getRegistrations();
+                    // ALWAYS clear caches on page load
+                    console.log('🧹 Forcing cache clear on every page load...');
+                    
+                    // Clear all caches
+                    if ('caches' in window) {
+                        const cacheNames = await caches.keys();
                         await Promise.all(
-                            registrations.map(registration => {
-                                console.log('🔄 Unregistering service worker');
-                                return registration.unregister();
+                            cacheNames.map(cacheName => {
+                                console.log('🗑️ Deleting cache:', cacheName);
+                                return caches.delete(cacheName);
                             })
                         );
-                        
-                        localStorage.setItem('sw_cache_version', currentVersion);
-                        
-                        // Force page reload after cache clearing
-                        setTimeout(() => {
-                            console.log('🔄 Reloading page after cache clear...');
-                            window.location.reload(true);
-                        }, 1000);
-                        return;
                     }
+                    
+                    // Unregister existing service workers
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(
+                        registrations.map(registration => {
+                            console.log('🔄 Unregistering service worker');
+                            return registration.unregister();
+                        })
+                    );
+                    
+                    localStorage.setItem('sw_cache_version', currentVersion);
+                    
+                    // Force page reload after cache clearing
+                    setTimeout(() => {
+                        console.log('🔄 Reloading page after cache clear...');
+                        window.location.reload(true);
+                    }, 1000);
+                    return;
                     
                     // Register service worker with cache buster
                     const swUrl = `./sw.js?v=${currentVersion}&t=${Date.now()}`;
@@ -11462,7 +11617,7 @@
 
         // ===== VERSION MANAGEMENT =====
         
-        const CURRENT_VERSION = "2024.12.20.16.00"; // Updated to force cache clear
+        const CURRENT_VERSION = "2024.12.20.17.00"; // Updated to force cache clear
         
         function checkVersion() {
             const lastVersion = localStorage.getItem('klondike_version');
@@ -11802,7 +11957,7 @@
             window.checkCacheStatus = async function() {
                 try {
                     const status = {
-                        currentVersion: "2024.12.20.16.00",
+                        currentVersion: "2024.12.20.17.00",
                         storedCacheVersion: localStorage.getItem('sw_cache_version'),
                         storedGameVersion: localStorage.getItem('klondike_version'),
                         serviceWorkerRegistrations: 0,
@@ -11825,6 +11980,72 @@
                     return { error: error.message };
                 }
             };
+
+            // Force reload if service worker is causing issues
+            window.forceReload = function() {
+                console.log('🔄 Forcing page reload with cache clearing...');
+                
+                // Clear localStorage
+                localStorage.removeItem('sw_cache_version');
+                localStorage.removeItem('klondike_version');
+                
+                // Clear all caches
+                if ('caches' in window) {
+                    caches.keys().then(function(cacheNames) {
+                        return Promise.all(
+                            cacheNames.map(function(cacheName) {
+                                return caches.delete(cacheName);
+                            })
+                        );
+                    });
+                }
+                
+                // Unregister all service workers
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                        for (let registration of registrations) {
+                            registration.unregister();
+                        }
+                    });
+                }
+                
+                // Force reload with cache clearing
+                window.location.reload(true);
+            };
+
+            // Add a button to force reload if needed
+            document.addEventListener('DOMContentLoaded', function() {
+                // Create a floating button for force reload
+                const reloadButton = document.createElement('button');
+                reloadButton.textContent = '🔄 Force Reload';
+                reloadButton.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background: #ef4444;
+                    color: white;
+                    border: none;
+                    border-radius: 50%;
+                    width: 50px;
+                    height: 50px;
+                    font-size: 20px;
+                    cursor: pointer;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    z-index: 10000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.3s ease;
+                `;
+                reloadButton.addEventListener('mouseover', function() {
+                    this.style.transform = 'scale(1.1)';
+                });
+                reloadButton.addEventListener('mouseout', function() {
+                    this.style.transform = 'scale(1)';
+                });
+                reloadButton.addEventListener('click', window.forceReload);
+                document.body.appendChild(reloadButton);
+            });
 
             document.addEventListener('DOMContentLoaded', initializeGame);
         } else {

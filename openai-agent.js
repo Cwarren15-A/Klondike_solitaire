@@ -464,11 +464,9 @@ Give me 2-3 specific actionable suggestions.
         const requestBody = {
             model: this.model,
             messages: messages,
-            max_tokens: this.maxTokens,
-            temperature: this.temperature,
-            top_p: 1,
-            frequency_penalty: 0,
-            presence_penalty: 0
+            max_completion_tokens: this.maxTokens,
+            temperature: this.temperature ?? 0.3,
+            top_p: 1
         };
         
         const response = await fetch(this.baseURL, {
@@ -803,15 +801,13 @@ Score: ${state.gameStats.score}
         // Clear any existing hints
         this.clearVisualHints();
         
-        // Store hint for renderer to use
+        // Store hint for renderer
         this.game.state.currentHint = recommendation;
         
-        // Set hint timeout to clear after 5 seconds
-        setTimeout(() => {
-            this.clearVisualHints();
-        }, 5000);
+        // Auto-clear after 5 seconds
+        setTimeout(() => this.clearVisualHints(), 5000);
         
-        // Trigger re-render to show highlights
+        // Trigger render
         this.game.renderer.render();
     }
     
@@ -822,13 +818,9 @@ Score: ${state.gameStats.score}
         }
     }
     
-    /**
-     * Show win probability analysis
-     */
     async showWinProbability() {
         try {
             this.game.ui.showNotification('🤖 AI analyzing win probability...', 'info', 2000);
-            
             const analysis = await this.analyzeWinProbability();
             
             const probabilityHTML = `
@@ -847,26 +839,21 @@ Score: ${state.gameStats.score}
                     </div>
                 </div>
             `;
-            
             this.game.ui.showCustomNotification(probabilityHTML, 'ai-win-analysis', 10000);
-            
         } catch (error) {
             console.error('Error showing win probability:', error);
             this.game.ui.showNotification('❌ Win analysis failed: ' + error.message, 'error', 5000);
         }
     }
     
-    /**
-     * Check if the OpenAI agent is available
-     */
     isAvailable() {
         return this.isInitialized && this.apiKey;
     }
 }
 
-// Export for use in main game
+// Export for environments
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = OpenAIAgent;
 } else if (typeof window !== 'undefined') {
     window.OpenAIAgent = OpenAIAgent;
-} 
+}

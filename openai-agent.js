@@ -9,8 +9,7 @@ class OpenAIAgent {
         this.apiKey = null;
         this.baseURL = 'https://api.openai.com/v1/chat/completions';
         this.model = 'o4-mini';
-        this.maxTokens = 1000; // o1-mini needs higher token limit
-        // Note: o1-mini doesn't use temperature parameter
+        this.max_completion_tokens = 1000;
         this.isInitialized = false;
         this.requestQueue = [];
         this.isProcessing = false;
@@ -464,9 +463,7 @@ Give me 2-3 specific actionable suggestions.
         const requestBody = {
             model: this.model,
             messages: messages,
-            max_completion_tokens: this.maxTokens,
-            temperature: this.temperature ?? 0.3,
-            top_p: 1
+            max_completion_tokens: this.maxTokens
         };
         
         const response = await fetch(this.baseURL, {
@@ -745,7 +742,7 @@ Score: ${state.gameStats.score}
                         ${analysis.analysis.replace(/\n/g, '<br>')}
                     </div>
                     <div class="analysis-footer">
-                        <small>Powered by GPT-4o-mini • ${new Date().toLocaleTimeString()}</small>
+                        <small>Powered by o4-mini • ${new Date().toLocaleTimeString()}</small>
                     </div>
                 </div>
             `;
@@ -796,62 +793,46 @@ Score: ${state.gameStats.score}
                 return 'No clear move found';
         }
     }
-    
-    applyVisualHint(recommendation) {
-        // Clear any existing hints
+
+    // Highlight cards/areas based on recommendation
+    applyVisualHint(rec) {
+        // Clear previous
         this.clearVisualHints();
-        
-        // Store hint for renderer
-        this.game.state.currentHint = recommendation;
-        
-        // Auto-clear after 5 seconds
+        this.game.state.currentHint = rec;
         setTimeout(() => this.clearVisualHints(), 5000);
-        
-        // Trigger render
         this.game.renderer.render();
     }
-    
+
     clearVisualHints() {
         if (this.game.state.currentHint) {
             this.game.state.currentHint = null;
             this.game.renderer.render();
         }
     }
-    
+
     async showWinProbability() {
         try {
-            this.game.ui.showNotification('🤖 AI analyzing win probability...', 'info', 2000);
-            const analysis = await this.analyzeWinProbability();
-            
-            const probabilityHTML = `
+            this.game.ui.showNotification('🤖 AI analyzing win probability...', 'info', 1500);
+            const res = await this.analyzeWinProbability();
+            const html = `
                 <div class="ai-win-analysis">
                     <h3>📊 Win Probability Analysis</h3>
-                    <div class="probability-meter">
-                        <div class="probability-bar">
-                            <div class="probability-fill" style="width: ${analysis.probability}%"></div>
-                        </div>
-                        <div class="probability-text">${analysis.probability}% chance to win</div>
-                    </div>
-                    <div class="analysis-details">
-                        <div><strong>Strategy:</strong> ${analysis.strategy}</div>
-                        ${analysis.obstacles.length > 0 ? `<div><strong>Obstacles:</strong> ${analysis.obstacles.join(', ')}</div>` : ''}
-                        ${analysis.criticalMoves.length > 0 ? `<div><strong>Critical moves:</strong> ${analysis.criticalMoves.join(', ')}</div>` : ''}
-                    </div>
-                </div>
-            `;
-            this.game.ui.showCustomNotification(probabilityHTML, 'ai-win-analysis', 10000);
-        } catch (error) {
-            console.error('Error showing win probability:', error);
-            this.game.ui.showNotification('❌ Win analysis failed: ' + error.message, 'error', 5000);
+                    <div>${res.probability}% chance to win</div>
+                    <div><strong>Strategy:</strong> ${res.strategy}</div>
+                </div>`;
+            this.game.ui.showCustomNotification(html, 'ai-win', 8000);
+        } catch (e) {
+            console.error(e);
+            this.game.ui.showNotification('❌ Win analysis failed: ' + e.message, 'error', 4000);
         }
     }
-    
+
     isAvailable() {
-        return this.isInitialized && this.apiKey;
+        return this.isInitialized && !!this.apiKey;
     }
 }
 
-// Export for environments
+// Browser / Node export
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = OpenAIAgent;
 } else if (typeof window !== 'undefined') {

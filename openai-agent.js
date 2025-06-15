@@ -497,6 +497,10 @@ Give me 2-3 specific actionable suggestions.
             throw new Error('OpenAI Agent not initialized');
         }
         
+        console.log('🔄 Making API request to:', this.baseURL);
+        console.log('🤖 Using model:', this.model);
+        console.log('📝 Request messages:', messages);
+        
         // Rate limiting
         const now = Date.now();
         const timeSinceLastRequest = now - this.lastRequestTime;
@@ -510,24 +514,52 @@ Give me 2-3 specific actionable suggestions.
             max_completion_tokens: this.max_completion_tokens
         };
         
-        const response = await fetch(this.baseURL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey}`
-            },
-            body: JSON.stringify(requestBody)
-        });
+        console.log('📤 Request body:', JSON.stringify(requestBody, null, 2));
         
-        this.lastRequestTime = Date.now();
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+        try {
+            const response = await fetch(this.baseURL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.apiKey}`
+                },
+                body: JSON.stringify(requestBody)
+            });
+            
+            this.lastRequestTime = Date.now();
+            
+            console.log('📥 Response status:', response.status);
+            console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ API Error Response:', errorText);
+                
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch (e) {
+                    errorData = { error: { message: errorText } };
+                }
+                
+                throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+            }
+            
+            const responseText = await response.text();
+            console.log('📥 Raw response:', responseText);
+            
+            const data = JSON.parse(responseText);
+            console.log('📥 Parsed response:', data);
+            
+            const content = data.choices?.[0]?.message?.content;
+            console.log('💬 Extracted content:', content);
+            
+            return content || 'No response received';
+            
+        } catch (error) {
+            console.error('❌ Request failed:', error);
+            throw error;
         }
-        
-        const data = await response.json();
-        return data.choices[0]?.message?.content || 'No response received';
     }
     
     /**

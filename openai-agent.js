@@ -33,6 +33,50 @@ class OpenAIAgent {
         
         // Test the connection
         this.testConnection();
+        
+        // Perform initial game analysis after a short delay
+        setTimeout(() => {
+            this.performInitialAnalysis();
+        }, 3000);
+    }
+    
+    /**
+     * Perform initial game analysis to understand the board state
+     */
+    async performInitialAnalysis() {
+        try {
+            console.log('🔍 o4-mini performing initial game analysis...');
+            const gameState = this.serializeGameState();
+            console.log('📊 Current game state for AI:', gameState);
+            
+            const prompt = `
+Analyze this Klondike Solitaire game state and identify the best opening strategy:
+${gameState}
+
+Provide a brief analysis of:
+1. Immediate winning moves available
+2. Cards that should be prioritized to reveal
+3. Overall strategy for this layout
+
+Keep response under 100 words.
+`;
+            
+            const messages = [
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ];
+            
+            const analysis = await this.makeRequest(messages);
+            console.log('🧠 Initial AI analysis:', analysis);
+            
+            // Store analysis for later reference
+            this.initialAnalysis = analysis;
+            
+        } catch (error) {
+            console.error('Initial analysis failed:', error);
+        }
     }
     
     /**
@@ -463,7 +507,7 @@ Give me 2-3 specific actionable suggestions.
         const requestBody = {
             model: this.model,
             messages: messages,
-            max_completion_tokens: this.maxTokens
+            max_completion_tokens: this.max_completion_tokens
         };
         
         const response = await fetch(this.baseURL, {
@@ -487,37 +531,49 @@ Give me 2-3 specific actionable suggestions.
     }
     
     /**
-     * Serialize current game state for AI analysis
+     * Serialize current game state for AI analysis - includes ALL cards
      */
     serializeGameState() {
         const state = this.game.state;
         
-        // Stock and waste
+        // Stock and waste - show actual cards when possible
         const stockInfo = `Stock: ${state.stock.length} cards remaining`;
-        const wasteInfo = state.waste.length > 0 
-            ? `Waste: ${state.waste[state.waste.length - 1].rank}${state.waste[state.waste.length - 1].suit} (top card)`
-            : 'Waste: empty';
+        let wasteInfo = 'Waste: empty';
+        if (state.waste.length > 0) {
+            const visibleWaste = state.waste.slice(-3); // Show last 3 cards
+            wasteInfo = `Waste: ${visibleWaste.map(c => `${c.rank}${c.suit}`).join(', ')} (${state.waste.length} total)`;
+        }
         
-        // Foundations
+        // Foundations - show current state and what can be placed next
         const foundationInfo = Object.entries(state.foundations)
             .map(([suit, pile]) => {
-                if (pile.length === 0) return `${suit}: empty`;
+                if (pile.length === 0) return `${suit}: empty (needs Ace)`;
                 const topCard = pile[pile.length - 1];
-                return `${suit}: ${topCard.rank}${topCard.suit}`;
+                const nextRank = topCard.value === 13 ? 'complete' : this.getNextRank(topCard.value);
+                return `${suit}: ${topCard.rank}${topCard.suit} (needs ${nextRank})`;
             })
             .join(', ');
         
-        // Tableau
+        // Tableau - detailed view including all face-up cards and strategic info
         const tableauInfo = state.tableau.map((pile, index) => {
-            if (pile.length === 0) return `Column ${index + 1}: empty`;
+            if (pile.length === 0) return `Column ${index + 1}: empty (can place King)`;
             
             const faceDownCount = pile.filter(card => !card.faceUp).length;
             const faceUpCards = pile.filter(card => card.faceUp);
             
             let description = `Column ${index + 1}: `;
             if (faceDownCount > 0) description += `${faceDownCount} face-down, `;
+            
             if (faceUpCards.length > 0) {
-                description += faceUpCards.map(card => `${card.rank}${card.suit}`).join('-');
+                // Show all face-up cards in sequence
+                description += `face-up: ${faceUpCards.map(card => `${card.rank}${card.suit}`).join('-')}`;
+                
+                // Add strategic info about what can be placed on top
+                const topCard = faceUpCards[faceUpCards.length - 1];
+                const canPlace = this.getValidTableauPlacements(topCard);
+                if (canPlace.length > 0) {
+                    description += ` (can place: ${canPlace.join(' or ')})`;
+                }
             } else {
                 description += 'no face-up cards';
             }
@@ -525,20 +581,51 @@ Give me 2-3 specific actionable suggestions.
             return description;
         }).join('\n');
         
+        // Available moves analysis
+        const availableMoves = this.getAvailableMoves();
+        const movesInfo = availableMoves.length > 0 ? availableMoves.slice(0, 5).join(', ') : 'No obvious moves';
+        
         return `
-GAME STATE:
+KLONDIKE SOLITAIRE GAME STATE:
 ${stockInfo}
 ${wasteInfo}
 Foundations: ${foundationInfo}
 
-TABLEAU:
+TABLEAU COLUMNS:
 ${tableauInfo}
+
+AVAILABLE MOVES: ${movesInfo}
 
 GAME STATS:
 Moves: ${state.gameStats.moves}
 Time: ${Math.floor(state.gameStats.time / 60)}:${(state.gameStats.time % 60).toString().padStart(2, '0')}
 Score: ${state.gameStats.score}
+
+STRATEGIC PRIORITY: Find moves that reveal face-down cards, build foundations, or create empty columns for Kings.
 `;
+    }
+    
+    /**
+     * Get next rank for foundation building
+     */
+    getNextRank(currentValue) {
+        const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+        return currentValue < 13 ? ranks[currentValue] : 'complete';
+    }
+    
+    /**
+     * Get valid cards that can be placed on a tableau card
+     */
+    getValidTableauPlacements(card) {
+        const validCards = [];
+        const targetValue = card.value - 1;
+        if (targetValue > 0) {
+            const isRed = card.suit === '♥' || card.suit === '♦';
+            const targetSuits = isRed ? ['♠', '♣'] : ['♥', '♦'];
+            const targetRank = this.getNextRank(targetValue - 1);
+            targetSuits.forEach(suit => validCards.push(`${targetRank}${suit}`));
+        }
+        return validCards;
     }
     
     /**
@@ -756,24 +843,73 @@ Score: ${state.gameStats.score}
     }
     
     /**
-     * Show move recommendation
+     * Show move recommendation with enhanced visual hints
      */
     async showMoveRecommendation() {
         try {
-            this.game.ui.showNotification('🤖 AI analyzing best move...', 'info', 1500);
+            console.log('🤖 Visual Hint requested - calling o4-mini AI...');
+            console.log('🔍 Agent initialized:', this.isInitialized);
+            console.log('🔑 API key present:', !!this.apiKey);
             
+            if (!this.isInitialized) {
+                this.game.ui.showNotification('❌ OpenAI Agent not initialized. Please set API key first.', 'error', 4000);
+                return;
+            }
+            
+            this.game.ui.showNotification('🧠 o4-mini analyzing best move...', 'info', 2000);
+            
+            // Get current game state for debugging
+            const gameState = this.serializeGameState();
+            console.log('📊 Current game state being sent to AI:', gameState);
+            
+            // Get AI recommendation
             const recommendation = await this.getMoveRecommendation();
+            console.log('🎯 AI recommendation received:', recommendation);
             
-            // Apply visual highlighting based on recommendation
+            if (!recommendation || recommendation.type === 'unknown') {
+                this.game.ui.showNotification('🤔 AI suggests: Draw from stock or look for foundation moves', 'hint', 4000);
+                return;
+            }
+            
+            // Apply visual highlighting
             this.applyVisualHint(recommendation);
             
-            // Show minimal notification
-            let hintText = this.getHintText(recommendation);
-            this.game.ui.showNotification(`🎯 ${hintText}`, 'hint', 4000);
+            // Show detailed hint text
+            const hintText = this.getHintText(recommendation);
+            const strategicReason = this.getStrategicReason(recommendation);
+            
+            this.game.ui.showNotification(`🎯 ${hintText}`, 'hint', 5000);
+            
+            // Show additional strategic context
+            if (strategicReason) {
+                setTimeout(() => {
+                    this.game.ui.showNotification(`💡 ${strategicReason}`, 'info', 3000);
+                }, 1000);
+            }
             
         } catch (error) {
-            console.error('Error showing move recommendation:', error);
-            this.game.ui.showNotification('❌ AI hint failed: ' + error.message, 'error', 3000);
+            console.error('Error showing AI move recommendation:', error);
+            this.game.ui.showNotification('❌ AI hint failed: ' + error.message, 'error', 4000);
+        }
+    }
+    
+    /**
+     * Get strategic reasoning for the move
+     */
+    getStrategicReason(recommendation) {
+        switch (recommendation.type) {
+            case 'stock':
+                return 'Drawing reveals new cards and creates opportunities';
+            case 'waste_to_foundation':
+                return 'Foundation moves are always good - they free up cards';
+            case 'tableau_to_foundation':
+                return 'Moving to foundation reveals the card underneath';
+            case 'tableau_to_tableau':
+                return 'This move reveals hidden cards or creates better sequences';
+            case 'waste_to_tableau':
+                return 'This creates new building opportunities';
+            default:
+                return null;
         }
     }
     
@@ -796,14 +932,120 @@ Score: ${state.gameStats.score}
 
     // Highlight cards/areas based on recommendation
     applyVisualHint(rec) {
-        // Clear previous
+        console.log('🎯 Applying visual hint:', rec);
+        
+        // Clear previous hints
         this.clearVisualHints();
+        
+        // Store the hint for the renderer
         this.game.state.currentHint = rec;
-        setTimeout(() => this.clearVisualHints(), 5000);
+        
+        // Apply CSS highlighting based on recommendation type
+        try {
+            switch (rec.type) {
+                case 'stock':
+                    this.highlightStock();
+                    break;
+                case 'waste_to_foundation':
+                    this.highlightWasteAndFoundation(rec.suit);
+                    break;
+                case 'tableau_to_foundation':
+                    this.highlightTableauAndFoundation(rec.column, rec.suit);
+                    break;
+                case 'tableau_to_tableau':
+                    this.highlightTableauMove(rec.fromColumn, rec.toColumn);
+                    break;
+                case 'waste_to_tableau':
+                    this.highlightWasteAndTableau(rec.column);
+                    break;
+                default:
+                    console.log('Unknown hint type:', rec.type);
+            }
+        } catch (error) {
+            console.error('Error applying visual hint:', error);
+        }
+        
+        // Auto-clear after 8 seconds
+        setTimeout(() => this.clearVisualHints(), 8000);
+        
+        // Re-render the game
         this.game.renderer.render();
+    }
+    
+    highlightStock() {
+        const stockElement = document.querySelector('.stock-pile');
+        if (stockElement) {
+            stockElement.classList.add('ai-hint-highlight');
+            console.log('✨ Stock pile highlighted');
+        }
+    }
+    
+    highlightWasteAndFoundation(suit) {
+        const wasteElement = document.querySelector('.waste-pile');
+        if (wasteElement) {
+            wasteElement.classList.add('ai-hint-source');
+        }
+        
+        const foundationElement = document.querySelector(`.foundation-${suit}`);
+        if (foundationElement) {
+            foundationElement.classList.add('ai-hint-target');
+        }
+        
+        console.log(`✨ Waste and ${suit} foundation highlighted`);
+    }
+    
+    highlightTableauAndFoundation(column, suit) {
+        const tableauElement = document.querySelector(`.tableau-column[data-column="${column}"]`);
+        if (tableauElement) {
+            tableauElement.classList.add('ai-hint-source');
+        }
+        
+        const foundationElement = document.querySelector(`.foundation-${suit}`);
+        if (foundationElement) {
+            foundationElement.classList.add('ai-hint-target');
+        }
+        
+        console.log(`✨ Column ${column + 1} and ${suit} foundation highlighted`);
+    }
+    
+    highlightTableauMove(fromColumn, toColumn) {
+        const fromElement = document.querySelector(`.tableau-column[data-column="${fromColumn}"]`);
+        if (fromElement) {
+            fromElement.classList.add('ai-hint-source');
+        }
+        
+        const toElement = document.querySelector(`.tableau-column[data-column="${toColumn}"]`);
+        if (toElement) {
+            toElement.classList.add('ai-hint-target');
+        }
+        
+        console.log(`✨ Column ${fromColumn + 1} to column ${toColumn + 1} highlighted`);
+    }
+    
+    highlightWasteAndTableau(column) {
+        const wasteElement = document.querySelector('.waste-pile');
+        if (wasteElement) {
+            wasteElement.classList.add('ai-hint-source');
+        }
+        
+        const tableauElement = document.querySelector(`.tableau-column[data-column="${column}"]`);
+        if (tableauElement) {
+            tableauElement.classList.add('ai-hint-target');
+        }
+        
+        console.log(`✨ Waste and column ${column + 1} highlighted`);
     }
 
     clearVisualHints() {
+        console.log('🧹 Clearing visual hints');
+        
+        // Remove all hint classes
+        const hintElements = document.querySelectorAll('.ai-hint-highlight, .ai-hint-source, .ai-hint-target');
+        hintElements.forEach(element => {
+            element.classList.remove('ai-hint-highlight', 'ai-hint-source', 'ai-hint-target');
+        });
+        
+        // Clear the hint state
         if (this.game.state.currentHint) {
             this.game.state.currentHint = null;
             this.game.renderer.render();

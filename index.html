@@ -196,7 +196,7 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.15.0/tf.min.js"></script>
-    <script src="./openai-agent.js?v=2024.12.20.18.00"></script>
+            <script src="./openai-agent.js?v=2024.12.20.19.00"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -762,6 +762,65 @@
         .btn-orange:hover:not(:disabled) {
             background: linear-gradient(145deg, #ea580c, #dc2626);
             transform: translateY(-2px);
+        }
+
+        /* AI Visual Hint Styles */
+        .ai-hint-highlight {
+            animation: ai-hint-pulse 2s infinite;
+            box-shadow: 0 0 20px #ffd700, 0 0 40px #ffd700, 0 0 60px #ffd700;
+            border: 3px solid #ffd700 !important;
+            border-radius: 8px;
+        }
+
+        .ai-hint-source {
+            animation: ai-hint-source 2s infinite;
+            box-shadow: 0 0 15px #00ff00, 0 0 30px #00ff00;
+            border: 3px solid #00ff00 !important;
+            border-radius: 8px;
+        }
+
+        .ai-hint-target {
+            animation: ai-hint-target 2s infinite;
+            box-shadow: 0 0 15px #ff4444, 0 0 30px #ff4444;
+            border: 3px solid #ff4444 !important;
+            border-radius: 8px;
+        }
+
+        @keyframes ai-hint-pulse {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% { 
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+        }
+
+        @keyframes ai-hint-source {
+            0%, 100% { 
+                box-shadow: 0 0 15px #00ff00, 0 0 30px #00ff00;
+            }
+            50% { 
+                box-shadow: 0 0 25px #00ff00, 0 0 50px #00ff00;
+            }
+        }
+
+        @keyframes ai-hint-target {
+            0%, 100% { 
+                box-shadow: 0 0 15px #ff4444, 0 0 30px #ff4444;
+            }
+            50% { 
+                box-shadow: 0 0 25px #ff4444, 0 0 50px #ff4444;
+            }
+        }
+
+        /* Ensure hints work on card elements */
+        .card.ai-hint-highlight,
+        .card.ai-hint-source,
+        .card.ai-hint-target {
+            z-index: 1000;
+            position: relative;
         }
     </style>
 </head>

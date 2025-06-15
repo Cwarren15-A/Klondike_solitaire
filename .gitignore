@@ -2,3 +2,35 @@ node_modules
 .env
 .env.local
 .env.*.local
+
+# Security - API Keys and Secrets
+*.key
+*.pem
+*api-key*
+*secret*
+*token*
+config/secrets.js
+config/api-keys.js
+
+# Logs
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp

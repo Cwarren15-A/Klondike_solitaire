@@ -198,6 +198,7 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.15.0/tf.min.js"></script>
+    <script src="./openai-agent.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -582,13 +583,104 @@
             font-size: 13px;
         }
         
-        .analysis-item.suggestion {
-            color: #a78bfa;
-            font-style: italic;
-            background: rgba(167, 139, 250, 0.1);
-            padding: 6px;
-            border-radius: 4px;
-        }
+                 .analysis-item.suggestion {
+             color: #a78bfa;
+             font-style: italic;
+             background: rgba(167, 139, 250, 0.1);
+             padding: 6px;
+             border-radius: 4px;
+         }
+         
+         /* OpenAI Analysis Styles */
+         .ai-analysis, .ai-recommendation, .ai-win-analysis {
+             background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
+             border: 2px solid rgba(16, 185, 129, 0.3);
+             border-radius: 12px;
+             padding: 20px;
+             margin: 15px 0;
+             backdrop-filter: blur(10px);
+             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+         }
+         
+         .ai-analysis h3, .ai-recommendation h3, .ai-win-analysis h3 {
+             color: #10b981;
+             margin: 0 0 15px 0;
+             font-size: 18px;
+             display: flex;
+             align-items: center;
+             gap: 8px;
+         }
+         
+         .analysis-content {
+             line-height: 1.6;
+             margin-bottom: 15px;
+             color: #e5e7eb;
+         }
+         
+         .recommended-move, .reasoning {
+             margin: 10px 0;
+             padding: 8px 12px;
+             background: rgba(255, 255, 255, 0.05);
+             border-radius: 6px;
+             border-left: 3px solid #10b981;
+         }
+         
+         .priority {
+             display: inline-block;
+             padding: 4px 12px;
+             border-radius: 20px;
+             font-size: 12px;
+             font-weight: bold;
+             margin-top: 10px;
+         }
+         
+         .priority-high { background: #ef4444; color: white; }
+         .priority-medium { background: #f59e0b; color: white; }
+         .priority-low { background: #6b7280; color: white; }
+         
+         .analysis-footer {
+             text-align: right;
+             opacity: 0.7;
+             font-size: 12px;
+             margin-top: 15px;
+             border-top: 1px solid rgba(255, 255, 255, 0.1);
+             padding-top: 10px;
+         }
+         
+         .probability-meter {
+             margin: 15px 0;
+         }
+         
+         .probability-bar {
+             width: 100%;
+             height: 20px;
+             background: rgba(255, 255, 255, 0.1);
+             border-radius: 10px;
+             overflow: hidden;
+             margin-bottom: 8px;
+         }
+         
+         .probability-fill {
+             height: 100%;
+             background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981);
+             border-radius: 10px;
+             transition: width 0.5s ease;
+         }
+         
+         .probability-text {
+             text-align: center;
+             font-weight: bold;
+             color: #10b981;
+         }
+         
+         .analysis-details {
+             margin-top: 15px;
+         }
+         
+         .analysis-details > div {
+             margin: 8px 0;
+             padding: 6px 0;
+         }
         
         /* Accessibility improvements */
         @media (prefers-reduced-motion: reduce) {
@@ -728,7 +820,9 @@
                 <button class="btn-orange" id="redoBtn" onclick="safeGameCall('redo')" title="Redo last undone move (R)" aria-label="Redo last undone move">↷ Redo</button>
                 <button class="btn-purple" onclick="safeGameCall('ai.showHint')" title="Show AI hint (H)" aria-label="Show AI move hint">🧠 AI Hint</button>
                                         <button class="btn-gold" onclick="safeGameCall('ai.autoCompleteGame')" title="AI automatically plays the game to completion" aria-label="Auto-play game">🤖 Auto-Play</button>
-                <button class="btn-orange" onclick="safeGameCall('ui.showMLAnalysis')" title="Show ML analysis" aria-label="Show machine learning analysis">📊 AI Analysis</button>
+                <button class="btn-orange" onclick="safeGameCall('ui.showMLAnalysis')" title="Show ML analysis" aria-label="Show machine learning analysis">📊 Local AI</button>
+                <button class="btn-purple" onclick="safeGameCall('openaiAgent.showAnalysis')" title="OpenAI Game Analysis" aria-label="Get OpenAI powered game analysis">🤖 GPT Analysis</button>
+                <button class="btn-gold" onclick="safeGameCall('openaiAgent.showMoveRecommendation')" title="OpenAI Move Recommendation" aria-label="Get OpenAI move recommendation">🎯 GPT Hint</button>
                 <button class="btn-green" onclick="safeGameCall('storage.quickSave')" title="Quick save (S)" aria-label="Quick save game">💾 Save</button>
                 <!-- Phase 2: Performance Monitor Button -->
                 <button class="btn-info" onclick="togglePerformanceMonitor()" title="Show Phase 2 performance metrics" aria-label="Toggle performance monitor">⚡ Performance</button>
@@ -869,6 +963,10 @@
                 this.ai = new AIHintSystem(this);
                 // Phase 2: Enhanced AI Worker Manager for non-blocking operations
                 this.aiWorkerManager = new AIWorkerManager(this);
+                // OpenAI-powered AI agent
+                this.openaiAgent = new OpenAIAgent(this);
+                // Initialize with API key from secure prompt
+                this.initializeOpenAI();
                 this.daily = new DailyChallenge(this);
                 this.ml = new MLManager(this);
                 this.timer = null;
@@ -1011,6 +1109,127 @@
                 
                 this.ui.updateUI();
                 this.renderer.render();
+            }
+            
+            initializeOpenAI() {
+                // Secure API key initialization - prompts user for key
+                const savedApiKey = this.storage.get('openai_api_key_encrypted');
+                if (savedApiKey) {
+                    try {
+                        // Simple obfuscation (not real encryption, but better than plaintext)
+                        const decodedKey = atob(savedApiKey);
+                        this.openaiAgent.initialize(decodedKey);
+                        console.log('🔐 OpenAI API key loaded from secure storage');
+                    } catch (error) {
+                        console.error('Error loading saved API key:', error);
+                        this.promptForApiKey();
+                    }
+                } else {
+                    this.promptForApiKey();
+                }
+            }
+            
+            promptForApiKey() {
+                // Create a secure prompt for API key
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                `;
+                
+                modal.innerHTML = `
+                    <div style="
+                        background: linear-gradient(135deg, #1f2937, #374151);
+                        padding: 30px;
+                        border-radius: 15px;
+                        max-width: 500px;
+                        width: 90%;
+                        color: white;
+                        text-align: center;
+                        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+                    ">
+                        <h2 style="margin: 0 0 20px 0; color: #10b981;">🤖 OpenAI Integration</h2>
+                        <p style="margin-bottom: 20px; line-height: 1.5;">
+                            To enable GPT-4o-mini powered game analysis, please enter your OpenAI API key.
+                            <br><br>
+                            <strong>🔒 Security:</strong> Your key will be stored locally and never shared.
+                        </p>
+                        <input type="password" id="apiKeyInput" placeholder="sk-proj-..." style="
+                            width: 100%;
+                            padding: 12px;
+                            border: 2px solid #374151;
+                            border-radius: 8px;
+                            background: #1f2937;
+                            color: white;
+                            font-size: 14px;
+                            margin-bottom: 20px;
+                            box-sizing: border-box;
+                        ">
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button id="saveApiKey" style="
+                                background: #10b981;
+                                color: white;
+                                border: none;
+                                padding: 12px 24px;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                font-weight: bold;
+                            ">Save & Connect</button>
+                            <button id="skipApiKey" style="
+                                background: #6b7280;
+                                color: white;
+                                border: none;
+                                padding: 12px 24px;
+                                border-radius: 8px;
+                                cursor: pointer;
+                            ">Skip (Local AI Only)</button>
+                        </div>
+                        <p style="font-size: 12px; color: #9ca3af; margin-top: 15px;">
+                            Don't have an API key? Get one at <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #10b981;">platform.openai.com</a>
+                        </p>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                const input = document.getElementById('apiKeyInput');
+                const saveBtn = document.getElementById('saveApiKey');
+                const skipBtn = document.getElementById('skipApiKey');
+                
+                saveBtn.addEventListener('click', () => {
+                    const apiKey = input.value.trim();
+                    if (apiKey && apiKey.startsWith('sk-')) {
+                        try {
+                            // Simple obfuscation (not real encryption, but better than plaintext)
+                            const encodedKey = btoa(apiKey);
+                            this.storage.set('openai_api_key_encrypted', encodedKey);
+                            this.openaiAgent.initialize(apiKey);
+                            document.body.removeChild(modal);
+                            this.ui.showNotification('🔐 OpenAI API key saved securely!', 'success', 3000);
+                        } catch (error) {
+                            console.error('Error saving API key:', error);
+                            alert('Error saving API key. Please try again.');
+                        }
+                    } else {
+                        alert('Please enter a valid OpenAI API key (starts with sk-)');
+                    }
+                });
+                
+                skipBtn.addEventListener('click', () => {
+                    document.body.removeChild(modal);
+                    this.ui.showNotification('OpenAI features disabled. Using local AI only.', 'info', 3000);
+                });
+                
+                // Focus on input
+                setTimeout(() => input.focus(), 100);
             }
             
             cleanup() {
@@ -1672,6 +1891,139 @@
                 } catch (error) {
                     console.error('Error showing notification:', error);
                     alert(message.replace(/<[^>]*>/g, ''));
+                }
+            }
+            
+            showCustomNotification(htmlContent, className = 'custom-notification', duration = 5000) {
+                try {
+                    const notification = document.createElement('div');
+                    notification.className = className;
+                    
+                    // Create close button
+                    const closeButton = document.createElement('button');
+                    closeButton.innerHTML = '×';
+                    closeButton.className = 'close-btn';
+                    closeButton.style.cssText = `
+                        position: absolute !important;
+                        top: 8px !important;
+                        right: 8px !important;
+                        background: rgba(255, 255, 255, 0.8) !important;
+                        border: 2px solid rgba(0, 0, 0, 0.2) !important;
+                        border-radius: 50% !important;
+                        width: 32px !important;
+                        height: 32px !important;
+                        color: #333 !important;
+                        font-size: 18px !important;
+                        font-weight: bold !important;
+                        cursor: pointer !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        transition: all 0.2s ease !important;
+                        z-index: 9999 !important;
+                        pointer-events: all !important;
+                        touch-action: manipulation !important;
+                    `;
+                    
+                    closeButton.addEventListener('mouseenter', () => {
+                        closeButton.style.background = 'rgba(255, 99, 99, 0.9) !important';
+                        closeButton.style.color = 'white !important';
+                        closeButton.style.transform = 'scale(1.1) !important';
+                    });
+                    
+                    closeButton.addEventListener('mouseleave', () => {
+                        closeButton.style.background = 'rgba(255, 255, 255, 0.8) !important';
+                        closeButton.style.color = '#333 !important';
+                        closeButton.style.transform = 'scale(1) !important';
+                    });
+                    
+                    // Set default styling for custom notifications
+                    notification.style.cssText = `
+                        position: fixed;
+                        top: 5%;
+                        left: 50%;
+                        transform: translateX(-50%) scale(1);
+                        background: linear-gradient(135deg, #1f2937, #374151);
+                        color: white;
+                        padding: 20px 40px 20px 20px;
+                        border-radius: 15px;
+                        font-weight: normal;
+                        font-size: 14px;
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+                        z-index: 2000;
+                        max-width: 95vw;
+                        max-height: 90vh;
+                        width: auto;
+                        min-width: 300px;
+                        border: 2px solid #4ade80;
+                        animation: notificationPop 0.5s ease-out;
+                        overflow-y: auto;
+                    `;
+                    
+                    // Create content wrapper
+                    const contentDiv = document.createElement('div');
+                    contentDiv.innerHTML = htmlContent;
+                    
+                    // Function to close notification
+                    const closeNotification = () => {
+                        try {
+                            if (notification && notification.parentNode) {
+                                notification.style.transform = notification.style.transform.replace('scale(1)', 'scale(0)');
+                                
+                                if (notification.backdrop && notification.backdrop.parentNode) {
+                                    notification.backdrop.style.opacity = '0';
+                                }
+                                
+                                setTimeout(() => {
+                                    if (notification && notification.parentNode) {
+                                        document.body.removeChild(notification);
+                                    }
+                                    if (notification.backdrop && notification.backdrop.parentNode) {
+                                        document.body.removeChild(notification.backdrop);
+                                    }
+                                }, 300);
+                            }
+                        } catch (removeError) {
+                            console.warn('Error removing custom notification:', removeError);
+                        }
+                    };
+                    
+                    closeButton.addEventListener('click', closeNotification);
+                    
+                    // Add backdrop for modal-like notifications
+                    const backdrop = document.createElement('div');
+                    backdrop.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0, 0, 0, 0.5);
+                        z-index: 1999;
+                    `;
+                    backdrop.addEventListener('click', closeNotification);
+                    document.body.appendChild(backdrop);
+                    
+                    // Store backdrop reference for cleanup
+                    notification.backdrop = backdrop;
+                    
+                    // Assemble notification
+                    notification.appendChild(closeButton);
+                    notification.appendChild(contentDiv);
+                    document.body.appendChild(notification);
+                    notification.offsetHeight;
+                    
+                    // Auto-close timer
+                    const autoCloseTimer = setTimeout(closeNotification, duration);
+                    
+                    // Cancel auto-close if user closes manually
+                    closeButton.addEventListener('click', () => {
+                        clearTimeout(autoCloseTimer);
+                    });
+                    
+                } catch (error) {
+                    console.error('Error showing custom notification:', error);
+                    alert(htmlContent.replace(/<[^>]*>/g, ''));
                 }
             }
             

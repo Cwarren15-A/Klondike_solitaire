@@ -824,43 +824,13 @@
                 <button class="btn-purple" onclick="safeGameCall('openaiAgent.showAnalysis')" title="OpenAI Game Analysis" aria-label="Get OpenAI powered game analysis">🤖 GPT Analysis</button>
                 <button class="btn-gold" onclick="safeGameCall('openaiAgent.showMoveRecommendation')" title="Visual GPT Hint - Highlights best move" aria-label="Get visual GPT hint">💡 Visual Hint</button>
                 <button class="btn-green" onclick="safeGameCall('storage.quickSave')" title="Quick save (S)" aria-label="Quick save game">💾 Save</button>
-                <!-- Phase 2: Performance Monitor Button -->
-                <button class="btn-info" onclick="togglePerformanceMonitor()" title="Show Phase 2 performance metrics" aria-label="Toggle performance monitor">⚡ Performance</button>
-                <button class="btn-red" onclick="debugRender()" title="Debug render">🔍 Debug Render</button>
-                <button class="btn-cyan" onclick="testWasteClick()" title="Test waste pile">🃏 Test Waste</button>
+
             </div>
         </div>
         <canvas id="gameCanvas" width="1000" height="600" role="application" aria-label="Klondike Solitaire Game Board" tabindex="0"></canvas>
     </div>
 
-    <!-- Phase 2: Performance Monitor -->
-    <div id="performanceMonitor" class="performance-monitor">
-        <h4>⚡ Phase 2 Performance</h4>
-        <div class="performance-metric">
-            <span>FPS:</span>
-            <span id="fps-value" class="performance-value">60</span>
-        </div>
-        <div class="performance-metric">
-            <span>Render Time:</span>
-            <span id="render-time" class="performance-value">0ms</span>
-        </div>
-        <div class="performance-metric">
-            <span>Memory Usage:</span>
-            <span id="memory-usage" class="performance-value">0MB</span>
-        </div>
-        <div class="performance-metric">
-            <span>AI Worker:</span>
-            <span id="ai-worker-status" class="performance-value">Ready</span>
-        </div>
-        <div class="performance-metric">
-            <span>Animations:</span>
-            <span id="animation-count" class="performance-value">0</span>
-        </div>
-        <div class="performance-metric">
-            <span>Cache Size:</span>
-            <span id="cache-size" class="performance-value">0</span>
-        </div>
-    </div>
+
     
     <!-- Additional menu screens -->
     <div id="dailyChallenge" class="menu" style="display: none;">
@@ -4687,7 +4657,29 @@
                 const currentState = this.cloneGameState();
                 
                 try {
-                    // Phase 2: Try to use enhanced AI Worker Manager first
+                    // First try GPT AI if available
+                    if (this.game.openaiAgent && this.game.openaiAgent.isAvailable()) {
+                        console.log('🧠 Using GPT AI for auto-solve...');
+                        
+                        try {
+                            const gptResult = await this.game.openaiAgent.autoSolveGame();
+                            if (gptResult && gptResult.success) {
+                                console.log('✅ GPT AI successfully auto-solved the game!');
+                                return {
+                                    canWin: true,
+                                    moves: gptResult.moves || [],
+                                    moveCount: gptResult.moveCount || 0,
+                                    timeTaken: (performance.now() - startTime).toFixed(0),
+                                    confidence: gptResult.confidence || 0.9,
+                                    method: 'GPT AI'
+                                };
+                            }
+                        } catch (gptError) {
+                            console.warn('GPT AI auto-solve failed, falling back to local AI:', gptError.message);
+                        }
+                    }
+                    
+                    // Phase 2: Try to use enhanced AI Worker Manager as fallback
                     if (this.game.aiWorkerManager && this.game.aiWorkerManager.isInitialized) {
                         console.log('🚀 Phase 2: Using enhanced AI Worker Manager for winning path analysis...');
                         
@@ -7287,7 +7279,7 @@
                     
                     if (cardInfo) {
                         if (cardInfo.card.id === 'stock') {
-                            console.log('📦 Clicking stock pile');
+                            console.log('📦 Clicking stock pile, stock length:', this.game.state.stock.length, 'waste length:', this.game.state.waste.length);
                             this.game.ai.flipStock();
                         } else if (cardInfo.location === 'waste' && cardInfo.card.faceUp) {
                             console.log('♠️ Clicking waste pile card:', cardInfo.card);
@@ -12009,100 +12001,7 @@
         let performanceMonitorVisible = false;
         let performanceUpdateInterval = null;
 
-        function togglePerformanceMonitor() {
-            const monitor = document.getElementById('performanceMonitor');
-            performanceMonitorVisible = !performanceMonitorVisible;
-            
-            if (performanceMonitorVisible) {
-                monitor.style.display = 'block';
-                startPerformanceUpdates();
-                console.log('📊 Phase 2 Performance Monitor enabled');
-            } else {
-                monitor.style.display = 'none';
-                stopPerformanceUpdates();
-                console.log('📊 Performance Monitor disabled');
-            }
-        }
 
-        function startPerformanceUpdates() {
-            if (performanceUpdateInterval) return;
-            
-            performanceUpdateInterval = setInterval(() => {
-                updatePerformanceDisplay();
-            }, 1000); // Update every second
-        }
-
-        function stopPerformanceUpdates() {
-            if (performanceUpdateInterval) {
-                clearInterval(performanceUpdateInterval);
-                performanceUpdateInterval = null;
-            }
-        }
-
-        function updatePerformanceDisplay() {
-            if (!window.game || !window.game.renderer) return;
-            
-            const renderer = window.game.renderer;
-            const aiWorker = window.game.aiWorkerManager;
-            
-            // Update FPS
-            const fpsElement = document.getElementById('fps-value');
-            if (renderer.fps !== undefined) {
-                const fps = renderer.fps;
-                fpsElement.textContent = fps;
-                fpsElement.className = fps >= 55 ? 'performance-value performance-good' : 
-                                     fps >= 30 ? 'performance-value performance-warning' : 
-                                     'performance-value performance-bad';
-            }
-            
-            // Update Render Time
-            const renderTimeElement = document.getElementById('render-time');
-            if (renderer.performanceMetrics && renderer.performanceMetrics.renderTime !== undefined) {
-                const renderTime = Math.round(renderer.performanceMetrics.renderTime * 10) / 10;
-                renderTimeElement.textContent = `${renderTime}ms`;
-                renderTimeElement.className = renderTime <= 8 ? 'performance-value performance-good' : 
-                                             renderTime <= 16 ? 'performance-value performance-warning' : 
-                                             'performance-value performance-bad';
-            }
-            
-            // Update Memory Usage
-            const memoryElement = document.getElementById('memory-usage');
-            if (performance.memory) {
-                const memoryMB = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
-                memoryElement.textContent = `${memoryMB}MB`;
-                memoryElement.className = memoryMB <= 50 ? 'performance-value performance-good' : 
-                                         memoryMB <= 100 ? 'performance-value performance-warning' : 
-                                         'performance-value performance-bad';
-            }
-            
-            // Update AI Worker Status
-            const aiStatusElement = document.getElementById('ai-worker-status');
-            if (aiWorker) {
-                const status = aiWorker.isInitialized ? 'Ready' : 'Offline';
-                aiStatusElement.textContent = status;
-                aiStatusElement.className = aiWorker.isInitialized ? 'performance-value performance-good' : 'performance-value performance-bad';
-            }
-            
-            // Update Animation Count
-            const animationElement = document.getElementById('animation-count');
-            if (renderer.animations !== undefined) {
-                const count = renderer.animations.length;
-                animationElement.textContent = count;
-                animationElement.className = count <= 3 ? 'performance-value performance-good' : 
-                                            count <= 6 ? 'performance-value performance-warning' : 
-                                            'performance-value performance-bad';
-            }
-            
-            // Update Cache Size
-            const cacheElement = document.getElementById('cache-size');
-            if (renderer.renderCache !== undefined) {
-                const size = renderer.renderCache.size;
-                cacheElement.textContent = size;
-                cacheElement.className = size <= 50 ? 'performance-value performance-good' : 
-                                        size <= 100 ? 'performance-value performance-warning' : 
-                                        'performance-value performance-bad';
-            }
-        }
 
         if (document.readyState === 'loading') {
             // Global AI Worker Performance Monitor (accessible from console)
@@ -12292,63 +12191,7 @@
             initializeGame();
         }
         
-        function debugRender() {
-            console.log('🔍 Debug Render called');
-            console.log('Game object:', window.game);
-            console.log('Renderer:', window.game?.renderer);
-            console.log('Canvas:', document.getElementById('gameCanvas'));
-            
-            if (window.game && window.game.renderer) {
-                console.log('Forcing render...');
-                window.game.renderer.render();
-            } else {
-                console.log('Game or renderer not available');
-            }
-        }
-        
-        function testWasteClick() {
-            console.log('🃏 Testing waste pile interaction');
-            if (window.game && window.game.state.waste.length > 0) {
-                const wasteCard = window.game.state.waste[window.game.state.waste.length - 1];
-                console.log('Top waste card:', wasteCard);
-                
-                // Simulate clicking on waste pile
-                if (window.game.rules.canMoveToFoundation && window.game.rules.canMoveToFoundation(wasteCard)) {
-                    console.log('✅ Can move to foundation, attempting...');
-                    try {
-                        // Move the card from waste to foundation
-                        const card = window.game.state.waste.pop();
-                        window.game.state.foundations[card.suit].push(card);
-                        window.game.state.gameStats.moves++;
-                        window.game.state.updateScore('foundation');
-                        window.game.state.checkWinCondition();
-                        console.log('✅ Successfully moved to foundation');
-                    } catch (error) {
-                        console.error('❌ Error moving to foundation:', error);
-                    }
-                } else {
-                    console.log('❌ Cannot move to foundation');
-                    // Try tableau
-                    for (let i = 0; i < window.game.state.tableau.length; i++) {
-                        if (window.game.rules.canPlaceOnTableau(wasteCard, window.game.state.tableau[i])) {
-                            console.log(`✅ Can move to tableau column ${i + 1}`);
-                            try {
-                                const card = window.game.state.waste.pop();
-                                window.game.state.tableau[i].push(card);
-                                window.game.state.gameStats.moves++;
-                                window.game.state.updateScore('waste_to_tableau');
-                                console.log('✅ Successfully moved to tableau');
-                                break;
-                            } catch (error) {
-                                console.error('❌ Error moving to tableau:', error);
-                            }
-                        }
-                    }
-                }
-            } else {
-                console.log('❌ No cards in waste pile');
-            }
-        }
+
     </script>
 </body>
 </html>

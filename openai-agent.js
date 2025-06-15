@@ -8,9 +8,9 @@ class OpenAIAgent {
         this.game = gameInstance;
         this.apiKey = null;
         this.baseURL = 'https://api.openai.com/v1/chat/completions';
-        this.model = 'gpt-4o-mini';
-        this.maxTokens = 50; // Reduced for visual hints
-        this.temperature = 0.3; // Lower temperature for more consistent strategic advice
+        this.model = 'o4-mini';
+        this.maxTokens = 1000; // o1-mini needs higher token limit
+        // Note: o1-mini doesn't use temperature parameter
         this.isInitialized = false;
         this.requestQueue = [];
         this.isProcessing = false;
@@ -199,27 +199,24 @@ STRATEGY: [recommended approach]
         
         try {
             const gameState = this.serializeGameState();
-            const recentMoves = this.getRecentMoves();
             
             const prompt = `
-Player seems stuck in this Klondike Solitaire game:
+I'm stuck in this Klondike Solitaire game. Help me find the next moves:
 ${gameState}
 
-Recent moves: ${recentMoves.join(', ')}
+What should I do? Look for:
+1. Hidden cards that can be revealed
+2. Foundation moves I might have missed
+3. Tableau rearrangements that open up new possibilities
+4. Whether I should cycle through the stock pile
 
-The player hasn't made progress recently. Provide:
-1. Immediate actionable advice
-2. Alternative strategies to try
-3. What to look for that they might have missed
-4. Encouragement and next steps
-
-Be supportive and practical.
+Give me 2-3 specific actionable suggestions.
 `;
             
             const messages = [
                 {
                     role: 'system',
-                    content: 'You are a helpful Klondike Solitaire coach. The player is stuck and needs encouragement and practical advice.'
+                    content: 'You are a helpful Klondike Solitaire coach. Give practical, specific advice to help players when they\'re stuck.'
                 },
                 {
                     role: 'user',
@@ -233,6 +230,219 @@ Be supportive and practical.
         } catch (error) {
             console.error('Error getting unstuck advice:', error);
             throw error;
+        }
+    }
+    
+    /**
+     * Auto-solve the game using GPT AI
+     */
+    async autoSolveGame() {
+        if (!this.isInitialized) {
+            throw new Error('OpenAI Agent not initialized. Please provide API key.');
+        }
+        
+        console.log('🧠 GPT AI Auto-Solve starting...');
+        const startTime = Date.now();
+        const maxMoves = 200; // Prevent infinite loops
+        let moveCount = 0;
+        const executedMoves = [];
+        
+        try {
+            while (!this.game.gameWon && moveCount < maxMoves) {
+                // Get the next best move from GPT
+                const recommendation = await this.getMoveRecommendation();
+                
+                if (!recommendation || !recommendation.action) {
+                    console.log('❌ GPT AI could not find a valid move');
+                    break;
+                }
+                
+                // Execute the recommended move
+                const moveExecuted = await this.executeMove(recommendation);
+                
+                if (!moveExecuted) {
+                    console.log('❌ Failed to execute GPT recommended move:', recommendation);
+                    break;
+                }
+                
+                executedMoves.push(recommendation);
+                moveCount++;
+                
+                // Small delay to prevent overwhelming the API
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Check if game is won
+                if (this.game.gameWon) {
+                    console.log('🎉 GPT AI successfully completed the game!');
+                    return {
+                        success: true,
+                        moves: executedMoves,
+                        moveCount: moveCount,
+                        timeTaken: Date.now() - startTime,
+                        confidence: 0.95
+                    };
+                }
+                
+                // Progress check - if no progress in last 10 moves, try different strategy
+                if (moveCount > 10 && moveCount % 10 === 0) {
+                    const foundationCards = Object.values(this.game.state.foundations)
+                        .reduce((sum, pile) => sum + pile.length, 0);
+                    
+                    if (foundationCards < moveCount / 4) {
+                        console.log('⚠️ GPT AI making slow progress, may need different strategy');
+                    }
+                }
+            }
+            
+            // If we exit the loop without winning
+            if (this.game.gameWon) {
+                return {
+                    success: true,
+                    moves: executedMoves,
+                    moveCount: moveCount,
+                    timeTaken: Date.now() - startTime,
+                    confidence: 0.9
+                };
+            } else {
+                return {
+                    success: false,
+                    reason: moveCount >= maxMoves ? 'Max moves reached' : 'No valid moves found',
+                    moves: executedMoves,
+                    moveCount: moveCount,
+                    timeTaken: Date.now() - startTime
+                };
+            }
+            
+        } catch (error) {
+            console.error('❌ GPT AI auto-solve error:', error);
+            return {
+                success: false,
+                error: error.message,
+                moves: executedMoves,
+                moveCount: moveCount,
+                timeTaken: Date.now() - startTime
+            };
+        }
+    }
+    
+    /**
+     * Execute a move recommendation
+     */
+    async executeMove(recommendation) {
+        try {
+            if (!recommendation || !recommendation.action) {
+                return false;
+            }
+            
+            const action = recommendation.action.toUpperCase();
+            
+            if (action === 'STOCK') {
+                // Draw from stock
+                this.game.ai.flipStock();
+                return true;
+            }
+            
+            if (action === 'WASTE_TO_FOUNDATION') {
+                // Move top waste card to foundation
+                if (this.game.state.waste.length > 0) {
+                    const card = this.game.state.waste[this.game.state.waste.length - 1];
+                    if (this.game.rules.canPlaceOnFoundation(card)) {
+                        this.game.state.waste.pop();
+                        this.game.state.foundations[card.suit].push(card);
+                        this.game.state.gameStats.moves++;
+                        this.game.state.updateScore('foundation');
+                        this.game.state.checkWinCondition();
+                        this.game.renderer.render();
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            if (action === 'TABLEAU_TO_FOUNDATION') {
+                // Move tableau card to foundation
+                const column = recommendation.column - 1; // Convert to 0-based
+                if (column >= 0 && column < 7 && this.game.state.tableau[column].length > 0) {
+                    const pile = this.game.state.tableau[column];
+                    const card = pile[pile.length - 1];
+                    if (card.faceUp && this.game.rules.canPlaceOnFoundation(card)) {
+                        pile.pop();
+                        this.game.state.foundations[card.suit].push(card);
+                        this.game.state.gameStats.moves++;
+                        this.game.state.updateScore('foundation');
+                        
+                        // Flip next card if needed
+                        if (pile.length > 0 && !pile[pile.length - 1].faceUp) {
+                            pile[pile.length - 1].faceUp = true;
+                        }
+                        
+                        this.game.state.checkWinCondition();
+                        this.game.renderer.render();
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            if (action === 'TABLEAU_TO_TABLEAU') {
+                // Move cards between tableau columns
+                const fromCol = recommendation.fromColumn - 1;
+                const toCol = recommendation.toColumn - 1;
+                
+                if (fromCol >= 0 && fromCol < 7 && toCol >= 0 && toCol < 7 && fromCol !== toCol) {
+                    const fromPile = this.game.state.tableau[fromCol];
+                    const toPile = this.game.state.tableau[toCol];
+                    
+                    if (fromPile.length > 0) {
+                        // Find the sequence to move (all face-up cards from the bottom)
+                        let moveIndex = fromPile.length - 1;
+                        while (moveIndex > 0 && fromPile[moveIndex - 1].faceUp) {
+                            moveIndex--;
+                        }
+                        
+                        const cardToMove = fromPile[moveIndex];
+                        if (this.game.rules.canPlaceOnTableau(cardToMove, toPile)) {
+                            const cardsToMove = fromPile.splice(moveIndex);
+                            toPile.push(...cardsToMove);
+                            this.game.state.gameStats.moves++;
+                            
+                            // Flip next card in source pile if needed
+                            if (fromPile.length > 0 && !fromPile[fromPile.length - 1].faceUp) {
+                                fromPile[fromPile.length - 1].faceUp = true;
+                            }
+                            
+                            this.game.renderer.render();
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            if (action === 'WASTE_TO_TABLEAU') {
+                // Move waste card to tableau
+                const column = recommendation.column - 1;
+                if (column >= 0 && column < 7 && this.game.state.waste.length > 0) {
+                    const card = this.game.state.waste[this.game.state.waste.length - 1];
+                    const pile = this.game.state.tableau[column];
+                    
+                    if (this.game.rules.canPlaceOnTableau(card, pile)) {
+                        this.game.state.waste.pop();
+                        pile.push(card);
+                        this.game.state.gameStats.moves++;
+                        this.game.state.updateScore('waste_to_tableau');
+                        this.game.renderer.render();
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            return false;
+            
+        } catch (error) {
+            console.error('Error executing move:', error);
+            return false;
         }
     }
     
@@ -644,6 +854,13 @@ Score: ${state.gameStats.score}
             console.error('Error showing win probability:', error);
             this.game.ui.showNotification('❌ Win analysis failed: ' + error.message, 'error', 5000);
         }
+    }
+    
+    /**
+     * Check if the OpenAI agent is available
+     */
+    isAvailable() {
+        return this.isInitialized && this.apiKey;
     }
 }
 

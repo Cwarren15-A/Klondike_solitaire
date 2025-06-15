@@ -2447,8 +2447,10 @@
                     
                     this.game.ui.updateUI();
                 } else {
-                    // Check for deadlock condition
-                    this.checkDeadlockCondition();
+                    // Only check for deadlock after a move has been made (not on every render)
+                    if (this.gameStats.moves > 0 && this.gameStats.moves % 3 === 0) {
+                        this.checkDeadlockCondition();
+                    }
                 }
             }
             
@@ -6781,8 +6783,10 @@
                             this.game.ai.flipStock();
                         } else if (cardInfo.location === 'waste' && cardInfo.card.faceUp) {
                             console.log('♠️ Clicking waste pile card:', cardInfo.card);
+                            console.log('🔍 Checking foundation placement for:', cardInfo.card.rank, 'of', cardInfo.card.suit);
+                            console.log('🏗️ Foundation state:', this.game.state.foundations);
                             // Try to auto-move to foundation first, otherwise enable dragging
-                            if (this.game.rules.canMoveToFoundation && this.game.rules.canMoveToFoundation(cardInfo.card)) {
+                            if (this.game.rules.canPlaceOnFoundation(cardInfo.card)) {
                                 console.log('🎯 Auto-moving waste card to foundation');
                                 try {
                                     // Move the card from waste to foundation
@@ -11368,12 +11372,22 @@
             }
         }
         
-        // Register service worker for PWA functionality
+        // Register service worker for PWA functionality with cache busting
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
+                // Force service worker update by adding timestamp
+                const swUrl = `./sw.js?v=${Date.now()}`;
+                navigator.serviceWorker.register(swUrl)
                     .then((registration) => {
                         console.log('🔧 SW registered: ', registration);
+                        // Force update if there's a waiting worker
+                        if (registration.waiting) {
+                            registration.waiting.postMessage({type: 'SKIP_WAITING'});
+                        }
+                        // Check for updates every 30 seconds
+                        setInterval(() => {
+                            registration.update();
+                        }, 30000);
                     })
                     .catch((registrationError) => {
                         console.log('❌ SW registration failed: ', registrationError);
@@ -11383,7 +11397,7 @@
 
         // ===== VERSION MANAGEMENT =====
         
-        const CURRENT_VERSION = "2024.12.19.21.00";
+        const CURRENT_VERSION = "2024.12.20.15.00";
         
         function checkVersion() {
             const lastVersion = localStorage.getItem('klondike_version');
@@ -11476,7 +11490,7 @@
                 checkVersion();
                 
                 console.log('🎮 Starting game initialization...');
-                console.log('🔄 Game version: 2024.12.20.14.30 - Fixed deadlock false triggering at game start'); // Cache busting version
+                console.log('🔄 Game version: 2024.12.20.15.00 - Fixed waste pile clicks and deadlock spam'); // Cache busting version
                 
                 if (typeof KlondikeSolitaire === 'undefined') {
                     throw new Error('KlondikeSolitaire class is not defined');

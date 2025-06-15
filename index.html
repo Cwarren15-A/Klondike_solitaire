@@ -6953,14 +6953,26 @@
                                     console.error('❌ Error moving to foundation:', error);
                                 }
                             } else {
-                                // Enable dragging for waste cards instead of auto-moving to tableau
-                                console.log('🎯 Enabling drag for waste card');
-                                this.startDrag(cardInfo, pos.x, pos.y);
+                                // Delay drag start to allow for double-click detection
+                                console.log('🎯 Preparing drag for waste card (delayed for double-click)');
+                                this.pendingDragInfo = { cardInfo, pos };
+                                setTimeout(() => {
+                                    if (this.pendingDragInfo && !this.isDragging) {
+                                        this.startDrag(this.pendingDragInfo.cardInfo, this.pendingDragInfo.pos.x, this.pendingDragInfo.pos.y);
+                                        this.pendingDragInfo = null;
+                                    }
+                                }, 250); // 250ms delay to allow double-click
                             }
                         } else if (cardInfo.location === 'tableau' && cardInfo.card.faceUp) {
-                            // Enable dragging for tableau cards
-                            console.log('🎯 Enabling drag for tableau card');
-                            this.startDrag(cardInfo, pos.x, pos.y);
+                            // Delay drag start to allow for double-click detection
+                            console.log('🎯 Preparing drag for tableau card (delayed for double-click)');
+                            this.pendingDragInfo = { cardInfo, pos };
+                            setTimeout(() => {
+                                if (this.pendingDragInfo && !this.isDragging) {
+                                    this.startDrag(this.pendingDragInfo.cardInfo, this.pendingDragInfo.pos.x, this.pendingDragInfo.pos.y);
+                                    this.pendingDragInfo = null;
+                                }
+                            }, 250); // 250ms delay to allow double-click
                         }
                     }
                 } catch (error) {
@@ -6972,9 +6984,15 @@
                 if (this.isDragging) return;
                 
                 try {
+                    // Cancel any pending drag operation
+                    this.pendingDragInfo = null;
+                    
                     const pos = this.getMousePos(e);
                     const cardInfo = this.game.renderer.getCardAt(pos.x, pos.y);
+                    console.log('🖱️🖱️ Double-click detected on card:', cardInfo);
+                    
                     if (cardInfo && cardInfo.card.faceUp && cardInfo.card.id !== 'stock') {
+                        console.log('🎯 Attempting auto-move for double-clicked card');
                         this.game.ai.attemptAutoMove(cardInfo.card);
                     }
                 } catch (error) {

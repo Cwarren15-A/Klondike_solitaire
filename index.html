@@ -16,35 +16,35 @@
         (function() {
             console.log('🧹 AGGRESSIVE CACHE BUSTING INITIATED');
             
-            // Clear localStorage version keys
-            localStorage.removeItem('sw_cache_version');
-            localStorage.removeItem('klondike_version');
-            console.log('✅ Cleared localStorage version keys');
+            // Clear localStorage version keys – DISABLED to stop infinite reload loop
+            // localStorage.removeItem('sw_cache_version');
+            // localStorage.removeItem('klondike_version');
+            // console.log('✅ Cleared localStorage version keys');
             
-            // Clear all browser caches
-            if ('caches' in window) {
-                caches.keys().then(function(cacheNames) {
-                    return Promise.all(
-                        cacheNames.map(function(cacheName) {
-                            console.log('🗑️ Deleting cache:', cacheName);
-                            return caches.delete(cacheName);
-                        })
-                    );
-                }).then(function() {
-                    console.log('✅ Cleared all browser caches');
-                });
-            }
+            // Clear all browser caches – DISABLED ⚠️
+            // if ('caches' in window) {
+            //     caches.keys().then(function(cacheNames) {
+            //         return Promise.all(
+            //             cacheNames.map(function(cacheName) {
+            //                 console.log('🗑️ Deleting cache:', cacheName);
+            //                 return caches.delete(cacheName);
+            //             })
+            //         );
+            //     }).then(function() {
+            //         console.log('✅ Cleared all browser caches');
+            //     });
+            // }
             
-            // Unregister all service workers
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                    for (let registration of registrations) {
-                        console.log('🔄 Unregistering service worker');
-                        registration.unregister();
-                    }
-                    console.log('✅ Unregistered all service workers');
-                });
-            }
+            // Unregister all service workers – DISABLED ⚠️
+            // if ('serviceWorker' in navigator) {
+            //     navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            //         for (let registration of registrations) {
+            //             console.log('🔄 Unregistering service worker');
+            //             registration.unregister();
+            //         }
+            //         console.log('✅ Unregistered all service workers');
+            //     });
+            // }
             
             // Add a timestamp to all script and link tags to prevent caching
             document.addEventListener('DOMContentLoaded', function() {

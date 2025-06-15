@@ -11528,45 +11528,45 @@
             }
         }
         
-        // Register service worker for PWA functionality with aggressive cache busting
-        if ('serviceWorker' in navigator) {
+        // Register service worker for PWA functionality - DISABLED to prevent auto-reload
+        if (false && 'serviceWorker' in navigator) {
             window.addEventListener('load', async () => {
                 try {
                     // Check if we need to clear all caches due to version update
                     const currentVersion = "2024.12.20.17.00";
                     const lastCacheVersion = localStorage.getItem('sw_cache_version');
                     
-                    // ALWAYS clear caches on page load
-                    console.log('🧹 Forcing cache clear on every page load...');
+                    // DISABLED: Auto cache clearing on every page load
+                    // console.log('🧹 Forcing cache clear on every page load...');
                     
-                    // Clear all caches
-                    if ('caches' in window) {
-                        const cacheNames = await caches.keys();
-                        await Promise.all(
-                            cacheNames.map(cacheName => {
-                                console.log('🗑️ Deleting cache:', cacheName);
-                                return caches.delete(cacheName);
-                            })
-                        );
-                    }
+                    // DISABLED: Clear all caches
+                    // if ('caches' in window) {
+                    //     const cacheNames = await caches.keys();
+                    //     await Promise.all(
+                    //         cacheNames.map(cacheName => {
+                    //             console.log('🗑️ Deleting cache:', cacheName);
+                    //             return caches.delete(cacheName);
+                    //         })
+                    //     );
+                    // }
                     
-                    // Unregister existing service workers
-                    const registrations = await navigator.serviceWorker.getRegistrations();
-                    await Promise.all(
-                        registrations.map(registration => {
-                            console.log('🔄 Unregistering service worker');
-                            return registration.unregister();
-                        })
-                    );
+                    // DISABLED: Unregister existing service workers
+                    // const registrations = await navigator.serviceWorker.getRegistrations();
+                    // await Promise.all(
+                    //     registrations.map(registration => {
+                    //         console.log('🔄 Unregistering service worker');
+                    //         return registration.unregister();
+                    //     })
+                    // );
                     
                     localStorage.setItem('sw_cache_version', currentVersion);
                     
-                    // Force page reload after cache clearing
-                    setTimeout(() => {
-                        console.log('🔄 Reloading page after cache clear...');
-                        window.location.reload(true);
-                    }, 1000);
-                    return;
+                    // DISABLED: Force page reload after cache clearing
+                    // setTimeout(() => {
+                    //     console.log('🔄 Reloading page after cache clear...');
+                    //     window.location.reload(true);
+                    // }, 1000);
+                    // return;
                     
                     // Register service worker with cache buster
                     const swUrl = `./sw.js?v=${currentVersion}&t=${Date.now()}`;

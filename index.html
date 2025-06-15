@@ -7,8 +7,8 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Klondike Solitaire - AI Enhanced</title>
-    <!-- Cache buster: 2024-12-19-16:00 -->
-    <!-- Enhanced graphics deployed - cache refresh required -->
+    <!-- Cache buster: 2024-12-20-16:00 -->
+    <!-- Fixed caching issues - no more hard refresh needed! -->
     <meta name="description" content="Play Klondike Solitaire with AI-powered hints, analysis, and adaptive difficulty. Advanced machine learning provides intelligent gameplay assistance.">
     
     <!-- Social Media Meta Tags -->
@@ -11372,32 +11372,97 @@
             }
         }
         
-        // Register service worker for PWA functionality with cache busting
+        // Register service worker for PWA functionality with aggressive cache busting
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                // Force service worker update by adding timestamp
-                const swUrl = `./sw.js?v=${Date.now()}`;
-                navigator.serviceWorker.register(swUrl)
-                    .then((registration) => {
-                        console.log('🔧 SW registered: ', registration);
-                        // Force update if there's a waiting worker
-                        if (registration.waiting) {
-                            registration.waiting.postMessage({type: 'SKIP_WAITING'});
+            window.addEventListener('load', async () => {
+                try {
+                    // Check if we need to clear all caches due to version update
+                    const currentVersion = "2024.12.20.16.00";
+                    const lastCacheVersion = localStorage.getItem('sw_cache_version');
+                    
+                    if (lastCacheVersion !== currentVersion) {
+                        console.log('🧹 Version change detected, clearing all caches...');
+                        
+                        // Clear all caches
+                        if ('caches' in window) {
+                            const cacheNames = await caches.keys();
+                            await Promise.all(
+                                cacheNames.map(cacheName => {
+                                    console.log('🗑️ Deleting cache:', cacheName);
+                                    return caches.delete(cacheName);
+                                })
+                            );
                         }
-                        // Check for updates every 30 seconds
-                        setInterval(() => {
-                            registration.update();
-                        }, 30000);
-                    })
-                    .catch((registrationError) => {
-                        console.log('❌ SW registration failed: ', registrationError);
+                        
+                        // Unregister existing service workers
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        await Promise.all(
+                            registrations.map(registration => {
+                                console.log('🔄 Unregistering service worker');
+                                return registration.unregister();
+                            })
+                        );
+                        
+                        localStorage.setItem('sw_cache_version', currentVersion);
+                        
+                        // Force page reload after cache clearing
+                        setTimeout(() => {
+                            console.log('🔄 Reloading page after cache clear...');
+                            window.location.reload(true);
+                        }, 1000);
+                        return;
+                    }
+                    
+                    // Register service worker with cache buster
+                    const swUrl = `./sw.js?v=${currentVersion}&t=${Date.now()}`;
+                    const registration = await navigator.serviceWorker.register(swUrl, {
+                        scope: './',
+                        updateViaCache: 'none' // Prevent service worker script caching
                     });
+                    
+                    console.log('🔧 SW registered: ', registration);
+                    
+                    // Handle service worker updates
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        console.log('🔄 New service worker found, updating...');
+                        
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                console.log('✅ New service worker installed, activating...');
+                                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                            }
+                        });
+                    });
+                    
+                    // Force update if there's a waiting worker
+                    if (registration.waiting) {
+                        console.log('⚡ Activating waiting service worker...');
+                        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                    
+                    // Listen for service worker messages
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        if (event.data && event.data.type === 'SW_UPDATED') {
+                            console.log('🔄 Service worker updated, reloading page...');
+                            window.location.reload();
+                        }
+                    });
+                    
+                    // Check for updates more frequently
+                    setInterval(() => {
+                        registration.update();
+                    }, 10000); // Check every 10 seconds instead of 30
+                    
+                } catch (error) {
+                    console.error('❌ SW registration failed: ', error);
+                }
             });
         }
 
         // ===== VERSION MANAGEMENT =====
         
-        const CURRENT_VERSION = "2024.12.20.15.00";
+        const CURRENT_VERSION = "2024.12.20.16.00"; // Updated to force cache clear
         
         function checkVersion() {
             const lastVersion = localStorage.getItem('klondike_version');
@@ -11684,6 +11749,80 @@
                 } else {
                     console.warn('AI Worker Manager not available');
                     return { error: 'AI Worker Manager not available' };
+                }
+            };
+
+            // Manual cache clearing function (can be called from console)
+            window.clearAllCaches = async function() {
+                try {
+                    console.log('🧹 Manually clearing all caches...');
+                    
+                    // Clear localStorage
+                    localStorage.removeItem('sw_cache_version');
+                    localStorage.removeItem('klondike_version');
+                    console.log('✅ Cleared localStorage version keys');
+                    
+                    // Clear all browser caches
+                    if ('caches' in window) {
+                        const cacheNames = await caches.keys();
+                        await Promise.all(
+                            cacheNames.map(cacheName => {
+                                console.log('🗑️ Deleting cache:', cacheName);
+                                return caches.delete(cacheName);
+                            })
+                        );
+                        console.log('✅ Cleared all browser caches');
+                    }
+                    
+                    // Unregister service workers
+                    if ('serviceWorker' in navigator) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        await Promise.all(
+                            registrations.map(registration => {
+                                console.log('🔄 Unregistering service worker');
+                                return registration.unregister();
+                            })
+                        );
+                        console.log('✅ Unregistered all service workers');
+                    }
+                    
+                    console.log('🎉 All caches cleared! Reloading page...');
+                    setTimeout(() => {
+                        window.location.reload(true);
+                    }, 1000);
+                    
+                    return { success: true, message: 'All caches cleared successfully' };
+                } catch (error) {
+                    console.error('❌ Failed to clear caches:', error);
+                    return { success: false, error: error.message };
+                }
+            };
+
+            // Helper function to check current cache status
+            window.checkCacheStatus = async function() {
+                try {
+                    const status = {
+                        currentVersion: "2024.12.20.16.00",
+                        storedCacheVersion: localStorage.getItem('sw_cache_version'),
+                        storedGameVersion: localStorage.getItem('klondike_version'),
+                        serviceWorkerRegistrations: 0,
+                        cacheNames: []
+                    };
+                    
+                    if ('serviceWorker' in navigator) {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        status.serviceWorkerRegistrations = registrations.length;
+                    }
+                    
+                    if ('caches' in window) {
+                        status.cacheNames = await caches.keys();
+                    }
+                    
+                    console.log('📊 Cache Status:', status);
+                    return status;
+                } catch (error) {
+                    console.error('❌ Failed to check cache status:', error);
+                    return { error: error.message };
                 }
             };
 

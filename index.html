@@ -6939,13 +6939,10 @@
                             this.game.ai.flipStock();
                         } else if (cardInfo.location === 'waste' && cardInfo.card.faceUp) {
                             console.log('♠️ Clicking waste pile card:', cardInfo.card);
-                            console.log('🔍 Checking foundation placement for:', cardInfo.card.rank, 'of', cardInfo.card.suit);
-                            console.log('🏗️ Foundation state:', this.game.state.foundations);
-                            // Try to auto-move to foundation first, otherwise enable dragging
+                            // Try to auto-move to foundation first
                             if (this.game.rules.canPlaceOnFoundation(cardInfo.card)) {
                                 console.log('🎯 Auto-moving waste card to foundation');
                                 try {
-                                    // Move the card from waste to foundation
                                     const wasteCard = this.game.state.waste.pop();
                                     this.game.state.foundations[wasteCard.suit].push(wasteCard);
                                     this.game.state.gameStats.moves++;
@@ -6956,23 +6953,14 @@
                                     console.error('❌ Error moving to foundation:', error);
                                 }
                             } else {
-                                console.log('❌ Cannot auto-move to foundation - trying tableau');
-                                // Try to find a valid tableau placement
-                                for (let i = 0; i < this.game.state.tableau.length; i++) {
-                                    if (this.game.rules.canPlaceOnTableau(cardInfo.card, this.game.state.tableau[i])) {
-                                        console.log(`✅ Moving to tableau column ${i + 1}`);
-                                        try {
-                                            const wasteCard = this.game.state.waste.pop();
-                                            this.game.state.tableau[i].push(wasteCard);
-                                            this.game.state.gameStats.moves++;
-                                            this.game.state.updateScore('waste_to_tableau');
-                                            break;
-                                        } catch (error) {
-                                            console.error('❌ Error moving to tableau:', error);
-                                        }
-                                    }
-                                }
+                                // Enable dragging for waste cards instead of auto-moving to tableau
+                                console.log('🎯 Enabling drag for waste card');
+                                this.startDrag(cardInfo, pos.x, pos.y);
                             }
+                        } else if (cardInfo.location === 'tableau' && cardInfo.card.faceUp) {
+                            // Enable dragging for tableau cards
+                            console.log('🎯 Enabling drag for tableau card');
+                            this.startDrag(cardInfo, pos.x, pos.y);
                         }
                     }
                 } catch (error) {

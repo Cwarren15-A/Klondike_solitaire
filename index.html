@@ -8122,140 +8122,22 @@
             // Batched drawing methods for better performance
             drawStockBatch() {
                 // Use the parent's drawStock method directly
-                try {
-                    super.drawStock();
-                } catch (error) {
-                    console.warn('Error calling parent drawStock, using fallback:', error);
-                    // Basic stock drawing implementation as fallback
-                    try {
-                        this.ctx.save();
-                        
-                        const stockX = 50;
-                        const stockY = 50;
-                        
-                        if (this.game.state.stock.length > 0) {
-                            // Draw card back for stock
-                            this.ctx.fillStyle = '#0066cc';
-                            this.ctx.fillRect(stockX, stockY, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
-                            this.ctx.strokeStyle = '#003d7a';
-                            this.ctx.strokeRect(stockX, stockY, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
-                        }
-                        
-                        this.ctx.restore();
-                    } catch (fallbackError) {
-                        console.error('Error in stock fallback rendering:', fallbackError);
-                    }
-                }
+                super.drawStock();
             }
             
             drawWasteBatch() {
                 // Use the parent's drawWaste method directly
-                try {
-                    super.drawWaste();
-                } catch (error) {
-                    console.warn('Error calling parent drawWaste, using fallback:', error);
-                    // Basic waste drawing implementation as fallback
-                    try {
-                        this.ctx.save();
-                        
-                        const wasteX = 150;
-                        const wasteY = 50;
-                        
-                        if (this.game.state.waste.length > 0) {
-                            const topCard = this.game.state.waste[this.game.state.waste.length - 1];
-                            this.drawCardSimple(topCard, wasteX, wasteY);
-                        }
-                        
-                        this.ctx.restore();
-                    } catch (fallbackError) {
-                        console.error('Error in waste fallback rendering:', fallbackError);
-                    }
-                }
+                super.drawWaste();
             }
             
             drawFoundationsBatch() {
                 // Use the parent's drawFoundations method directly
-                try {
-                    super.drawFoundations();
-                } catch (error) {
-                    console.warn('Error calling parent drawFoundations, using fallback:', error);
-                    // Basic foundations drawing implementation as fallback
-                    try {
-                        this.ctx.save();
-                        
-                        const suits = ['♠', '♥', '♦', '♣'];
-                        suits.forEach((suit, index) => {
-                            const x = 350 + index * 120;
-                            const y = 50;
-                            const pile = this.game.state.foundations[suit];
-                            
-                            if (pile && pile.length > 0) {
-                                const topCard = pile[pile.length - 1];
-                                this.drawCardSimple(topCard, x, y);
-                            } else {
-                                // Draw empty foundation slot
-                                this.ctx.strokeStyle = '#ccc';
-                                this.ctx.strokeRect(x, y, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
-                            }
-                        });
-                        
-                        this.ctx.restore();
-                    } catch (fallbackError) {
-                        console.error('Error in foundations fallback rendering:', fallbackError);
-                    }
-                }
+                super.drawFoundations();
             }
             
             drawTableauBatch() {
                 // Use the parent's drawTableau method directly
-                try {
-                    super.drawTableau();
-                } catch (error) {
-                    console.warn('Error calling parent drawTableau, using fallback:', error);
-                    // Basic tableau drawing implementation as fallback
-                    try {
-                        this.ctx.save();
-                        
-                        const tableauStartX = 50;
-                        const tableauY = 50 + this.game.constants.CARD_HEIGHT + 40;
-                        
-                        this.game.state.tableau.forEach((pile, pileIndex) => {
-                            const pileX = tableauStartX + pileIndex * (this.game.constants.CARD_WIDTH + 15);
-                            
-                            pile.forEach((card, cardIndex) => {
-                                // Skip undefined/null cards
-                                if (!card || !card.hasOwnProperty('faceUp')) {
-                                    console.warn(`⚠️ Skipping invalid card in fallback tableau[${pileIndex}][${cardIndex}]:`, card);
-                                    return;
-                                }
-                                
-                                const cardY = tableauY + cardIndex * (card.faceUp ? this.game.constants.FACE_UP_OFFSET : this.game.constants.FACE_DOWN_OFFSET);
-                                
-                                if (card.faceUp) {
-                                    this.drawCardSimple(card, pileX, cardY);
-                                } else {
-                                    // Draw card back
-                                    this.ctx.fillStyle = '#0066cc';
-                                    this.ctx.fillRect(pileX, cardY, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
-                                    this.ctx.strokeStyle = '#003d7a';
-                                    this.ctx.strokeRect(pileX, cardY, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
-                                }
-                            });
-                            
-                            // Draw empty pile placeholder if needed
-                            if (pile.length === 0) {
-                                this.ctx.strokeStyle = '#ccc';
-                                this.ctx.setLineDash([5, 5]);
-                                this.ctx.strokeRect(pileX, tableauY, this.game.constants.CARD_WIDTH, this.game.constants.CARD_HEIGHT);
-                                this.ctx.setLineDash([]);
-                            }
-                        });
-                        
-                        this.ctx.restore();
-                    } catch (fallbackError) {
-                        console.error('Error in tableau fallback rendering:', fallbackError);
-                    }
-                }
+                super.drawTableau();
             }
             
             drawDraggedCards() {

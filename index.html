@@ -360,6 +360,22 @@
             font-weight: bold;
         }
         
+        /* Solvable badge styling */
+        #solvableBadge.solvable-badge {
+            border: 1px solid rgba(34, 197, 94, 0.5);
+            background: rgba(34, 197, 94, 0.1);
+        }
+        
+        #solvableBadge.unsolvable-badge {
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            background: rgba(239, 68, 68, 0.1);
+        }
+        
+        #solvableBadge.unknown-badge {
+            border: 1px solid rgba(107, 114, 128, 0.5);
+            background: rgba(107, 114, 128, 0.1);
+        }
+        
         .controls {
             display: flex;
             gap: 10px;
@@ -869,6 +885,10 @@
                 <div class="stat-item" id="winProbDisplay" style="display: none;">
                     <div class="stat-label">Win %</div>
                     <div class="stat-value" id="winProb">0%</div>
+                </div>
+                <div class="stat-item" id="solvableBadge" style="display: none;">
+                    <div class="stat-label">Solvable</div>
+                    <div class="stat-value" id="solvableText">Checking...</div>
                 </div>
             </div>
             <div class="controls">
@@ -2162,6 +2182,48 @@
                 }
             }
             
+            /**
+             * Update the solvable badge based on solver analysis
+             */
+            updateSolvableBadge() {
+                const solvableBadge = document.getElementById('solvableBadge');
+                const solvableText = document.getElementById('solvableText');
+                
+                if (!solvableBadge || !solvableText) return;
+                
+                // Only check solvability periodically to avoid performance issues
+                if (!this.lastSolvabilityCheck || Date.now() - this.lastSolvabilityCheck > 30000) {
+                    this.lastSolvabilityCheck = Date.now();
+                    
+                    // Show "Checking..." state
+                    solvableText.textContent = 'Checking...';
+                    solvableText.style.color = '#fbbf24';
+                    solvableBadge.style.display = 'block';
+                    
+                    // Check solvability asynchronously
+                    this.game.state.getSolvableBadge().then(badge => {
+                        if (badge) {
+                            solvableText.textContent = badge.text.replace(/[✅❌❓]\s*/, ''); // Remove emoji for cleaner display
+                            
+                            if (badge.class === 'solvable-badge') {
+                                solvableText.style.color = '#10b981'; // Green
+                            } else if (badge.class === 'unsolvable-badge') {
+                                solvableText.style.color = '#ef4444'; // Red
+                            } else {
+                                solvableText.style.color = '#6b7280'; // Gray
+                            }
+                            
+                            solvableBadge.title = badge.tooltip;
+                            solvableBadge.style.display = 'block';
+                        }
+                    }).catch(error => {
+                        console.warn('Error checking solvability:', error);
+                        solvableText.textContent = 'Unknown';
+                        solvableText.style.color = '#6b7280';
+                    });
+                }
+            }
+            
             updateUI() {
                 try {
                     document.getElementById('moves').textContent = this.game.state.gameStats.moves;
@@ -2175,6 +2237,7 @@
                     
                     this.updateProgressBar();
                     this.updateWinProbability();
+                    this.updateSolvableBadge();
                     
                     const scoreDisplay = document.getElementById('scoreDisplay');
                     if (this.game.state.gameStats.score !== 0 || 
@@ -2730,6 +2793,254 @@
                 return shuffled;
             }
             
+            /**
+             * Seeded random number generator for deterministic shuffles
+             */
+            seededRandom(seed) {
+                let m = 2147483647;
+                let a = 16807;
+                let s = seed % m;
+                
+                return function() {
+                    s = (a * s) % m;
+                    return (s - 1) / (m - 1);
+                };
+            }
+            
+            /**
+             * Deterministic shuffle using a seed
+             */
+            seededShuffle(deck, seed) {
+                const shuffled = [...deck];
+                const random = this.seededRandom(seed);
+                
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                return shuffled;
+            }
+            
+            /**
+             * Easy shuffle - ensures at least one immediate move
+             */
+            easyShuffle(seed = Date.now()) {
+                let deck, attempts = 0;
+                const maxAttempts = 100;
+                
+                do {
+                    deck = this.seededShuffle(this.createDeck(), seed + attempts);
+                    attempts++;
+                } while (!this.hasImmediateMove(deck) && attempts < maxAttempts);
+                
+                // If we can't find a deck with immediate moves, just shuffle normally
+                if (attempts >= maxAttempts) {
+                    console.warn('Easy shuffle: Could not find deck with immediate move, using regular shuffle');
+                    return this.shuffle(this.createDeck());
+                }
+                
+                return deck;
+            }
+            
+            /**
+             * Medium shuffle - no guaranteed unwinnables
+             */
+            mediumShuffle(seed = Date.now()) {
+                let deck, attempts = 0;
+                const maxAttempts = 50;
+                
+                do {
+                    deck = this.seededShuffle(this.createDeck(), seed + attempts);
+                    attempts++;
+                } while (this.isLikelyUnwinnable(deck) && attempts < maxAttempts);
+                
+                if (attempts >= maxAttempts) {
+                    console.warn('Medium shuffle: Could not avoid unwinnable deck, using regular shuffle');
+                    return this.shuffle(this.createDeck());
+                }
+                
+                return deck;
+            }
+            
+            /**
+             * Hard shuffle - allows blocked starts
+             */
+            hardShuffle(seed = Date.now()) {
+                // Hard shuffle is just a deterministic shuffle with no special conditions
+                return this.seededShuffle(this.createDeck(), seed);
+            }
+            
+            /**
+             * Winnable shuffle - brute-force until a solver finds a win
+             */
+            winnableShuffle(seed = Date.now()) {
+                let deck, attempts = 0;
+                const maxAttempts = 20; // Reduced to prevent long delays
+                
+                do {
+                    deck = this.seededShuffle(this.createDeck(), seed + attempts);
+                    attempts++;
+                } while (!this.isWinnable(deck) && attempts < maxAttempts);
+                
+                if (attempts >= maxAttempts) {
+                    console.warn('Winnable shuffle: Could not guarantee winnable deck after 20 attempts, using medium shuffle');
+                    return this.mediumShuffle(seed);
+                }
+                
+                return deck;
+            }
+            
+            /**
+             * Check if deck layout has immediate moves available
+             */
+            hasImmediateMove(deck) {
+                // Simulate dealing cards to tableau
+                const tableau = Array.from({ length: 7 }, () => []);
+                let deckIndex = 0;
+                
+                // Deal cards to tableau (following standard Klondike pattern)
+                for (let col = 0; col < 7; col++) {
+                    for (let row = 0; row <= col; row++) {
+                        if (deckIndex < deck.length) {
+                            const card = { ...deck[deckIndex] };
+                            card.faceUp = row === col; // Only top card is face up
+                            tableau[col].push(card);
+                            deckIndex++;
+                        }
+                    }
+                }
+                
+                // Check for immediate moves
+                // 1. Check if any aces are visible (can go to foundation)
+                for (let col = 0; col < 7; col++) {
+                    const pile = tableau[col];
+                    if (pile.length > 0) {
+                        const topCard = pile[pile.length - 1];
+                        if (topCard.faceUp && topCard.value === 1) {
+                            return true; // Ace can go to foundation
+                        }
+                    }
+                }
+                
+                // 2. Check for tableau-to-tableau moves
+                for (let fromCol = 0; fromCol < 7; fromCol++) {
+                    const fromPile = tableau[fromCol];
+                    if (fromPile.length === 0) continue;
+                    
+                    const topCard = fromPile[fromPile.length - 1];
+                    if (!topCard.faceUp) continue;
+                    
+                    for (let toCol = 0; toCol < 7; toCol++) {
+                        if (fromCol === toCol) continue;
+                        
+                        const toPile = tableau[toCol];
+                        if (this.canPlaceOnTableau(topCard, toPile)) {
+                            return true;
+                        }
+                    }
+                }
+                
+                return false;
+            }
+            
+            /**
+             * Check if a card can be placed on a tableau pile
+             */
+            canPlaceOnTableau(card, pile) {
+                if (pile.length === 0) {
+                    return card.value === 13; // Only King on empty pile
+                }
+                
+                const topCard = pile[pile.length - 1];
+                if (!topCard.faceUp) return false;
+                
+                // Must be opposite color and one rank lower
+                const isOppositeColor = (card.suit === '♠' || card.suit === '♣') !== 
+                                       (topCard.suit === '♠' || topCard.suit === '♣');
+                
+                return isOppositeColor && card.value === topCard.value - 1;
+            }
+            
+            /**
+             * Basic check for likely unwinnable scenarios
+             */
+            isLikelyUnwinnable(deck) {
+                // Very basic heuristic: check if all Aces are buried deep
+                let acesFound = 0;
+                let acesDeepBuried = 0;
+                
+                for (let i = 0; i < deck.length; i++) {
+                    if (deck[i].value === 1) { // Ace
+                        acesFound++;
+                        // If ace is in stock (position 28+) or deep in tableau, it's buried
+                        if (i >= 28 || (i < 28 && this.isCardDeepInTableau(i))) {
+                            acesDeepBuried++;
+                        }
+                    }
+                }
+                
+                // If 3 or more aces are deeply buried, it's likely unwinnable
+                return acesDeepBuried >= 3;
+            }
+            
+            /**
+             * Check if a card position is deep in tableau (not easily accessible)
+             */
+            isCardDeepInTableau(position) {
+                // Map position to tableau column and depth
+                let pos = 0;
+                for (let col = 0; col < 7; col++) {
+                    for (let row = 0; row <= col; row++) {
+                        if (pos === position) {
+                            // Card is deep if it's not the top card and has 2+ cards above it
+                            return row < col - 1;
+                        }
+                        pos++;
+                    }
+                }
+                return false;
+            }
+            
+            /**
+             * Check if deck is winnable using basic solver
+             */
+            isWinnable(deck) {
+                // Simplified check - not a full solver but basic winnability heuristics
+                const tableau = Array.from({ length: 7 }, () => []);
+                let deckIndex = 0;
+                
+                // Deal cards to tableau
+                for (let col = 0; col < 7; col++) {
+                    for (let row = 0; row <= col; row++) {
+                        if (deckIndex < deck.length) {
+                            const card = { ...deck[deckIndex] };
+                            card.faceUp = row === col;
+                            tableau[col].push(card);
+                            deckIndex++;
+                        }
+                    }
+                }
+                
+                // Basic winnability checks
+                // 1. At least 2 aces should be accessible (top cards or 1 deep)
+                let accessibleAces = 0;
+                for (let col = 0; col < 7; col++) {
+                    const pile = tableau[col];
+                    for (let i = Math.max(0, pile.length - 2); i < pile.length; i++) {
+                        if (pile[i].value === 1) {
+                            accessibleAces++;
+                            break;
+                        }
+                    }
+                }
+                
+                // 2. Stock should have at least one ace or low card
+                const stock = deck.slice(28);
+                const stockLowCards = stock.filter(card => card.value <= 3).length;
+                
+                return accessibleAces >= 2 || stockLowCards >= 3;
+            }
+            
             findCardLocation(card) {
                 // Check waste pile
                 for (let i = 0; i < this.game.state.waste.length; i++) {
@@ -2761,18 +3072,156 @@
             }
         }
 
-        // Game state
+        // Game state interface for serialization (based on solitaired_ai_steps.md spec)
         class GameState {
             constructor(gameInstance) {
                 this.game = gameInstance;
-                this.drawMode = null;
-                this.stock = [];
-                this.waste = [];
+                
+                // Core serializable state (as per markdown spec)
                 this.tableau = Array.from({ length: 7 }, () => []);
                 this.foundations = { '♠': [], '♥': [], '♦': [], '♣': [] };
+                this.stock = [];
+                this.waste = [];
+                this.moves = [];
+                this.startTs = null;
+                
+                // Additional game data
+                this.drawMode = null;
                 this.gameStats = { moves: 0, time: 0, score: 0 };
                 this.hintCardId = null;
                 this.hoveredCard = null;
+                
+                // Initialize solver worker
+                this.initializeSolverWorker();
+            }
+            
+            /**
+             * Initialize the solver worker for game analysis
+             */
+            initializeSolverWorker() {
+                try {
+                    this.solverWorker = new Worker('./solver-worker.js');
+                    this.solverWorker.onmessage = (e) => {
+                        const { action, result } = e.data;
+                        if (action === 'solve_result') {
+                            this.handleSolverResult(result);
+                        }
+                    };
+                    
+                    this.solverWorker.onerror = (error) => {
+                        console.error('Solver worker error:', error);
+                        this.solverWorker = null;
+                    };
+                } catch (error) {
+                    console.warn('Could not initialize solver worker:', error);
+                    this.solverWorker = null;
+                }
+            }
+            
+            /**
+             * Check if current game is solvable
+             */
+            checkSolvability(maxDepth = 150) {
+                if (!this.solverWorker) {
+                    console.warn('Solver worker not available');
+                    return Promise.resolve({ solvable: false, error: 'Worker not available' });
+                }
+                
+                return new Promise((resolve) => {
+                    const timeoutId = setTimeout(() => {
+                        resolve({ solvable: false, error: 'Timeout' });
+                    }, 15000); // 15 second timeout
+                    
+                    this.solverResultCallback = (result) => {
+                        clearTimeout(timeoutId);
+                        resolve(result);
+                    };
+                    
+                    this.solverWorker.postMessage({
+                        action: 'solve',
+                        gameState: this.serialize(),
+                        maxDepth: maxDepth
+                    });
+                });
+            }
+            
+            /**
+             * Handle solver worker results
+             */
+            handleSolverResult(result) {
+                if (this.solverResultCallback) {
+                    this.solverResultCallback(result);
+                    this.solverResultCallback = null;
+                }
+            }
+            
+            /**
+             * Get solvable badge for UI
+             */
+            async getSolvableBadge() {
+                const result = await this.checkSolvability();
+                
+                if (result.solvable) {
+                    return {
+                        text: `✅ Solvable (${result.minMoves} moves)`,
+                        class: 'solvable-badge',
+                        tooltip: 'This game has a guaranteed solution'
+                    };
+                } else if (result.error) {
+                    return {
+                        text: '❓ Unknown',
+                        class: 'unknown-badge',
+                        tooltip: 'Could not determine solvability'
+                    };
+                } else {
+                    return {
+                        text: '❌ Unsolvable',
+                        class: 'unsolvable-badge',
+                        tooltip: 'This game may not have a solution'
+                    };
+                }
+            }
+            
+            /**
+             * Serialize the current game state for AI/analytics/save
+             * Returns the core state as defined in the markdown spec
+             */
+            serialize() {
+                return {
+                    tableau: this.tableau.map(pile => pile.map(card => ({ ...card }))),
+                    foundations: Object.fromEntries(
+                        Object.entries(this.foundations).map(([suit, pile]) => 
+                            [suit, pile.map(card => ({ ...card }))]
+                        )
+                    ),
+                    stock: this.stock.map(card => ({ ...card })),
+                    waste: this.waste.map(card => ({ ...card })),
+                    moves: [...this.moves],
+                    startTs: this.startTs
+                };
+            }
+            
+            /**
+             * Load state from serialized data
+             */
+            deserialize(serializedState) {
+                this.tableau = serializedState.tableau || Array.from({ length: 7 }, () => []);
+                this.foundations = serializedState.foundations || { '♠': [], '♥': [], '♦': [], '♣': [] };
+                this.stock = serializedState.stock || [];
+                this.waste = serializedState.waste || [];
+                this.moves = serializedState.moves || [];
+                this.startTs = serializedState.startTs || null;
+            }
+            
+            /**
+             * Record a move in the moves history
+             */
+            recordMove(move) {
+                this.moves.push({
+                    ...move,
+                    timestamp: Date.now() - (this.startTs || Date.now())
+                });
+                this.gameStats.moves++;
             }
             
             canMoveToFoundation(card) {
@@ -2822,7 +3271,7 @@
                 }
             }
             
-            initializeGame() {
+            initializeGame(shuffleType = 'random', seed = null) {
                 try {
                     this.gameStats = { moves: 0, time: 0, score: 0 };
                     this.hintCardId = null;
@@ -2830,9 +3279,30 @@
                     this.hoveredCard = null;
                     this.game.input.resetDragState();
                     
+                    // Set start timestamp for move tracking
+                    this.startTs = Date.now();
+                    this.moves = [];
+                    
                     if (this.game.timer) clearInterval(this.game.timer);
                     
-                    const deck = this.game.cards.shuffle(this.game.cards.createDeck());
+                    // Use deterministic shuffle based on type
+                    let deck;
+                    switch (shuffleType) {
+                        case 'easy':
+                            deck = this.game.cards.easyShuffle(seed);
+                            break;
+                        case 'medium':
+                            deck = this.game.cards.mediumShuffle(seed);
+                            break;
+                        case 'hard':
+                            deck = this.game.cards.hardShuffle(seed);
+                            break;
+                        case 'winnable':
+                            deck = this.game.cards.winnableShuffle(seed);
+                            break;
+                        default:
+                            deck = this.game.cards.shuffle(this.game.cards.createDeck());
+                    }
                     
                     this.tableau = Array.from({ length: 7 }, () => []);
                     for (let col = 0; col < 7; col++) {
@@ -4395,21 +4865,42 @@
             }
             
             canPlaceOnTableau(card, targetPile) {
-                if (!card || !targetPile) return false;
+                console.log('🏗️ canPlaceOnTableau check:', {
+                    card: card ? `${card.rank}${card.suit} (value: ${card.value})` : 'null',
+                    targetPile: targetPile ? `length: ${targetPile.length}` : 'null',
+                    isEmpty: targetPile ? targetPile.length === 0 : 'unknown'
+                });
+                
+                if (!card || !targetPile) {
+                    console.log('❌ Card or targetPile is null/undefined');
+                    return false;
+                }
                 
                 if (targetPile.length === 0) {
-                    return card.value === 13;
+                    const canPlace = card.value === 13;
+                    console.log(`🏗️ Empty pile - checking if King: ${canPlace} (card value: ${card.value})`);
+                    return canPlace;
                 }
                 const topCard = targetPile[targetPile.length - 1];
                 
                 // Check if topCard exists and has required properties
                 if (!topCard || topCard.faceUp === undefined || !topCard.value || !topCard.suit) {
+                    console.log('❌ Top card invalid:', topCard);
                     return false;
                 }
                 
-                return topCard.faceUp && 
+                const canPlace = topCard.faceUp && 
                        topCard.value === card.value + 1 && 
                        this.game.constants.RED_SUITS.has(topCard.suit) !== this.game.constants.RED_SUITS.has(card.suit);
+                
+                console.log('🏗️ Non-empty pile check:', {
+                    topCard: `${topCard.rank}${topCard.suit} (value: ${topCard.value}, faceUp: ${topCard.faceUp})`,
+                    valueMatch: topCard.value === card.value + 1,
+                    colorAlternate: this.game.constants.RED_SUITS.has(topCard.suit) !== this.game.constants.RED_SUITS.has(card.suit),
+                    result: canPlace
+                });
+                
+                return canPlace;
             }
             
             isValidSequence(cards) {
@@ -6889,8 +7380,13 @@
             
             attemptAutoMove(card) {
                 try {
+                    console.log('🎯 Attempting auto-move for card:', card);
                     const cardLocation = this.game.cards.findCardLocation(card);
-                    if (!cardLocation) return false;
+                    console.log('📍 Card location found:', cardLocation);
+                    if (!cardLocation) {
+                        console.log('❌ Card location not found');
+                        return false;
+                    }
                     
                     if (cardLocation.type === 'tableau') {
                         const pile = this.game.state.tableau[cardLocation.pileIndex];
@@ -6912,17 +7408,26 @@
                             }
                         }
                     } else {
+                        console.log('🎯 Non-tableau card auto-move attempt');
+                        console.log('🏛️ Checking foundation placement...');
                         if (this.game.rules.canPlaceOnFoundation(card)) {
+                            console.log('✅ Can place on foundation - moving');
                             this.moveCardToFoundation(card);
                             return true;
                         }
+                        console.log('❌ Cannot place on foundation');
                         
+                        console.log('🏗️ Checking tableau placement...');
                         for (let i = 0; i < this.game.state.tableau.length; i++) {
-                            if (this.game.rules.canPlaceOnTableau(card, this.game.state.tableau[i])) {
+                            const pile = this.game.state.tableau[i];
+                            console.log(`🏗️ Checking tableau column ${i}, pile length: ${pile.length}, empty: ${pile.length === 0}`);
+                            if (this.game.rules.canPlaceOnTableau(card, pile)) {
+                                console.log(`✅ Can place on tableau column ${i} - moving`);
                                 this.moveCardToTableau(card, i);
                                 return true;
                             }
                         }
+                        console.log('❌ Cannot place on any tableau column');
                     }
                     
                     return false;
@@ -7474,15 +7979,27 @@
             startDrag(cardInfo, mouseX, mouseY) {
                 try {
                     const card = cardInfo.card;
+                    console.log('🎯 Starting drag for card:', card, 'from location:', cardInfo.location);
+                    
                     this.dragOffset.x = mouseX - cardInfo.x;
                     this.dragOffset.y = mouseY - cardInfo.y;
                     this.dragCurrentPos.x = mouseX;
                     this.dragCurrentPos.y = mouseY;
                     
                     if (cardInfo.location === 'waste') {
+                        console.log('🗑️ Waste pile drag attempt');
+                        console.log('🗑️ Waste pile length:', this.game.state.waste.length);
+                        console.log('🗑️ Top waste card:', this.game.state.waste.length > 0 ? this.game.state.waste[this.game.state.waste.length - 1] : 'none');
+                        console.log('🗑️ Clicked card ID:', card.id);
+                        console.log('🗑️ Top card ID:', this.game.state.waste.length > 0 ? this.game.state.waste[this.game.state.waste.length - 1].id : 'none');
+                        
                         if (this.game.state.waste.length > 0 && this.game.state.waste[this.game.state.waste.length - 1].id === card.id) {
+                            console.log('✅ Valid waste card drag - setting up drag');
                             this.dragSourceInfo = { type: 'waste' };
                             this.draggedCards = [card];
+                        } else {
+                            console.log('❌ Invalid waste card drag - not top card');
+                            return;
                         }
                     } else if (cardInfo.location === 'foundation') {
                         this.dragSourceInfo = { type: 'foundation', suit: cardInfo.suit };
@@ -7501,9 +8018,12 @@
                     }
                     
                     if (this.draggedCards.length > 0) {
+                        console.log('🎯 Drag started successfully with', this.draggedCards.length, 'cards');
                         this.isDragging = true;
                         this.updateCursor();
                         this.game.renderer.render();
+                    } else {
+                        console.log('❌ No cards to drag');
                     }
                 } catch (error) {
                     console.error('Error starting drag:', error);

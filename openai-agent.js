@@ -9,7 +9,7 @@ class OpenAIAgent {
         this.apiKey = null;
         this.baseURL = 'https://api.openai.com/v1/chat/completions';
         this.model = 'gpt-4o-mini';
-        this.maxTokens = 500;
+        this.maxTokens = 50; // Reduced for visual hints
         this.temperature = 0.3; // Lower temperature for more consistent strategic advice
         this.isInitialized = false;
         this.requestQueue = [];
@@ -98,31 +98,33 @@ class OpenAIAgent {
         
         try {
             const gameState = this.serializeGameState();
-            const availableMoves = this.getAvailableMoves();
             
             const prompt = `
 Current Klondike Solitaire game state:
 ${gameState}
 
-Available moves:
-${availableMoves.map((move, i) => `${i + 1}. ${move}`).join('\n')}
+Recommend the BEST single move. Respond with ONLY one of these formats:
 
-Which move would you recommend and why? Consider:
-- Foundation building opportunities
-- Revealing hidden cards
-- Creating empty tableau columns
-- Long-term strategic value
+STOCK: Draw from deck
+WASTE_TO_FOUNDATION: [suit] (♠/♥/♦/♣)
+TABLEAU_TO_FOUNDATION: [column] [suit] (column 1-7, suit ♠/♥/♦/♣)
+TABLEAU_TO_TABLEAU: [from_column] [to_column] (columns 1-7)
+WASTE_TO_TABLEAU: [column] (column 1-7)
 
-Provide your recommendation in this format:
-RECOMMENDED MOVE: [move description]
-REASONING: [brief explanation]
-PRIORITY: [High/Medium/Low]
+Example responses:
+STOCK: Draw from deck
+WASTE_TO_FOUNDATION: ♠
+TABLEAU_TO_FOUNDATION: 3 ♥
+TABLEAU_TO_TABLEAU: 5 2
+WASTE_TO_TABLEAU: 4
+
+Be concise - only the action format above.
 `;
             
             const messages = [
                 {
                     role: 'system',
-                    content: 'You are a Klondike Solitaire expert. Analyze the available moves and recommend the best one with clear reasoning.'
+                    content: 'You are a Klondike Solitaire expert. Respond with ONLY the move format requested - no explanations.'
                 },
                 {
                     role: 'user',
@@ -131,7 +133,7 @@ PRIORITY: [High/Medium/Low]
             ];
             
             const response = await this.makeRequest(messages);
-            return this.parseMoveRecommendation(response);
+            return this.parseVisualMoveRecommendation(response);
             
         } catch (error) {
             console.error('Error getting move recommendation:', error);
@@ -405,6 +407,64 @@ Score: ${state.gameStats.score}
     /**
      * Parse move recommendation response
      */
+    parseVisualMoveRecommendation(response) {
+        const cleanResponse = response.trim().toUpperCase();
+        
+        if (cleanResponse.includes('STOCK')) {
+            return {
+                type: 'stock',
+                action: 'draw',
+                visual: 'highlight_stock'
+            };
+        }
+        
+        if (cleanResponse.includes('WASTE_TO_FOUNDATION')) {
+            const suitMatch = cleanResponse.match(/[♠♥♦♣]/);
+            return {
+                type: 'waste_to_foundation',
+                suit: suitMatch ? suitMatch[0] : null,
+                visual: 'highlight_waste_and_foundation'
+            };
+        }
+        
+        if (cleanResponse.includes('TABLEAU_TO_FOUNDATION')) {
+            const matches = cleanResponse.match(/(\d+)\s*([♠♥♦♣])/);
+            return {
+                type: 'tableau_to_foundation',
+                column: matches ? parseInt(matches[1]) - 1 : null, // Convert to 0-based
+                suit: matches ? matches[2] : null,
+                visual: 'highlight_tableau_and_foundation'
+            };
+        }
+        
+        if (cleanResponse.includes('TABLEAU_TO_TABLEAU')) {
+            const matches = cleanResponse.match(/(\d+)\s+(\d+)/);
+            return {
+                type: 'tableau_to_tableau',
+                fromColumn: matches ? parseInt(matches[1]) - 1 : null, // Convert to 0-based
+                toColumn: matches ? parseInt(matches[2]) - 1 : null,
+                visual: 'highlight_tableau_move'
+            };
+        }
+        
+        if (cleanResponse.includes('WASTE_TO_TABLEAU')) {
+            const match = cleanResponse.match(/(\d+)/);
+            return {
+                type: 'waste_to_tableau',
+                column: match ? parseInt(match[1]) - 1 : null, // Convert to 0-based
+                visual: 'highlight_waste_and_tableau'
+            };
+        }
+        
+        // Fallback
+        return {
+            type: 'unknown',
+            action: 'no_move',
+            visual: 'no_highlight',
+            rawResponse: response
+        };
+    }
+    
     parseMoveRecommendation(response) {
         const lines = response.split('\n');
         const result = {
@@ -495,30 +555,60 @@ Score: ${state.gameStats.score}
      */
     async showMoveRecommendation() {
         try {
-            this.game.ui.showNotification('🤖 AI calculating best move...', 'info', 2000);
+            this.game.ui.showNotification('🤖 AI analyzing best move...', 'info', 1500);
             
             const recommendation = await this.getMoveRecommendation();
             
-            const recommendationHTML = `
-                <div class="ai-recommendation">
-                    <h3>🎯 AI Move Recommendation</h3>
-                    <div class="recommended-move">
-                        <strong>Recommended:</strong> ${recommendation.move}
-                    </div>
-                    <div class="reasoning">
-                        <strong>Why:</strong> ${recommendation.reasoning}
-                    </div>
-                    <div class="priority priority-${recommendation.priority.toLowerCase()}">
-                        Priority: ${recommendation.priority}
-                    </div>
-                </div>
-            `;
+            // Apply visual highlighting based on recommendation
+            this.applyVisualHint(recommendation);
             
-            this.game.ui.showCustomNotification(recommendationHTML, 'ai-recommendation', 8000);
+            // Show minimal notification
+            let hintText = this.getHintText(recommendation);
+            this.game.ui.showNotification(`🎯 ${hintText}`, 'hint', 4000);
             
         } catch (error) {
             console.error('Error showing move recommendation:', error);
-            this.game.ui.showNotification('❌ Move recommendation failed: ' + error.message, 'error', 5000);
+            this.game.ui.showNotification('❌ AI hint failed: ' + error.message, 'error', 3000);
+        }
+    }
+    
+    getHintText(recommendation) {
+        switch (recommendation.type) {
+            case 'stock':
+                return 'Draw from deck';
+            case 'waste_to_foundation':
+                return `Move waste card to ${recommendation.suit} foundation`;
+            case 'tableau_to_foundation':
+                return `Move column ${recommendation.column + 1} card to ${recommendation.suit} foundation`;
+            case 'tableau_to_tableau':
+                return `Move from column ${recommendation.fromColumn + 1} to column ${recommendation.toColumn + 1}`;
+            case 'waste_to_tableau':
+                return `Move waste card to column ${recommendation.column + 1}`;
+            default:
+                return 'No clear move found';
+        }
+    }
+    
+    applyVisualHint(recommendation) {
+        // Clear any existing hints
+        this.clearVisualHints();
+        
+        // Store hint for renderer to use
+        this.game.state.currentHint = recommendation;
+        
+        // Set hint timeout to clear after 5 seconds
+        setTimeout(() => {
+            this.clearVisualHints();
+        }, 5000);
+        
+        // Trigger re-render to show highlights
+        this.game.renderer.render();
+    }
+    
+    clearVisualHints() {
+        if (this.game.state.currentHint) {
+            this.game.state.currentHint = null;
+            this.game.renderer.render();
         }
     }
     
